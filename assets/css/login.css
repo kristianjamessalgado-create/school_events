@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
 
 * {
     margin: 0;
@@ -8,89 +8,83 @@
 }
 
 body {
+    height: 100vh;
+    width: 100%;
     display: flex;
     justify-content: center;
     align-items: center;
-    min-height: 100vh;
-    background: linear-gradient(90deg, #e2e2e2, #c9d6ff);
+    overflow: hidden;
+    background: #0d1b2a;
 }
 
-/* MAIN CONTAINER */
+/* === VIDEO BACKGROUND === */
+#bgVideo {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    object-fit: cover;
+    z-index: 0;
+}
+
+/* === MAIN CONTAINER === */
 .container {
     position: relative;
-    width: 850px;
-    height: 550px;
-    background: #fff;
-    border-radius: 30px;
-    overflow: hidden;
-    box-shadow: 0 0 10px rgba(0,0,0,0.2);
-}
-
-/* FORMS */
-.form-box {
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: 50%;
-    height: 100%;
+    width: 400px;
+    max-width: 90%;
+    padding: 40px 30px;
+    background: rgba(0,0,0,0.6);
+    border-radius: 20px;
+    box-shadow: 0 0 30px rgba(0,255,0,0.3);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(0,255,0,0.3);
+    z-index: 1;
     display: flex;
-    justify-content: center;
+    flex-direction: column;
     align-items: center;
-    background: #fff;
+    color: white;
+    transition: 0.3s all ease-in-out;
+}
+
+/* === FORM BOX === */
+.form-box {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     text-align: center;
-    z-index: 3;
-    transition: all 0.6s ease-in-out;
 }
 
-.form-box.register {
-    visibility: hidden;
-    z-index: 10;
-    pointer-events: auto;
+.form-box h1 {
+    font-size: 28px;
+    margin-bottom: 25px;
+    color: white;
+    text-shadow: 0 0 5px #00ff00;
 }
 
-/* ACTIVE STATE */
-.container.active .form-box.login {
-    transform: translateX(100%);
-}
-
-.container.active .form-box.register {
-    visibility: visible;
-    transform: translateX(-100%);
-}
-
-/* FORM CONTENT */
-form {
-    width: 80%;
-}
-
-.container h1 {
-    font-size: 32px;
-    margin-bottom: 10px;
-}
-
-.container p {
-    font-size: 14px;
+/* === INPUT BOXES === */
+.input-box {
+    position: relative;
+    width: 100%;
     margin: 15px 0;
 }
 
-/* INPUTS */
-.input-box {
-    position: relative;
-    margin: 25px 0;
-}
-
-.input-box input {
+.input-box input,
+.input-box select {
     width: 100%;
-    padding: 13px 45px 13px 20px;
-    background: #eee;
+    padding: 12px 15px;
     border-radius: 8px;
-    border: none;
-    outline: none;
-    font-size: 15px;
+    border: 1px solid rgba(255,255,255,0.3);
+    background: rgba(0,0,0,0.4);
+    color: white;
+    font-size: 14px;
+    transition: 0.3s all ease-in-out;
 }
 
-.input-box input::placeholder {
-    color: #888;
+.input-box input::placeholder,
+.input-box select option {
+    color: rgba(255,255,255,0.7);
 }
 
 .input-box i {
@@ -98,116 +92,76 @@ form {
     right: 15px;
     top: 50%;
     transform: translateY(-50%);
-    font-size: 18px;
-    color: #999;
+    color: rgba(255,255,255,0.8);
 }
 
-/* FORGOT LINK */
-.forgot-link {
-    text-align: right;
-    margin-bottom: 15px;
+/* === FOCUS NEON EFFECT === */
+.input-box input:focus,
+.input-box select:focus {
+    outline: none;
+    border-color: #00ff00;
+    box-shadow: 0 0 8px #00ff00;
+    background: rgba(0,0,0,0.6);
+    color: white;
 }
 
-.forgot-link a {
-    font-size: 14px;
-    color: #333;
-    text-decoration: none;
-}
-
-/* .btn btn-secondary{
-    color: red;
-} */
-/* BUTTON */
+/* === BUTTONS === */
 .btn {
     width: 100%;
-    height: 45px;
-    background: #7494ec;
-    border: none;
+    padding: 12px;
+    margin-top: 10px;
     border-radius: 8px;
-    color: #fff;
-    font-size: 16px;
+    border: none;
+    background: #00ff00;
+    color: black;
     font-weight: 600;
     cursor: pointer;
-    outline: none;
-    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    font-size: 15px;
+    transition: 0.3s all ease-in-out;
 }
 
-/* TOGGLE BOX */
-.toggle-box {
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    display: flex;
-    z-index: 1;
+.btn:hover {
+    box-shadow: 0 0 15px #00ff00;
+    transform: translateY(-2px);
 }
 
-/* TOGGLE PANELS */
-.toggle-panel {
-    width: 50%;
-    height: 100%;
-    background: #7494ec;
-    color: #fff;
+/* === SWITCH FORM BUTTON === */
+.switch-btn {
+    background: transparent;
+    border: none;
+    color: #00ff00;
+    margin-top: 15px;
+    text-decoration: underline;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+/* === HIDE REGISTER FORM INITIALLY === */
+.form-box.register {
+    display: none;
+}
+
+/* === SHOW REGISTER FORM WHEN ACTIVE === */
+.container.active .form-box.login {
+    display: none;
+}
+
+.container.active .form-box.register {
     display: flex;
     flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    text-align: center;
-    padding: 40px;
-    position: absolute;
-    z-index: 2;
-    transition: all 0.6s ease-in-out;
-    pointer-events: none; /* default hidden */
 }
 
-.toggle-panel.toggle-left {
-    left: 0;
-    transition-delay: 1.2s;
-    pointer-events: auto; /* enable click initially */
-}
-
-.toggle-panel.toggle-right {
-    right: 0;
-}
-
-/* Buttons inside panels */
-.toggle-panel .btn {
-    background: #fff;
-    color: #7494ec;
-    margin-top: 15px;
-}
-
-/* SLIDING BACKGROUND */
-.toggle-box::before {
-    content: '';
-    position: absolute;
-    left: -250%;
-    width: 300%;
-    height: 100%;
-    background: #7494ec;
-    border-radius: 150px;
-    z-index: 1;
-    transition: 1.8s ease-in-out;
-    pointer-events: none;
-}
-
-/* Active state */
-.container.active .toggle-box::before {
-    left: 50%;
-}
-
-/* TOGGLE ANIMATION */
-.container.active .toggle-panel.toggle-left {
-    left: -50%;
-    pointer-events: none; /* disable click when hidden */
-    transition-delay: 0.6s;
-}
-
-.container.active .toggle-panel.toggle-right {
-    right: 0; /* stay visible */
-    pointer-events: auto; /* enable click */
-    transition-delay: 0.6s;
-}
-
-.toggle-panel p {
-    margin-bottom: 20px;
+/* === MOBILE RESPONSIVE === */
+@media (max-width: 480px) {
+    .container {
+        width: 90%;
+        padding: 30px 20px;
+    }
+    .form-box h1 {
+        font-size: 24px;
+    }
+    .btn {
+        font-size: 14px;
+        padding: 10px;
+    }
 }

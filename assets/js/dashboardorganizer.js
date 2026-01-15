@@ -25,3 +25,24 @@
     //         }
     //     });
     // });
+    document.addEventListener('DOMContentLoaded', function() {
+        var calendarEl = document.getElementById('calendar');
+        if (!calendarEl) return; // safety check
+    
+        var calendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'dayGridMonth', // monthly view
+            selectable: true,            // allows clicking a date
+            headerToolbar: {
+                left: 'prev,next today',
+                center: 'title',
+                right: 'dayGridMonth,timeGridWeek,timeGridDay'
+            },
+            events: window.eventsData || [], // load events from global JS variable
+            dateClick: function(info) {
+                window.location.href = "create_event.php?date=" + info.dateStr;
+            }
+        });
+    
+        calendar.render();
+    });
+    

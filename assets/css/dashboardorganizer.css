@@ -15,6 +15,12 @@ table th, table td {
     text-align: left;
 }
 
+#calendar {
+    max-width: 900px; /* optional, keeps calendar centered */
+    margin: 0 auto;
+    height: 600px; /* important */
+}
+
 table th { background-color: #28a745; color: white; }
 table tr:nth-child(even) { background-color: #f2f2f2; }
 

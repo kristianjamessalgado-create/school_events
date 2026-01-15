@@ -19,8 +19,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $confirm_password = $_POST['confirm_password'] ?? '';
         $role     = $_POST['role'] ?? '';
 
-        // Validation
-       // Validation
+        // Validation sige rag validate
+      
 if ($password !== $confirm_password) {
     $error = "Passwords do not match.";
 }
@@ -68,14 +68,14 @@ else {
 }
 
 
-        // Redirect with error if any
+        
         if (!empty($error)) {
             header("Location: " . BASE_URL . "/views/login.php?error=" . urlencode($error) . "&form=register");
             exit();
         }
 
     } elseif ($action === 'login') {
-        // --- LOGIN ---
+        
         $email = trim($_POST['email'] ?? '');
         $password = $_POST['password'] ?? '';
 

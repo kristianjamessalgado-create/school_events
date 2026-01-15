@@ -3,13 +3,13 @@ session_start();
 include __DIR__ . '/../../config/db.php';
 include __DIR__ . '/../../config/config.php';
 
-// Only allow logged-in organizers
+
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'organizer') {
     header("Location: " . BASE_URL . "/views/login.php?error=Access denied");
     exit();
 }
 
-// Logged-in user's ID
+
 $session_user_id = $_SESSION['user_id'];
 
 // Fetch user info
@@ -33,8 +33,8 @@ if ($result) {
 $stmt2->close();
 $conn->close();
 
-// Optional message
+
 $msg = $_GET['msg'] ?? '';
 
-// Include view (pass variables)
+
 include __DIR__ . '/../../views/dashboardorganizer.php';

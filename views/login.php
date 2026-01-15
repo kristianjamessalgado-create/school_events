@@ -11,30 +11,38 @@ $success = $_GET['success'] ?? '';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login / Signup</title>
+    <title>Login / Register</title>
 
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.1/css/all.min.css">
 
     <!-- Custom CSS -->
     <link rel="stylesheet" href="/school_events/assets/css/login.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.1/css/all.min.css">
 </head>
 <body>
+
+<!-- VIDEO BACKGROUND -->
+<video autoplay muted loop id="bgVideo">
+    <source src="/school_events/assets/video/adminvid.mov" type="video/mp4">
+    Your browser does not support the video tag.
+</video>
 
 <div class="container">
 
     <!-- LOGIN FORM -->
     <div class="form-box login">
+        <h1>Login</h1>
+
+        <?php if ($error && isset($_GET['form']) && $_GET['form'] === 'login'): ?>
+            <div class="alert alert-danger" role="alert">
+                <?= htmlspecialchars($error) ?>
+            </div>
+        <?php endif; ?>
+
         <form action="/school_events/backend/auth/auth.php" method="POST">
-            <h1>Login</h1>
-
-            <?php if ($error && isset($_GET['form']) && $_GET['form'] === 'login'): ?>
-                <div class="alert alert-danger" role="alert">
-                    <?php echo htmlspecialchars($error); ?>
-                </div>
-            <?php endif; ?>
-
             <input type="hidden" name="action" value="login">
 
             <div class="input-box">
@@ -43,38 +51,33 @@ $success = $_GET['success'] ?? '';
             </div>
 
             <div class="input-box">
-                <input type="password" name="password" placeholder="Password" required>
-                <i class="fa-solid fa-lock"></i>
-            </div>
-
-            <div class="forgot-link">
-                <a href="#">Forgot Password?</a>
+                <input type="password" name="password" placeholder="Password" id="loginPassword" required>
+                <i class="fa-solid fa-eye" id="toggleLoginPassword" style="cursor:pointer;"></i>
             </div>
 
             <button type="submit" class="btn">Login</button>
         </form>
+
+        <button class="switch-btn">Don't have an account? Register</button>
     </div>
 
     <!-- REGISTER FORM -->
     <div class="form-box register">
-        <form id="registerForm" action="/school_events/backend/auth/auth.php" method="POST">
+        <h1>Register</h1>
 
-            <h1>Register</h1>
+        <?php if ($error && isset($_GET['form']) && $_GET['form'] === 'register'): ?>
+            <div class="alert alert-danger" role="alert">
+                <?= htmlspecialchars($error) ?>
+            </div>
+        <?php endif; ?>
 
-            <!-- Display server-side errors -->
-            <?php if ($error && isset($_GET['form']) && $_GET['form'] === 'register'): ?>
-                <div class="alert alert-danger" role="alert">
-                    <?php echo htmlspecialchars($error); ?>
-                </div>
-            <?php endif; ?>
+        <?php if ($success && isset($_GET['form']) && $_GET['form'] === 'register'): ?>
+            <div class="alert alert-success" role="alert">
+                <?= htmlspecialchars($success) ?>
+            </div>
+        <?php endif; ?>
 
-            <!-- Display success message -->
-            <?php if ($success && isset($_GET['form']) && $_GET['form'] === 'register'): ?>
-                <div class="alert alert-success" role="alert">
-                    <?php echo htmlspecialchars($success); ?>
-                </div>
-            <?php endif; ?>
-
+        <form action="/school_events/backend/auth/auth.php" method="POST">
             <input type="hidden" name="action" value="register">
 
             <div class="input-box">
@@ -87,31 +90,14 @@ $success = $_GET['success'] ?? '';
             </div>
 
             <div class="input-box">
-    <input
-        type="password"
-        name="password"
-        id="registerPassword"
-        placeholder="Password"
-        required
-    >
-    <i
-        class="fa-solid fa-eye"
-        id="togglePassword"
-        style="cursor:pointer;"
-    ></i>
-</div>
-
-
-            <div class="input-box">
-                <input type="password" name="confirm_password" placeholder="Confirm Password" required> 
-                <i class="fa-solid fa-lock"></i>
+                <input type="password" name="password" placeholder="Password" id="registerPassword" required>
+                <i class="fa-solid fa-eye" id="toggleRegisterPassword" style="cursor:pointer;"></i>
             </div>
 
-  
-<p id="passwordError" class="text-danger" style="font-size:14px; display:none;">
-    Passwords do not match
-</p>
-
+            <div class="input-box">
+                <input type="password" name="confirm_password" placeholder="Confirm Password" id="confirmPassword" required>
+                <i class="fa-solid fa-eye" id="toggleConfirmPassword" style="cursor:pointer;"></i>
+            </div>
 
             <div class="input-box">
                 <select name="role" required>
@@ -121,62 +107,49 @@ $success = $_GET['success'] ?? '';
                 </select>
             </div>
 
-            <!-- OPEN MODAL -->
-            <button type="button" class="btn btn-primary" onclick="openRegisterModal()">
-                Register
-            </button>
-
+            <button type="submit" class="btn">Register</button>
         </form>
+
+        <button class="switch-btn">Already have an account? Login</button>
     </div>
 
-    <!-- MODAL CONFIRMATION -->
-    <div class="modal fade" id="registerConfirmModal" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-
-                <div class="modal-header">
-                    <h5 class="modal-title">Confirm Registration</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-
-                <div class="modal-body">
-                    Are you sure you want to submit your registration?
-                </div>
-
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-danger" data-bs-dismiss="modal">
-                        Cancel
-                    </button>
-                    <button type="button" class="btn btn-primary" onclick="submitRegister()">
-                        Yes, Submit
-                    </button>
-                </div>
-
-            </div>
-        </div>
-    </div>
-
-    <!-- TOGGLE BOX -->
-    <div class="toggle-box">
-
-        <div class="toggle-panel toggle-left">
-            <h1>Hello, Welcome!</h1>
-            <p>Don't have an account?</p>
-            <button type="button" class="btn register-btn">Register</button>
-        </div>
-
-        <div class="toggle-panel toggle-right">
-            <h1>Welcome Back!</h1>
-            <p>Already have an account?</p>
-            <button type="button" class="btn login-btn">Login</button>
-        </div>
-
-    </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<!-- JS Scripts -->
+<script>
+const container = document.querySelector('.container');
+const switchButtons = document.querySelectorAll('.switch-btn');
 
+// Toggle between login and register
+switchButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+        container.classList.toggle('active');
+    });
+});
 
-<script src="/school_events/assets/js/login.js"></script>
+// Show/hide password function
+function togglePassword(inputId, toggleId) {
+    const input = document.getElementById(inputId);
+    const toggle = document.getElementById(toggleId);
+
+    toggle.addEventListener('click', () => {
+        if(input.type === 'password') {
+            input.type = 'text';
+            toggle.classList.remove('fa-eye');
+            toggle.classList.add('fa-eye-slash');
+        } else {
+            input.type = 'password';
+            toggle.classList.remove('fa-eye-slash');
+            toggle.classList.add('fa-eye');
+        }
+    });
+}
+
+// Apply to all password fields
+togglePassword('loginPassword', 'toggleLoginPassword');
+togglePassword('registerPassword', 'toggleRegisterPassword');
+togglePassword('confirmPassword', 'toggleConfirmPassword');
+</script>
+
 </body>
 </html>
