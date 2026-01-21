@@ -1,7 +1,7 @@
 <?php
 $host = "localhost";
 $user = "root";
-$pass = "kristian123";
+$pass = "";
 $db   = "school_events_db";
 
 // OOP MySQLi connection
