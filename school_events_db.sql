@@ -50,7 +50,8 @@ CREATE TABLE `events` (
   `location` varchar(100) DEFAULT NULL,
   `organizer_id` int(11) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `status` enum('active','closed') DEFAULT 'active'
+  `status` enum('active','closed') DEFAULT 'active',
+  `department` enum('ALL','BSIT','BSHM','CONAHS','Senior High') NOT NULL DEFAULT 'ALL'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -90,6 +91,7 @@ CREATE TABLE `users` (
   `email` varchar(100) NOT NULL,
   `password` varchar(255) NOT NULL,
   `role` enum('super_admin','admin','organizer','student') NOT NULL,
+  `department` enum('BSIT','BSHM','CONAHS','Senior High') DEFAULT NULL,
   `status` enum('active','inactive') DEFAULT 'active',
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `failed_attempts` int(11) DEFAULT 0

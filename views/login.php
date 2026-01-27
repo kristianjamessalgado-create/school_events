@@ -100,10 +100,20 @@ $success = $_GET['success'] ?? '';
             </div>
 
             <div class="input-box">
-                <select name="role" required>
+                <select name="role" id="roleSelect" required>
                     <option value="">Select Role</option>
                     <option value="student">Student</option>
                     <option value="organizer">Organizer</option>
+                </select>
+            </div>
+
+            <div class="input-box" id="departmentWrapper" style="display: none;">
+                <select name="department" id="departmentSelect">
+                    <option value="">Select Department</option>
+                    <option value="BSIT">BSIT</option>
+                    <option value="BSHM">BSHM</option>
+                    <option value="CONAHS">CONAHS</option>
+                    <option value="Senior High">Senior High</option>
                 </select>
             </div>
 
@@ -117,38 +127,59 @@ $success = $_GET['success'] ?? '';
 
 <!-- JS Scripts -->
 <script>
-const container = document.querySelector('.container');
-const switchButtons = document.querySelectorAll('.switch-btn');
+// Wait for DOM to be ready
+document.addEventListener('DOMContentLoaded', function() {
+    const container = document.querySelector('.container');
+    const switchButtons = document.querySelectorAll('.switch-btn');
 
-// Toggle between login and register
-switchButtons.forEach(btn => {
-    btn.addEventListener('click', () => {
-        container.classList.toggle('active');
+    // Toggle between login and register
+    switchButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            container.classList.toggle('active');
+        });
     });
-});
 
-// Show/hide password function
-function togglePassword(inputId, toggleId) {
-    const input = document.getElementById(inputId);
-    const toggle = document.getElementById(toggleId);
+    // Show/hide password function
+    function togglePassword(inputId, toggleId) {
+        const input = document.getElementById(inputId);
+        const toggle = document.getElementById(toggleId);
 
-    toggle.addEventListener('click', () => {
-        if(input.type === 'password') {
-            input.type = 'text';
-            toggle.classList.remove('fa-eye');
-            toggle.classList.add('fa-eye-slash');
-        } else {
-            input.type = 'password';
-            toggle.classList.remove('fa-eye-slash');
-            toggle.classList.add('fa-eye');
+        if (input && toggle) {
+            toggle.addEventListener('click', () => {
+                if(input.type === 'password') {
+                    input.type = 'text';
+                    toggle.classList.remove('fa-eye');
+                    toggle.classList.add('fa-eye-slash');
+                } else {
+                    input.type = 'password';
+                    toggle.classList.remove('fa-eye-slash');
+                    toggle.classList.add('fa-eye');
+                }
+            });
         }
-    });
-}
+    }
 
-// Apply to all password fields
-togglePassword('loginPassword', 'toggleLoginPassword');
-togglePassword('registerPassword', 'toggleRegisterPassword');
-togglePassword('confirmPassword', 'toggleConfirmPassword');
+    // Apply to all password fields
+    togglePassword('loginPassword', 'toggleLoginPassword');
+    togglePassword('registerPassword', 'toggleRegisterPassword');
+    togglePassword('confirmPassword', 'toggleConfirmPassword');
+
+    // Show department field only for students
+    const roleSelect = document.getElementById('roleSelect');
+    const deptWrapper = document.getElementById('departmentWrapper');
+    if (roleSelect && deptWrapper) {
+        const toggleDept = () => {
+            if (roleSelect.value === 'student') {
+                deptWrapper.style.display = 'block';
+            } else {
+                deptWrapper.style.display = 'none';
+            }
+        };
+        roleSelect.addEventListener('change', toggleDept);
+        // Initialize on load
+        toggleDept();
+    }
+});
 </script>
 
 </body>

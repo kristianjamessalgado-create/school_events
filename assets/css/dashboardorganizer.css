@@ -1,28 +1,361 @@
 /* Reset */
-body, html { margin: 0; padding: 0; font-family: Arial, sans-serif; }
+body, html { 
+    margin: 0; 
+    padding: 0; 
+    font-family: 'Google Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    background-color: #f8f9fa;
+}
 
 /* Header */
 header h1 { font-size: 18px; }
 
-/* Table styling */
-table {
-    width: 100%;
-    border-collapse: collapse;
+/* Table tweaks (Bootstrap table is used) */
+.table th, 
+.table td {
+    vertical-align: middle;
+    font-size: 0.95rem;
 }
 
-table th, table td {
-    padding: 8px 12px;
-    text-align: left;
+.btn-sm { margin: 2px; }
+
+/* ===============================
+   GOOGLE CALENDAR STYLING
+================================ */
+
+.calendar-container {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    padding: 16px;
+    margin-bottom: 24px;
 }
 
 #calendar {
-    max-width: 900px; /* optional, keeps calendar centered */
+    max-width: 100%;
     margin: 0 auto;
-    height: 600px; /* important */
+    height: 700px;
+    background: #fff;
+    font-family: 'Google Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
-table th { background-color: #28a745; color: white; }
-table tr:nth-child(even) { background-color: #f2f2f2; }
+/* FullCalendar Header Toolbar - Google Calendar Style */
+.fc-header-toolbar {
+    margin-bottom: 1.5em !important;
+    padding: 16px 0;
+    border-bottom: 1px solid #e0e0e0;
+}
 
-/* Buttons */
-.btn-sm { margin: 2px; }
+.fc-toolbar-title {
+    font-size: 22px !important;
+    font-weight: 400 !important;
+    color: #3c4043 !important;
+    margin: 0 !important;
+}
+
+/* Navigation Buttons - Google Style */
+.fc-button {
+    background: #fff !important;
+    border: 1px solid #dadce0 !important;
+    color: #5f6368 !important;
+    border-radius: 4px !important;
+    padding: 8px 16px !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    text-transform: none !important;
+    box-shadow: none !important;
+    transition: all 0.2s ease !important;
+}
+
+.fc-button:hover {
+    background: #f8f9fa !important;
+    border-color: #dadce0 !important;
+    box-shadow: 0 1px 2px rgba(60,64,67,0.3) !important;
+}
+
+.fc-button:active {
+    box-shadow: 0 1px 2px rgba(60,64,67,0.3) inset !important;
+}
+
+.fc-button-primary:not(:disabled):active,
+.fc-button-primary:not(:disabled).fc-button-active {
+    background: #1a73e8 !important;
+    border-color: #1a73e8 !important;
+    color: #fff !important;
+}
+
+.fc-button-primary:disabled {
+    opacity: 0.38 !important;
+    cursor: not-allowed !important;
+}
+
+/* Today Button */
+.fc-today-button {
+    background: #fff !important;
+    border: 1px solid #dadce0 !important;
+    color: #1a73e8 !important;
+    font-weight: 500 !important;
+}
+
+.fc-today-button:hover {
+    background: #f8f9fa !important;
+}
+
+/* View Buttons */
+.fc-button-group .fc-button {
+    border-radius: 0 !important;
+}
+
+.fc-button-group .fc-button:first-child {
+    border-top-left-radius: 4px !important;
+    border-bottom-left-radius: 4px !important;
+}
+
+.fc-button-group .fc-button:last-child {
+    border-top-right-radius: 4px !important;
+    border-bottom-right-radius: 4px !important;
+}
+
+/* Calendar Grid */
+.fc-daygrid {
+    background: #fff;
+}
+
+.fc-col-header-cell {
+    padding: 8px 0 !important;
+    border-bottom: 1px solid #e0e0e0 !important;
+    background: #fff !important;
+}
+
+.fc-col-header-cell-cushion {
+    color: #5f6368 !important;
+    font-size: 11px !important;
+    font-weight: 500 !important;
+    text-transform: uppercase !important;
+    padding: 8px !important;
+    text-decoration: none !important;
+}
+
+/* Day Cells */
+.fc-daygrid-day {
+    border-color: #e0e0e0 !important;
+    background: #fff !important;
+    transition: background-color 0.2s ease;
+}
+
+.fc-daygrid-day:hover {
+    background-color: #f8f9fa !important;
+}
+
+.fc-daygrid-day-frame {
+    min-height: 100px !important;
+}
+
+.fc-daygrid-day-number {
+    color: #3c4043 !important;
+    font-size: 13px !important;
+    padding: 4px 8px !important;
+    font-weight: 400 !important;
+}
+
+/* Today Highlight */
+.fc-day-today {
+    background-color: #fef7e0 !important;
+}
+
+.fc-day-today .fc-daygrid-day-number {
+    color: #1a73e8 !important;
+    font-weight: 500 !important;
+}
+
+/* Other Month Days */
+.fc-day-other .fc-daygrid-day-frame {
+    background-color: #f8f9fa !important;
+}
+
+.fc-day-other .fc-daygrid-day-number {
+    color: #9aa0a6 !important;
+}
+
+/* Events - Google Calendar Style */
+.fc-event {
+    border: none !important;
+    border-radius: 4px !important;
+    padding: 2px 6px !important;
+    margin: 1px 2px !important;
+    font-size: 12px !important;
+    font-weight: 400 !important;
+    cursor: pointer !important;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1) !important;
+    transition: all 0.2s ease !important;
+}
+
+.fc-event:hover {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.15) !important;
+    transform: translateY(-1px);
+}
+
+.fc-event-title {
+    padding: 0 !important;
+    font-weight: 400 !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.fc-event-title-container {
+    padding: 0 !important;
+}
+
+/* Event Colors - Google Calendar Palette */
+.fc-event {
+    background-color: #1a73e8 !important;
+    color: #fff !important;
+}
+
+.fc-event[data-event-color="blue"] {
+    background-color: #1a73e8 !important;
+}
+
+.fc-event[data-event-color="green"] {
+    background-color: #34a853 !important;
+}
+
+.fc-event[data-event-color="red"] {
+    background-color: #ea4335 !important;
+}
+
+.fc-event[data-event-color="yellow"] {
+    background-color: #fbbc04 !important;
+    color: #202124 !important;
+}
+
+.fc-event[data-event-color="purple"] {
+    background-color: #9c27b0 !important;
+}
+
+.fc-event[data-event-color="orange"] {
+    background-color: #ff9800 !important;
+}
+
+/* More Link */
+.fc-more-link {
+    color: #1a73e8 !important;
+    font-size: 12px !important;
+    font-weight: 500 !important;
+    padding: 2px 4px !important;
+    border-radius: 2px !important;
+}
+
+.fc-more-link:hover {
+    background: #e8f0fe !important;
+}
+
+/* Week View Styling */
+.fc-timegrid {
+    background: #fff;
+}
+
+.fc-timegrid-slot {
+    border-color: #e0e0e0 !important;
+    height: 48px !important;
+}
+
+.fc-timegrid-slot-label {
+    color: #5f6368 !important;
+    font-size: 12px !important;
+    padding: 0 8px !important;
+}
+
+.fc-timegrid-col {
+    border-color: #e0e0e0 !important;
+}
+
+.fc-timegrid-event {
+    border-radius: 4px !important;
+    border: none !important;
+    padding: 2px 4px !important;
+    font-size: 12px !important;
+}
+
+/* Day View Styling */
+.fc-timegrid-now-indicator-line {
+    border-color: #ea4335 !important;
+    border-width: 2px !important;
+}
+
+.fc-timegrid-now-indicator-arrow {
+    border-left-color: #ea4335 !important;
+}
+
+/* Scrollbar Styling */
+.fc-scroller::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.fc-scroller::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.fc-scroller::-webkit-scrollbar-thumb {
+    background: #dadce0;
+    border-radius: 4px;
+}
+
+.fc-scroller::-webkit-scrollbar-thumb:hover {
+    background: #bdc1c6;
+}
+
+/* Calendar Container Responsive */
+@media (max-width: 768px) {
+    body {
+        padding: 0;
+    }
+
+    main.container {
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+
+    .calendar-container {
+        padding: 8px;
+    }
+    
+    #calendar {
+        height: 500px;
+    }
+    
+    .fc-toolbar-title {
+        font-size: 18px !important;
+    }
+    
+    .fc-button {
+        padding: 6px 12px !important;
+        font-size: 12px !important;
+    }
+    
+    .fc-header-toolbar {
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    .fc-toolbar-chunk {
+        width: 100%;
+        display: flex;
+        justify-content: center;
+    }
+
+    /* Make table easier to read on small screens */
+    .table th,
+    .table td {
+        font-size: 0.8rem;
+        padding: 6px 8px;
+        white-space: nowrap;
+    }
+
+    .btn-sm {
+        padding: 4px 8px;
+        font-size: 0.75rem;
+    }
+}

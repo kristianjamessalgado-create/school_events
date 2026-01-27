@@ -18,6 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $password = $_POST['password'] ?? '';
         $confirm_password = $_POST['confirm_password'] ?? '';
         $role     = $_POST['role'] ?? '';
+        $department = $_POST['department'] ?? null;
 
         // Validation sige rag validate
       
@@ -32,6 +33,9 @@ elseif (!preg_match('/[A-Z]/', $password)
 }
 elseif (!in_array($role, ['student', 'organizer'])) {
     $error = "Invalid role selected.";
+}
+elseif ($role === 'student' && empty($department)) {
+    $error = "Department is required for students.";
 }
 else {
     // Check if email already exists
@@ -48,10 +52,10 @@ else {
         $user_id = $prefix . '-' . rand(100, 999);
 
         $insert = $conn->prepare(
-            "INSERT INTO users (user_id, name, email, password, role, status)
-             VALUES (?, ?, ?, ?, ?, 'active')"
+            "INSERT INTO users (user_id, name, email, password, role, department, status)
+             VALUES (?, ?, ?, ?, ?, ?, 'active')"
         );
-        $insert->bind_param("sssss", $user_id, $name, $email, $hashed_password, $role);
+        $insert->bind_param("ssssss", $user_id, $name, $email, $hashed_password, $role, $department);
 
         if ($insert->execute()) {
             $success = "Registration successful! You can now login.";
@@ -123,25 +127,38 @@ else {
                     $_SESSION['role'] = $user['role'];
                     $_SESSION['name'] = $user['name'];
 
-                    // Redirect based on role
+                    // Decide redirect URL based on role
+                    $redirectUrl = '';
                     switch ($user['role']) {
                         case 'super_admin':
-                            header("Location: " . BASE_URL . "/backend/super_admin/dashboardsuperadmin.php");
+                            $redirectUrl = BASE_URL . "/backend/super_admin/dashboardsuperadmin.php";
                             break;
                         case 'admin':
-                            header("Location: " . BASE_URL . "/backend/admin/dashboard.php");
+                            $redirectUrl = BASE_URL . "/backend/admin/dashboard.php";
                             break;
                         case 'organizer':
-                            header("Location: " . BASE_URL . "/backend/auth/dashboardorganizer.php");
+                            $redirectUrl = BASE_URL . "/backend/auth/dashboardorganizer.php";
                             break;
                         case 'student':
-                            header("Location: " . BASE_URL . "/backend/auth/dashboard_student.php");
+                            $redirectUrl = BASE_URL . "/backend/auth/dashboard_student.php";
                             break;
                         default:
                             $error = "Invalid role";
-                            header("Location: " . BASE_URL . "/views/login.php?error=" . urlencode($error) . "&form=login");
                             break;
                     }
+
+                    if (!empty($error)) {
+                        header("Location: " . BASE_URL . "/views/login.php?error=" . urlencode($error) . "&form=login");
+                        exit();
+                    }
+
+                    // Break out of iframe (modal) and redirect full page
+                    // Works whether called inside iframe or directly
+                    echo '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Redirecting...</title></head><body>';
+                    echo '<script>';
+                    echo 'window.top.location.href = ' . json_encode($redirectUrl) . ';';
+                    echo '</script>';
+                    echo '</body></html>';
                     exit();
                 }
             }

@@ -24,23 +24,16 @@ if (isset($_SESSION['user_id']) && isset($_SESSION['role'])) {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>EVENTIFY - Landing Page</title>
-<link rel="stylesheet" href="/school_events/assets/css/index.css?v=2">
+<title>EVENTIFY</title>
+<link rel="stylesheet" href="/school_events/assets/css/index.css">
 </head>
 <body>
 
-<!-- LOGIN MODAL -->
-<div id="loginModal" class="modal">
-    <div class="modal-content">
-        <span class="close" onclick="closeLoginModal()">&times;</span>
-        <iframe id="loginFrame" src="<?= BASE_URL ?>/views/login.php"></iframe>
-    </div>
-</div>
+<!-- Background layers -->
+<img src="/school_events/assets/img/gradient.png" alt="Background" class="bg-image">
+<div class="layer-blur"></div>
 
-<video autoplay muted loop id="bgVideo">
-    <source src="/school_events/assets/video/hero.mp4" type="video/mp4">
-</video>
-
+<!-- Header -->
 <header>
     <h2>EVENTIFY</h2>
     <nav>
@@ -51,38 +44,67 @@ if (isset($_SESSION['user_id']) && isset($_SESSION['role'])) {
     </nav>
 </header>
 
+<!-- Sections -->
 <section id="hero" class="active">
     <h1>Welcome to EVENTIFY</h1>
-    <p>Web & App-Based School Events Monitoring System</p>
-    <a onclick="openLoginModal()" class="btn">Login</a>
-    <a onclick="openRegisterModal()" class="btn">Register</a>
+    <p>Transform your school events management with our comprehensive Web & App-Based School Events Monitoring System. Streamline event creation, track attendance, and stay connected with real-time notifications.</p>
+    <a class="btn" onclick="openLoginModal()">Get Started</a>
 </section>
 
 <section id="features">
-    <h1>Features</h1>
+    <h1>Powerful Features</h1>
     <div class="grid">
-        <div class="card"><h3>Event Creation</h3><p>Create and schedule school events easily.</p></div>
-        <div class="card"><h3>Attendance Monitoring</h3><p>Track student participation in real-time.</p></div>
-        <div class="card"><h3>Notifications</h3><p>Send announcements instantly to users.</p></div>
-        <div class="card"><h3>Reports & Analytics</h3><p>Generate detailed event reports and stats.</p></div>
+        <div class="card">
+            <h3 style="margin-bottom: 10px; font-size: 1.3rem;">📅 Event Creation</h3>
+            <p style="font-size: 0.95rem; color: #cbd5e1;">Create and manage events effortlessly</p>
+        </div>
+        <div class="card">
+            <h3 style="margin-bottom: 10px; font-size: 1.3rem;">✅ Attendance Monitoring</h3>
+            <p style="font-size: 0.95rem; color: #cbd5e1;">Track attendance in real-time</p>
+        </div>
+        <div class="card">
+            <h3 style="margin-bottom: 10px; font-size: 1.3rem;">🔔 Notifications</h3>
+            <p style="font-size: 0.95rem; color: #cbd5e1;">Stay updated with instant alerts</p>
+        </div>
+        <div class="card">
+            <h3 style="margin-bottom: 10px; font-size: 1.3rem;">📊 Reports & Analytics</h3>
+            <p style="font-size: 0.95rem; color: #cbd5e1;">Get insights with detailed reports</p>
+        </div>
     </div>
 </section>
 
 <section id="roles">
     <h1>Who Can Use EVENTIFY?</h1>
     <div class="grid">
-        <div class="card"><h3>Administrators</h3><p>Manage users, events, and system settings.</p></div>
-        <div class="card"><h3>Organizers</h3><p>Create and monitor events efficiently.</p></div>
-        <div class="card"><h3>Students</h3><p>View events, register, and check attendance.</p></div>
+        <div class="card">
+            <h3 style="margin-bottom: 10px; font-size: 1.3rem;">👨‍💼 Administrators</h3>
+            <p style="font-size: 0.95rem; color: #cbd5e1;">Full system control and oversight</p>
+        </div>
+        <div class="card">
+            <h3 style="margin-bottom: 10px; font-size: 1.3rem;">🎯 Organizers</h3>
+            <p style="font-size: 0.95rem; color: #cbd5e1;">Create and manage your events</p>
+        </div>
+        <div class="card">
+            <h3 style="margin-bottom: 10px; font-size: 1.3rem;">🎓 Students</h3>
+            <p style="font-size: 0.95rem; color: #cbd5e1;">Join events and track your participation</p>
+        </div>
     </div>
 </section>
 
-<section id="cta">
-    <h1>Get Started Today</h1>
-    <a onclick="openLoginModal()" class="btn">Login</a>
-    <a onclick="openRegisterModal()" class="btn">Register</a>
-</section>
+<!-- Login Modal -->
+<div id="loginModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeLoginModal()">&times;</span>
+        <iframe src="<?= BASE_URL ?>/views/login.php"></iframe>
+    </div>
+  
+</div>
 
-<script src="/school_events/assets/js/index.js?v=1.1"></script>
+<script type="module" src="https://unpkg.com/@splinetool/viewer@1.12.39/build/spline-viewer.js"></script>
+<spline-viewer url="https://prod.spline.design/QKWcuhuYDwcet-bm/scene.splinecode"></spline-viewer>
+
+
+<!-- JS -->
+<script src="/school_events/assets/js/index.js"></script>
 </body>
 </html>
