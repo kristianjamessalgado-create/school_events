@@ -103,6 +103,21 @@ if (isset($_SESSION['user_id']) && isset($_SESSION['role'])) {
 <script type="module" src="https://unpkg.com/@splinetool/viewer@1.12.39/build/spline-viewer.js"></script>
 <spline-viewer url="https://prod.spline.design/QKWcuhuYDwcet-bm/scene.splinecode"></spline-viewer>
 
+<!-- Footer -->
+<footer>
+    <div class="footer-inner">
+        <div class="footer-left">
+            <span class="footer-brand">EVENTIFY</span>
+            <span class="footer-text">Web & App-Based School Events Monitoring System</span>
+        </div>
+        <div class="footer-links">
+            <a href="javascript:void(0)" onclick="goToSection('features')">Features</a>
+            <a href="javascript:void(0)" onclick="goToSection('roles')">Roles</a>
+            <a href="mailto:youremail@example.com">Contact</a>
+        </div>
+    </div>
+</footer>
+
 
 <!-- JS -->
 <script src="/school_events/assets/js/index.js"></script>

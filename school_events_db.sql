@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jan 15, 2026 at 12:51 PM
+-- Generation Time: Jan 28, 2026 at 02:42 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -58,8 +58,10 @@ CREATE TABLE `events` (
 -- Dumping data for table `events`
 --
 
-INSERT INTO `events` (`id`, `title`, `description`, `date`, `location`, `organizer_id`, `created_at`, `status`) VALUES
-(1, 'Sample Orientation', 'Orientation for new students', '2025-12-20', 'Main Auditorium', 17, '2025-12-18 06:30:41', 'active');
+INSERT INTO `events` (`id`, `title`, `description`, `date`, `location`, `organizer_id`, `created_at`, `status`, `department`) VALUES
+(1, 'Sample Orientation', 'Orientation for new students', '2025-12-20', 'Main Auditorium', 17, '2025-12-18 06:30:41', 'active', 'ALL'),
+(2, 'sample', 'sir', '2026-02-28', 'wlc', 17, '2026-01-27 03:54:13', 'active', 'ALL'),
+(3, 'sample2', 'hehe', '2026-01-30', 'western leyte college', 17, '2026-01-27 15:46:49', 'active', 'BSHM');
 
 -- --------------------------------------------------------
 
@@ -101,31 +103,31 @@ CREATE TABLE `users` (
 -- Dumping data for table `users`
 --
 
-INSERT INTO `users` (`id`, `user_id`, `name`, `email`, `password`, `role`, `status`, `created_at`, `failed_attempts`) VALUES
-(1, 'SA-001', 'Kristian', 'kristian@school.com', '$2y$10$PASTE_HASH_HERE', 'super_admin', 'active', '2025-12-15 17:38:46', 1),
-(3, 'SA-001', 'Kristian Salgado', 'kristian1@school.com', 'c29f2cbce5be41ea7fb18980fd1b71f543190f98043078742c5f55f064105f03', 'super_admin', 'active', '2025-12-15 18:09:54', 0),
-(4, 'STU-781', 'sample', 'sample@gmail.com', 'af2bdbe1aa9b6ec1e2ade1d694f41fc71a831d0268e9891562113d8a62add1bf', 'student', 'active', '2025-12-15 18:32:46', 0),
-(5, 'STU-776', 'suai', 'suai@gmail.com', 'dea259230178e8b71e2ee186546e9cd6c56b7922b4519e6835d6ebc507f0c64e', 'student', 'active', '2025-12-15 18:55:30', 0),
-(6, 'STU-842', 'suai1', 'suai1@gmail.com', '95017d43936602810b094c76394c23082c9fd16aa1d95829e33cd44d6a858a77', 'student', 'active', '2025-12-15 18:57:12', 0),
-(7, 'STU-738', 'suai2', 'suai2@gmail.com', 'ba1889bd80d5dffe82089bb71ca4683831c4c872ef817b1306421c421130eee2', 'student', 'active', '2025-12-15 18:57:32', 0),
-(8, 'STU-351', 'suai3', 'suai3@gmail.com', '4e78ba3f87382d0ce4a41471737af8f0b2310c6fc7295b4a40ab00508f2f9620', 'student', 'active', '2025-12-15 18:59:36', 0),
-(9, 'STU-253', 'suai4', 'suai4@gmail.com', '51ee5f59976acb3565d0609c70cb939ded012c4267c3d0fce29a5af2562129d4', 'student', 'active', '2025-12-15 19:00:19', 0),
-(10, 'STU-781', 'suai5', 'suai5@gmail.com', 'd65c023117c75d15c1f117f53ac85232fdb728513310411aceae11449f350d43', 'student', 'active', '2025-12-15 19:01:36', 0),
-(11, 'STU-979', 'another sample', 'anothersample@gmail.com', 'a08f8859605f0b362db593d2a8e756f0f65a334800b575329cf7d5af6d424f21', 'student', 'active', '2025-12-16 07:11:30', 0),
-(12, 'STU-512', 'sample1', 'sample1@gmail.com', 'e85130791f31db1699f61a5e7ae7b5e85e70399414f38476091896214771cd17', 'student', 'active', '2025-12-16 07:21:16', 0),
-(13, 'STU-913', 'sample4', 'sample4@gmail.com', 'dcd16348a2f53d7d4c4ad31e427aaf6561d56abb72ae60b32d30ddde2f8b49f3', 'student', 'active', '2025-12-16 08:41:26', 0),
-(14, 'STU-226', 'sample5', 'sample5@gmail.com', '2444460794c78f2f46aa6491ce7cc4b460294ac6431aac2e560a193298a41b71', 'student', 'active', '2025-12-17 04:05:13', 0),
-(15, 'ORG-318', 'organizer', 'organizer@gmail.com', '154a0a277d0a9e90475532eeb50bb087f6dcf19172db5fc8091221091c772ac5', 'organizer', 'active', '2025-12-18 04:23:41', 0),
-(16, 'ORG-206', 'organizer1', 'organizer1@gmail.com', '154a0a277d0a9e90475532eeb50bb087f6dcf19172db5fc8091221091c772ac5', 'organizer', 'active', '2025-12-18 06:16:33', 3),
-(17, 'ORG-880', 'organizer2', 'organizer2@gmail.com', 'ee343017bb298f2dc9eebf68ee2ccc54b7878d8db19636b27570aa5e8c0888ff', 'organizer', 'active', '2025-12-18 06:25:39', 0),
-(18, 'STU-238', 'sample6', 'sample6@gmail.com', 'bcd8eb16b2ae1c881de513d28a3f49426afaa1ab34a3e834df5fbf7bdcbe9770', 'student', 'active', '2025-12-18 07:41:13', 1),
-(19, 'STU-558', 'sample7', 'sample7@gmail.com', '24714505b9df6e69f9367f12217d590d4f15b4367d1697b6f833d1e07b291d2a', 'student', 'active', '2025-12-19 05:57:19', 0),
-(20, 'ORG-923', 'samplereg', 'Samplereg@gmail.com', '76cd579e5eea4f719469276719558fa1b46c0196a613cb8aa5bfcdd9a43628f8', 'organizer', 'active', '2025-12-21 06:09:01', 0),
-(21, 'ORG-994', 'samplereg2', 'Samplereg2@gmail.com', '64be8f3069aeb2299bc66aa17b7c0e47530d5dc0475ef0606ea6ffbaad04f819', 'organizer', 'active', '2025-12-21 06:44:58', 0),
-(22, 'ORG-964', 'samplereg3', 'Samplereg3@gmail.com', '8d9353a8accc17cba0ee8dab3b744552799c6f37226a5b9e48a37cb82945de8f', 'organizer', 'active', '2025-12-21 06:50:28', 1),
-(23, 'STU-827', 'sammilby', 'sammilby@gmail.com', '5e6eb2532b6f1eb86b9bfd41c5c1e9ca14d444eb013c223c0958b9dde57fd54f', 'student', 'active', '2025-12-22 03:55:21', 0),
-(24, 'STU-510', 'deanecamat', 'deanecamat@gmail.com', 'faae366a9b3bc5e637a5f10b53a826ce31546dfb03a1cc3f7849001906d13dff', 'student', 'active', '2025-12-23 12:42:31', 0),
-(25, 'STU-939', 'jabes', 'jabes@gmail.com', '781e60f7f136510363f9a9522ebeb73f647d94111c6e2d27fd669e0770a26aef', 'student', 'active', '2025-12-23 15:13:46', 1);
+INSERT INTO `users` (`id`, `user_id`, `name`, `email`, `password`, `role`, `department`, `status`, `created_at`, `failed_attempts`) VALUES
+(1, 'SA-001', 'Kristian', 'kristian@school.com', '$2y$10$PASTE_HASH_HERE', 'super_admin', NULL, 'active', '2025-12-15 17:38:46', 2),
+(3, 'SA-001', 'Kristian Salgado', 'kristian1@school.com', 'c29f2cbce5be41ea7fb18980fd1b71f543190f98043078742c5f55f064105f03', 'super_admin', NULL, 'active', '2025-12-15 18:09:54', 0),
+(4, 'STU-781', 'sample', 'sample@gmail.com', 'af2bdbe1aa9b6ec1e2ade1d694f41fc71a831d0268e9891562113d8a62add1bf', 'student', NULL, 'active', '2025-12-15 18:32:46', 0),
+(5, 'STU-776', 'suai', 'suai@gmail.com', 'dea259230178e8b71e2ee186546e9cd6c56b7922b4519e6835d6ebc507f0c64e', 'student', NULL, 'active', '2025-12-15 18:55:30', 0),
+(6, 'STU-842', 'suai1', 'suai1@gmail.com', '95017d43936602810b094c76394c23082c9fd16aa1d95829e33cd44d6a858a77', 'student', NULL, 'active', '2025-12-15 18:57:12', 0),
+(7, 'STU-738', 'suai2', 'suai2@gmail.com', 'ba1889bd80d5dffe82089bb71ca4683831c4c872ef817b1306421c421130eee2', 'student', NULL, 'active', '2025-12-15 18:57:32', 0),
+(8, 'STU-351', 'suai3', 'suai3@gmail.com', '4e78ba3f87382d0ce4a41471737af8f0b2310c6fc7295b4a40ab00508f2f9620', 'student', NULL, 'active', '2025-12-15 18:59:36', 0),
+(9, 'STU-253', 'suai4', 'suai4@gmail.com', '51ee5f59976acb3565d0609c70cb939ded012c4267c3d0fce29a5af2562129d4', 'student', NULL, 'active', '2025-12-15 19:00:19', 0),
+(10, 'STU-781', 'suai5', 'suai5@gmail.com', 'd65c023117c75d15c1f117f53ac85232fdb728513310411aceae11449f350d43', 'student', NULL, 'active', '2025-12-15 19:01:36', 0),
+(11, 'STU-979', 'another sample', 'anothersample@gmail.com', 'a08f8859605f0b362db593d2a8e756f0f65a334800b575329cf7d5af6d424f21', 'student', NULL, 'active', '2025-12-16 07:11:30', 0),
+(12, 'STU-512', 'sample1', 'sample1@gmail.com', 'e85130791f31db1699f61a5e7ae7b5e85e70399414f38476091896214771cd17', 'student', NULL, 'active', '2025-12-16 07:21:16', 1),
+(13, 'STU-913', 'sample4', 'sample4@gmail.com', 'dcd16348a2f53d7d4c4ad31e427aaf6561d56abb72ae60b32d30ddde2f8b49f3', 'student', NULL, 'active', '2025-12-16 08:41:26', 0),
+(14, 'STU-226', 'sample5', 'sample5@gmail.com', '2444460794c78f2f46aa6491ce7cc4b460294ac6431aac2e560a193298a41b71', 'student', 'BSIT', 'active', '2025-12-17 04:05:13', 0),
+(15, 'ORG-318', 'organizer', 'organizer@gmail.com', '154a0a277d0a9e90475532eeb50bb087f6dcf19172db5fc8091221091c772ac5', 'organizer', NULL, 'active', '2025-12-18 04:23:41', 0),
+(16, 'ORG-206', 'organizer1', 'organizer1@gmail.com', '154a0a277d0a9e90475532eeb50bb087f6dcf19172db5fc8091221091c772ac5', 'organizer', NULL, 'active', '2025-12-18 06:16:33', 3),
+(17, 'ORG-880', 'organizer2', 'organizer2@gmail.com', 'ee343017bb298f2dc9eebf68ee2ccc54b7878d8db19636b27570aa5e8c0888ff', 'organizer', NULL, 'active', '2025-12-18 06:25:39', 0),
+(18, 'STU-238', 'sample6', 'sample6@gmail.com', 'bcd8eb16b2ae1c881de513d28a3f49426afaa1ab34a3e834df5fbf7bdcbe9770', 'student', NULL, 'active', '2025-12-18 07:41:13', 1),
+(19, 'STU-558', 'sample7', 'sample7@gmail.com', '24714505b9df6e69f9367f12217d590d4f15b4367d1697b6f833d1e07b291d2a', 'student', NULL, 'active', '2025-12-19 05:57:19', 0),
+(20, 'ORG-923', 'samplereg', 'Samplereg@gmail.com', '76cd579e5eea4f719469276719558fa1b46c0196a613cb8aa5bfcdd9a43628f8', 'organizer', NULL, 'active', '2025-12-21 06:09:01', 0),
+(21, 'ORG-994', 'samplereg2', 'Samplereg2@gmail.com', '64be8f3069aeb2299bc66aa17b7c0e47530d5dc0475ef0606ea6ffbaad04f819', 'organizer', NULL, 'active', '2025-12-21 06:44:58', 0),
+(22, 'ORG-964', 'samplereg3', 'Samplereg3@gmail.com', '8d9353a8accc17cba0ee8dab3b744552799c6f37226a5b9e48a37cb82945de8f', 'organizer', NULL, 'active', '2025-12-21 06:50:28', 1),
+(23, 'STU-827', 'sammilby', 'sammilby@gmail.com', '5e6eb2532b6f1eb86b9bfd41c5c1e9ca14d444eb013c223c0958b9dde57fd54f', 'student', NULL, 'active', '2025-12-22 03:55:21', 0),
+(24, 'STU-510', 'deanecamat', 'deanecamat@gmail.com', 'faae366a9b3bc5e637a5f10b53a826ce31546dfb03a1cc3f7849001906d13dff', 'student', NULL, 'active', '2025-12-23 12:42:31', 0),
+(25, 'STU-939', 'jabes', 'jabes@gmail.com', '781e60f7f136510363f9a9522ebeb73f647d94111c6e2d27fd669e0770a26aef', 'student', NULL, 'active', '2025-12-23 15:13:46', 2);
 
 --
 -- Indexes for dumped tables
@@ -175,7 +177,7 @@ ALTER TABLE `attendance`
 -- AUTO_INCREMENT for table `events`
 --
 ALTER TABLE `events`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `registrations`
