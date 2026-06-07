@@ -1,0 +1,92 @@
+/**
+ * FullCalendar scroll fixes — keep events visible while preventing sticky-header glitches.
+ */
+
+.calendar-container {
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+#student-calendar,
+#calendar {
+    flex: 1 1 auto;
+    min-height: 380px;
+    width: 100%;
+}
+
+#student-calendar .fc,
+#calendar .fc {
+    min-height: 380px;
+}
+
+/* Student: bounded calendar area; grid scrolls inside FullCalendar */
+.main-content .calendar-container {
+    flex: 0 0 auto;
+    height: clamp(420px, calc(100dvh - var(--student-navbar-height, 64px) - 240px), 720px);
+    min-height: 420px;
+}
+
+@media (max-width: 768px) {
+    .main-content .calendar-container {
+        height: clamp(360px, 55vh, 580px);
+        min-height: 360px;
+    }
+}
+
+.calendar-container .fc-scroller {
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    overscroll-behavior: contain;
+}
+
+/* Prevent weekday header from sticking incorrectly when the page scrolls */
+.calendar-container .fc-scrollgrid-section-sticky > *,
+.calendar-container .fc-col-header {
+    position: relative !important;
+    top: auto !important;
+}
+
+/* Do NOT clip day cells — that was hiding all event pills */
+.calendar-container .fc-daygrid-day-frame {
+    position: relative;
+}
+
+.calendar-container .fc-daygrid-day-events {
+    position: relative;
+    min-height: 1.25rem;
+}
+
+.calendar-container .fc-daygrid-event-harness,
+.calendar-container .fc-daygrid-event-harness-abs {
+    visibility: visible;
+}
+
+.calendar-container .fc-event {
+    max-width: 100%;
+    visibility: visible;
+    opacity: 1;
+}
+
+/* Organizer / admin */
+body.organizer-dashboard .calendar-container,
+body.admin-dashboard .calendar-container {
+    flex: 1 1 auto;
+    height: auto;
+    min-height: 420px;
+}
+
+@media (min-width: 769px) {
+    body.organizer-dashboard .main-content,
+    body.admin-dashboard .main-content {
+        min-height: calc(100vh - var(--student-navbar-height, 64px));
+        max-height: calc(100vh - var(--student-navbar-height, 64px));
+    }
+
+    body.organizer-dashboard .calendar-container,
+    body.admin-dashboard .calendar-container {
+        flex: 1 1 420px;
+        min-height: 420px;
+    }
+}

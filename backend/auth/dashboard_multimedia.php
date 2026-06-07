@@ -5,6 +5,7 @@ include __DIR__ . '/../../config/config.php';
 include __DIR__ . '/../../config/csrf.php';
 include __DIR__ . '/../../config/departments.php';
 require_once __DIR__ . '/../lib/event_status_auto.php';
+require_once __DIR__ . '/../lib/event_day_sessions.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'multimedia') {
     header("Location: " . BASE_URL . "/views/login.php?error=" . urlencode("Access denied"));
@@ -165,6 +166,47 @@ if (!empty($events)) {
 }
 
 $msg = $_GET['msg'] ?? '';
+
+$multimedia_notifications = [];
+$multimedia_unread_count = 0;
+try {
+    $stmtN = $conn->prepare("SELECT id, type, title, message, event_id, read_at, created_at FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 40");
+    if ($stmtN) {
+        $stmtN->bind_param('i', $session_user_id);
+        if ($stmtN->execute()) {
+            $rn = $stmtN->get_result();
+            if ($rn) {
+                $multimedia_notifications = $rn->fetch_all(MYSQLI_ASSOC);
+            }
+        }
+        $stmtN->close();
+    }
+    foreach ($multimedia_notifications as $n) {
+        if (empty($n['read_at'])) {
+            $multimedia_unread_count++;
+        }
+    }
+} catch (Throwable $e) {
+    $multimedia_notifications = [];
+    $multimedia_unread_count = 0;
+}
+
+$multimedia_notif_dropdown = array_values(array_filter($multimedia_notifications, static function ($n) {
+    return empty($n['read_at']);
+}));
+
+$activities_hub_events = [];
+try {
+    $activities_hub_events = eventify_load_activities_hub_picker_events(
+        $conn,
+        $session_user_id,
+        'multimedia',
+        $user_department
+    );
+} catch (Throwable $e) {
+    $activities_hub_events = [];
+}
+
 $conn->close();
 
 if (!defined('BASE_URL')) {

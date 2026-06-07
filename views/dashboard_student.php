@@ -15,15 +15,20 @@ $registered_event_ids   = $registered_event_ids ?? [];
 $reg_count_by_event     = $reg_count_by_event ?? [];
 $feedback_submitted_ids = $feedback_submitted_ids ?? [];
 $pending_urgent_feedback_events = $pending_urgent_feedback_events ?? [];
+$today_activities = $today_activities ?? [];
+$my_registered_events = $my_registered_events ?? [];
+$activity_attendance_records = $activity_attendance_records ?? [];
 $student_notifications  = $student_notifications ?? [];
 $unread_notif_count     = isset($unread_notif_count) ? (int) $unread_notif_count : 0;
+$student_notif_dropdown = array_values(array_filter($student_notifications, static function ($n) {
+    return empty($n['read_at']);
+}));
 $attendance_records = $attendance_records ?? [];
 $attended_event_ids = $attended_event_ids ?? [];
 $openModal = strtolower((string)($_GET['open_modal'] ?? ''));
 $today = date('Y-m-d');
-$upcoming_events = array_values(array_filter($events ?? [], function ($e) use ($today) {
-    $d = $e['date'] ?? '';
-    return $d !== '' && $d >= $today;
+$upcoming_events = $upcoming_events ?? array_values(array_filter($events ?? [], static function ($e) {
+    return function_exists('eventify_event_is_upcoming') && eventify_event_is_upcoming($e);
 }));
 ?>
 <!DOCTYPE html>
@@ -44,8 +49,19 @@ $upcoming_events = array_values(array_filter($events ?? [], function ($e) use ($
 
     
     <link rel="stylesheet" href="<?= BASE_URL; ?>/assets/css/dashboard_student.css">
+    <link rel="stylesheet" href="<?= BASE_URL; ?>/assets/css/calendar_legend.css">
+    <link rel="stylesheet" href="<?= BASE_URL; ?>/assets/css/event_day_sessions.css">
+    <link rel="stylesheet" href="<?= BASE_URL; ?>/assets/css/notifications.css">
+    <link rel="stylesheet" href="<?= BASE_URL; ?>/assets/css/calendar_scroll_fix.css">
+    <link rel="manifest" href="<?= BASE_URL; ?>/manifest-student.php">
+    <link rel="apple-touch-icon" href="<?= BASE_URL; ?>/assets/pwa/icon-192.png">
+    <meta name="theme-color" content="#064e3b">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="EVENTIFY">
+    <link rel="stylesheet" href="<?= BASE_URL; ?>/assets/css/pwa_student.css">
 </head>
-<body>
+<body class="student-dashboard student-dashboard--app">
 
 
 <nav class="top-navbar">
@@ -62,23 +78,59 @@ $upcoming_events = array_values(array_filter($events ?? [], function ($e) use ($
         <button type="button" class="nav-btn" id="topCalendarShortcutBtn" title="Go to today">
             <i class="fas fa-calendar"></i>
         </button>
-        <button
-            class="nav-btn position-relative"
-            title="Notifications"
-            data-bs-toggle="modal"
-            data-bs-target="#studentNotificationsModal"
-        >
-            <i class="fas fa-bell"></i>
-            <?php if ($unread_notif_count > 0): ?>
-                <span
-                    class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
-                    style="font-size: 0.55rem;"
-                    title="Unread notifications"
-                >
-                    <?= $unread_notif_count > 99 ? '99+' : $unread_notif_count ?>
-                </span>
-            <?php endif; ?>
-        </button>
+        <div class="dropdown">
+            <button
+                class="nav-btn position-relative dropdown-toggle"
+                type="button"
+                data-bs-toggle="dropdown"
+                data-bs-auto-close="outside"
+                aria-expanded="false"
+                title="Notifications"
+                id="studentNotifDropdownToggle"
+            >
+                <i class="fas fa-bell"></i>
+                <?php if ($unread_notif_count > 0): ?>
+                    <span
+                        class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+                        style="font-size: 0.55rem;"
+                        title="Unread notifications"
+                    >
+                        <?= $unread_notif_count > 99 ? '99+' : $unread_notif_count ?>
+                    </span>
+                <?php endif; ?>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end eventify-notif-dropdown" id="studentNotifDropdown">
+                <li class="eventify-notif-dropdown__header">
+                    <i class="fas fa-bell me-2"></i>Notifications
+                    <?php if ($unread_notif_count > 0): ?>
+                        <span class="badge bg-warning text-dark ms-1" style="font-size: 0.65rem;"><?= $unread_notif_count ?> new</span>
+                    <?php endif; ?>
+                </li>
+                <li class="eventify-notif-dropdown__scroll">
+                    <div class="eventify-notif-scroll eventify-notif-scroll--dropdown">
+                        <?php
+                            $notifications = $student_notif_dropdown;
+                            $empty_title = 'All caught up';
+                            $empty_text = 'No new notifications right now.';
+                            $notif_interactive = true;
+                            include __DIR__ . '/partials/notification_cards.php';
+                        ?>
+                    </div>
+                </li>
+                <?php if ($unread_notif_count > 0 || !empty($student_notifications)): ?>
+                    <li class="eventify-notif-dropdown__footer">
+                        <?php
+                            $notif_show_mark_all = $unread_notif_count > 0;
+                            $notif_show_clear = !empty($student_notifications);
+                            $notif_mark_all_ajax = true;
+                            $notif_clear_modal_id = 'studentClearNotifsModal';
+                            $notif_context = 'dropdown';
+                            include __DIR__ . '/partials/notification_footer_actions.php';
+                        ?>
+                    </li>
+                <?php endif; ?>
+            </ul>
+        </div>
 
         <!-- Profile dropdown -->
         <div class="dropdown">
@@ -126,14 +178,12 @@ $upcoming_events = array_values(array_filter($events ?? [], function ($e) use ($
     </div>
 </nav>
 
-<!-- Main Layout -->
-<div class="dashboard-layout">
-    <div class="sidebar-backdrop" id="sidebarBackdrop" aria-hidden="true"></div>
-    <!-- Left Sidebar (drawer on mobile) -->
-    <aside class="sidebar" id="studentSidebar">
-        <button type="button" class="sidebar-close-mobile" id="sidebarCloseMobile" aria-label="Close menu"><i class="fas fa-times"></i></button>
-        <!-- User Info Card -->
-        <div class="user-info-card">
+<div class="sidebar-backdrop" id="sidebarBackdrop" aria-hidden="true"></div>
+<!-- Left Sidebar (drawer on mobile, fixed panel on desktop) -->
+<aside class="sidebar" id="studentSidebar">
+    <button type="button" class="sidebar-close-mobile" id="sidebarCloseMobile" aria-label="Close menu"><i class="fas fa-times"></i></button>
+    <!-- User Info Card -->
+    <div class="user-info-card">
             <div class="user-avatar-large">
                 <?php if (!empty($user['profile_picture'])): ?>
                     <img src="<?= BASE_URL ?>/<?= htmlspecialchars($user['profile_picture']) ?>" alt="<?= htmlspecialchars($user_name) ?>" class="profile-picture-img">
@@ -172,6 +222,11 @@ $upcoming_events = array_values(array_filter($events ?? [], function ($e) use ($
                 <i class="fas fa-qrcode"></i>
                 <span>Scan QR</span>
             </button>
+            <a class="action-btn w-100 text-start text-decoration-none" href="<?= BASE_URL ?>/my_tickets.php">
+                <i class="fas fa-ticket-alt"></i>
+                <span>My tickets</span>
+            </a>
+            <?php include __DIR__ . '/partials/activities_hub_quick_action.php'; ?>
             <button
                 type="button"
                 class="action-btn w-100 text-start border-0 bg-transparent"
@@ -214,8 +269,10 @@ $upcoming_events = array_values(array_filter($events ?? [], function ($e) use ($
             <p class="dept-note">You only see events open to your department or all departments.</p>
         </div>
         <?php endif; ?>
-    </aside>
+</aside>
 
+<!-- Main Layout -->
+<div class="dashboard-layout">
     <!-- Main Content Area -->
     <main class="main-content">
         <!-- Success/Error Message -->
@@ -230,6 +287,125 @@ $upcoming_events = array_values(array_filter($events ?? [], function ($e) use ($
                 <strong><?= htmlspecialchars($error) ?></strong>
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
+        <?php endif; ?>
+
+        <div id="pwaOfflineBanner" class="pwa-offline-notice" hidden>
+            <i class="fas fa-wifi me-1"></i> You are offline. Saved tickets and passes still work; other features need internet.
+        </div>
+
+        <div id="pwaInstallBanner" hidden>
+            <div class="pwa-install-banner__text">
+                <strong>Install EVENTIFY</strong>
+                Add to your home screen for quick access to tickets and QR check-in — works offline for saved passes.
+            </div>
+            <div class="pwa-install-banner__actions">
+                <button type="button" class="pwa-install-banner__btn pwa-install-banner__btn--primary" id="pwaInstallBtn">Install</button>
+                <button type="button" class="pwa-install-banner__btn pwa-install-banner__btn--ghost" id="pwaInstallDismiss">Not now</button>
+            </div>
+        </div>
+
+        <!-- My Events hub -->
+        <?php if (!empty($my_registered_events) || !empty($today_activities)): ?>
+        <section class="student-my-events-hub mb-4" id="studentMyEventsHub">
+            <div class="student-my-events-hub__header">
+                <h3 class="section-heading mb-0"><i class="fas fa-id-card-alt me-2 text-success"></i>My Events</h3>
+                <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#scanQRModal">
+                    <i class="fas fa-qrcode me-1"></i>Scan QR
+                </button>
+            </div>
+            <?php if (!empty($my_registered_events)): ?>
+            <div class="student-my-events-hub__list">
+                <?php foreach (array_slice($my_registered_events, 0, 6) as $mev): ?>
+                    <?php
+                    $meid = (int) ($mev['id'] ?? 0);
+                    $meEnd = function_exists('eventify_event_resolve_end_date') ? eventify_event_resolve_end_date($mev) : ($mev['date'] ?? '');
+                    ?>
+                    <article class="student-my-event-card" role="button" tabindex="0" data-event-id="<?= $meid ?>" onclick="openStudentEventById(<?= $meid ?>)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openStudentEventById(<?= $meid ?>);}">
+                        <div class="student-my-event-card__title"><?= htmlspecialchars($mev['title'] ?? 'Event') ?></div>
+                        <div class="student-my-event-card__meta">
+                            <span><i class="fas fa-calendar-day me-1"></i><?= htmlspecialchars($meEnd ?: ($mev['date'] ?? '')) ?></span>
+                            <?php if (!empty($attended_event_ids[$meid])): ?>
+                                <span class="badge bg-success">Checked in</span>
+                            <?php else: ?>
+                                <span class="badge bg-primary">RSVP confirmed</span>
+                            <?php endif; ?>
+                        </div>
+                        <a class="student-my-event-card__link" href="<?= BASE_URL ?>/event_activities.php?id=<?= $meid ?>" onclick="event.stopPropagation();">Activities</a>
+                    </article>
+                <?php endforeach; ?>
+            </div>
+            <?php else: ?>
+            <p class="text-muted small mb-0">RSVP for an event from the calendar to see it here.</p>
+            <?php endif; ?>
+        </section>
+        <?php endif; ?>
+
+        <!-- Today's activities (sub-events) -->
+        <?php if (!empty($today_activities)): ?>
+        <div class="today-activities-section mb-4">
+            <div class="today-activities-header">
+                <h3 class="section-heading mb-0"><i class="fas fa-bolt me-2 text-success"></i>Today's Activities</h3>
+            </div>
+            <div class="today-activities-scroll" role="list">
+                <?php foreach ($today_activities as $idx => $act): ?>
+                    <?php
+                    $actTime = eventify_format_session_time_range($act['start_time'] ?? null, $act['end_time'] ?? null);
+                    $actStatus = (string) ($act['status'] ?? 'scheduled');
+                    $actCat = trim((string) ($act['category'] ?? ''));
+                    $faIcon = eventify_activity_fa_icon((string) ($act['title'] ?? ''), $actCat !== '' ? $actCat : null);
+                    $accentClass = ($idx % 2 === 0) ? 'today-act-card--warm' : 'today-act-card--cool';
+                    $isLive = eventify_session_is_live_now($act, $today);
+                    $shortLoc = eventify_short_activity_location($act['location'] ?? '');
+                    $eventId = (int) ($act['event_id'] ?? 0);
+                    $activityId = (int) ($act['id'] ?? 0);
+                    $hubUrl = $eventId > 0
+                        ? BASE_URL . '/event_activities.php?id=' . $eventId . ($activityId > 0 ? '&activity=' . $activityId : '')
+                        : '';
+                    $cardClasses = 'today-act-card ' . $accentClass;
+                    if ($actStatus === 'cancelled') {
+                        $cardClasses .= ' today-act-card--cancelled';
+                    }
+                    if ($eventId > 0 && $actStatus !== 'cancelled') {
+                        $cardClasses .= ' js-student-open-event';
+                    }
+                    ?>
+                    <article
+                        class="<?= htmlspecialchars($cardClasses) ?>"
+                        role="listitem"
+                        <?= ($eventId > 0 && $actStatus !== 'cancelled') ? ' tabindex="0" data-event-id="' . $eventId . '"' : '' ?>
+                    >
+                        <div class="today-act-card__icon" aria-hidden="true">
+                            <i class="fas fa-<?= htmlspecialchars($faIcon) ?>"></i>
+                        </div>
+                        <div class="today-act-card__blob" aria-hidden="true"></div>
+                        <?php if ($hubUrl !== ''): ?>
+                            <a class="today-act-card__menu" href="<?= htmlspecialchars($hubUrl) ?>" title="Activity details" aria-label="Open activity" onclick="event.stopPropagation();">
+                                <i class="fas fa-ellipsis-v"></i>
+                            </a>
+                        <?php endif; ?>
+                        <div class="today-act-card__content">
+                            <h4 class="today-act-card__title"><?= htmlspecialchars($act['title'] ?? 'Activity') ?></h4>
+                            <?php if (!empty($act['event_title'])): ?>
+                                <p class="today-act-card__event"><?= htmlspecialchars($act['event_title']) ?></p>
+                            <?php endif; ?>
+                            <?php if ($actTime !== ''): ?>
+                                <p class="today-act-card__meta"><i class="fas fa-clock"></i> <?= htmlspecialchars($actTime) ?></p>
+                            <?php endif; ?>
+                            <?php if ($shortLoc !== ''): ?>
+                                <p class="today-act-card__meta today-act-card__meta--loc" title="<?= htmlspecialchars(trim((string) ($act['location'] ?? ''))) ?>">
+                                    <i class="fas fa-map-marker-alt"></i> <?= htmlspecialchars($shortLoc) ?>
+                                </p>
+                            <?php endif; ?>
+                        </div>
+                        <?php if ($isLive && $actStatus !== 'cancelled'): ?>
+                            <span class="today-act-card__live">Live</span>
+                        <?php elseif ($actStatus !== 'scheduled'): ?>
+                            <span class="today-act-card__status"><?= htmlspecialchars(ucfirst($actStatus)) ?></span>
+                        <?php endif; ?>
+                    </article>
+                <?php endforeach; ?>
+            </div>
+        </div>
         <?php endif; ?>
 
         <!-- Upcoming Events List (at top for quick scan) -->
@@ -262,7 +438,7 @@ $upcoming_events = array_values(array_filter($events ?? [], function ($e) use ($
         </div>
 
         <!-- Calendar Controls -->
-        <div class="calendar-controls">
+        <div class="calendar-controls" id="studentCalendarSection">
             <div class="controls-left">
                 <button class="control-nav" id="calPrev"><i class="fas fa-chevron-left"></i></button>
                 <h2 class="calendar-title" id="calendarTitle">September, 2026</h2>
@@ -275,11 +451,11 @@ $upcoming_events = array_values(array_filter($events ?? [], function ($e) use ($
                 <button class="view-btn" data-view="today">Today</button>
             </div>
         </div>
-        <div class="student-calendar-legend" id="studentCalendarLegend">
-            <span><i class="fas fa-circle text-success me-1"></i>Active</span>
-            <span><i class="fas fa-circle text-warning me-1"></i>Upcoming</span>
-            <span><i class="fas fa-circle text-secondary me-1"></i>Closed/Completed</span>
-        </div>
+        <?php
+        $legendId = 'studentCalendarLegend';
+        $legendClass = 'eventify-calendar-legend student-calendar-legend';
+        include __DIR__ . '/partials/calendar_event_state_legend.php';
+        ?>
 
         <!-- FullCalendar Container -->
         <div class="calendar-container">
@@ -399,62 +575,31 @@ $upcoming_events = array_values(array_filter($events ?? [], function ($e) use ($
 <!-- Pass PHP events to JS -->
 <script>
 window.BASE_URL = <?= json_encode(BASE_URL) ?>;
+window.currentRole = 'student';
 window.csrfToken = <?= json_encode(function_exists('csrf_token') ? csrf_token() : '') ?>;
-window.studentEvents = <?= json_encode(array_map(function ($e) use ($registered_event_ids, $reg_count_by_event, $feedback_submitted_ids, $attended_event_ids) {
-    $date = trim($e['date'] ?? '');
-    $startTime = isset($e['start_time']) ? trim($e['start_time']) : '';
-    $endTime = isset($e['end_time']) && $e['end_time'] !== null && $e['end_time'] !== '' ? trim($e['end_time']) : '';
-    $hasStartTime = $date !== '' && $startTime !== '';
-    $hasEndTime = $date !== '' && $endTime !== '';
-    // FullCalendar week/day views need ISO8601: date with "T" and time (e.g. 2025-03-15T09:00:00)
-    if ($hasStartTime) {
-        $start = $date . 'T' . $startTime;
-        $end = $hasEndTime ? ($date . 'T' . $endTime) : null;
-        if ($end === null) {
-            $startDt = \DateTime::createFromFormat('Y-m-d H:i:s', $date . ' ' . $startTime);
-            if (!$startDt) {
-                $startDt = \DateTime::createFromFormat('Y-m-d H:i', $date . ' ' . $startTime);
-            }
-            $end = $startDt ? $startDt->modify('+1 hour')->format('Y-m-d\TH:i:s') : ($date . 'T23:59:59');
-        }
-        $allDay = false;
-    } else {
-        $start = $date;
-        $end = $date;
-        $allDay = true;
-    }
+window.studentEvents = <?= json_encode(eventify_events_to_fullcalendar_list($events, function ($e) use ($registered_event_ids, $reg_count_by_event, $feedback_submitted_ids, $attended_event_ids) {
     $eid = isset($e['id']) ? (int) $e['id'] : 0;
     $mc = $e['max_capacity'] ?? null;
     $maxCap = ($mc !== null && $mc !== '') ? (int) $mc : null;
-    $regCount = $reg_count_by_event[$eid] ?? 0;
-    $isRegistered = in_array($eid, $registered_event_ids, true);
-    $hasFeedback = in_array($eid, $feedback_submitted_ids, true);
-    $attended = in_array($eid, $attended_event_ids, true);
-
-    return [
-        'id'     => $e['id'] ?? null,
-        'title'  => $e['title'] ?? 'Untitled',
-        'start'  => $start,
-        'end'    => $end,
-        'allDay' => $allDay,
-        'extendedProps' => [
-            'event_id'            => $eid,
-            'event_date_ymd'      => $date,
-            'location'            => $e['location'] ?? '',
-            'description'         => $e['description'] ?? '',
-            'start_time'          => $e['start_time'] ?? null,
+  return [
+        'event_id'            => $eid,
+        'location'            => $e['location'] ?? '',
+        'description'         => $e['description'] ?? '',
+        'start_time'          => $e['start_time'] ?? null,
             'end_time'            => $e['end_time'] ?? null,
-            'department'          => $e['department'] ?? 'ALL',
-            'department_display'  => eventify_format_department_label((string) ($e['department'] ?? 'ALL')),
-            'max_capacity'        => $maxCap,
-            'registration_count'  => $regCount,
-            'is_registered'       => $isRegistered,
-            'has_feedback'        => $hasFeedback,
-            'attended'            => $attended,
-            'status'              => $e['status'] ?? '',
-        ],
+            'end_time_na'         => !empty($e['end_time_na']),
+        'department'          => $e['department'] ?? 'ALL',
+        'department_display'  => eventify_format_department_label((string) ($e['department'] ?? 'ALL')),
+        'max_capacity'        => $maxCap,
+        'registration_count'  => $reg_count_by_event[$eid] ?? 0,
+        'is_registered'       => in_array($eid, $registered_event_ids, true),
+        'has_feedback'        => in_array($eid, $feedback_submitted_ids, true),
+        'attended'            => in_array($eid, $attended_event_ids, true),
+        'status'              => $e['status'] ?? '',
+        'registration_mode'   => function_exists('eventify_event_registration_mode') ? eventify_event_registration_mode($e) : 'rsvp',
+        'event_is_live'       => function_exists('eventify_event_is_live') ? eventify_event_is_live($e) : (($e['status'] ?? '') === 'active'),
     ];
-}, $events), JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP); ?>;
+}), JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP); ?>;
 
 window.currentUser = {
     name: <?= json_encode($user_name) ?>,
@@ -472,8 +617,11 @@ window.__studentPendingUrgentFeedback = <?= json_encode($pending_urgent_feedback
 
 <!-- Bootstrap JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="<?= BASE_URL ?>/assets/js/logout_confirm.js"></script>
 
 <!-- Logout Modal -->
+<?php include __DIR__ . '/partials/activities_hub_pick_modal.php'; ?>
+
 <div class="modal fade" id="logoutModal" tabindex="-1" aria-labelledby="logoutModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
@@ -685,193 +833,72 @@ window.__studentPendingUrgentFeedback = <?= json_encode($pending_urgent_feedback
   </div>
 </div>
 
-<!-- Notifications Modal -->
-<div class="modal fade" id="studentNotificationsModal" tabindex="-1" aria-labelledby="studentNotificationsModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+<!-- Upcoming Events Modal -->
+<div class="modal fade eventify-notif-modal" id="studentUpcomingEventsModal" tabindex="-1" aria-labelledby="studentUpcomingEventsModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
     <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="studentNotificationsModalLabel">
-          <i class="fas fa-bell me-2"></i>Notifications
-        </h5>
+      <div class="modal-header eventify-notif-modal__header">
+        <div>
+          <h5 class="modal-title" id="studentUpcomingEventsModalLabel">
+            <i class="fas fa-calendar-check me-2"></i>Upcoming Events
+          </h5>
+          <p class="eventify-notif-modal__subtitle mb-0">Tap an event to open details</p>
+        </div>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
-      <div class="modal-body" id="studentNotificationsModalBody">
-        <h6 class="text-uppercase small text-muted mb-2">In-app messages</h6>
-        <?php if (!empty($student_notifications)): ?>
-          <div class="list-group mb-4">
-            <?php foreach ($student_notifications as $n): ?>
-              <?php
-                $nid = (int) ($n['id'] ?? 0);
-                $isUnread = empty($n['read_at']);
-                $markUrl = BASE_URL . '/backend/auth/mark_notification_read.php?id=' . $nid;
-              ?>
-              <a href="<?= htmlspecialchars($markUrl) ?>" class="list-group-item list-group-item-action <?= $isUnread ? 'list-group-item-light fw-semibold' : '' ?>">
-                <div class="d-flex w-100 justify-content-between align-items-start gap-2">
-                  <div>
-                    <div class="mb-1"><?= htmlspecialchars($n['title'] ?? 'Notification') ?></div>
-                    <?php if (!empty($n['message'])): ?>
-                      <div class="small text-muted"><?= nl2br(htmlspecialchars($n['message'])) ?></div>
-                    <?php endif; ?>
-                    <?php if (!empty($n['created_at'])): ?>
-                      <div class="small text-muted mt-1"><?= htmlspecialchars($n['created_at']) ?></div>
-                    <?php endif; ?>
+      <div class="modal-body eventify-notif-modal__body" id="studentUpcomingEventsModalBody">
+        <div class="eventify-notif-scroll">
+          <section class="eventify-notif-section">
+            <h6 class="eventify-notif-section-title"><i class="fas fa-calendar-check"></i> Upcoming events</h6>
+            <?php if (!empty($upcoming_events)): ?>
+              <div class="eventify-notif-list">
+                <?php foreach ($upcoming_events as $event): ?>
+                  <div
+                    class="eventify-notif-card eventify-notif-card--event student-event-link"
+                    data-event-id="<?= isset($event['id']) ? (int) $event['id'] : '' ?>"
+                    role="button"
+                    tabindex="0"
+                    data-bs-dismiss="modal"
+                  >
+                    <div class="eventify-notif-card__icon" aria-hidden="true"><i class="fas fa-calendar-day"></i></div>
+                    <div class="eventify-notif-card__body">
+                      <div class="eventify-notif-card__top">
+                        <h6 class="eventify-notif-card__title"><?= htmlspecialchars($event['title'] ?? 'Untitled') ?></h6>
+                        <?php if (!empty($event['date'])): ?>
+                          <span class="eventify-notif-card__time"><?= date('M j, Y', strtotime($event['date'])) ?></span>
+                        <?php endif; ?>
+                      </div>
+                      <?php if (!empty($event['location']) || !empty($event['department'])): ?>
+                        <p class="eventify-notif-card__message mb-0">
+                          <?php if (!empty($event['location'])): ?>
+                            <i class="fas fa-map-marker-alt me-1"></i><?= htmlspecialchars($event['location']) ?>
+                          <?php endif; ?>
+                          <?php if (!empty($event['department'])): ?>
+                            · <?= htmlspecialchars(eventify_format_department_label((string) $event['department'])) ?>
+                          <?php endif; ?>
+                        </p>
+                      <?php endif; ?>
+                      <?php if (!empty($event['description'])): ?>
+                        <p class="eventify-notif-card__meta"><?= htmlspecialchars(mb_strimwidth($event['description'], 0, 160, '…')) ?></p>
+                      <?php endif; ?>
+                    </div>
+                    <i class="fas fa-chevron-right eventify-notif-card__chevron" aria-hidden="true"></i>
                   </div>
-                  <?php if ($isUnread): ?>
-                    <span class="badge bg-primary rounded-pill">New</span>
-                  <?php endif; ?>
-                </div>
-              </a>
-            <?php endforeach; ?>
-          </div>
-        <?php else: ?>
-          <p class="small text-muted mb-4">No system notifications yet.</p>
-        <?php endif; ?>
-
-        <h6 class="text-uppercase small text-muted mb-2">Upcoming events (tap to open details)</h6>
-        <?php if (!empty($upcoming_events)): ?>
-          <div class="list-group">
-            <?php foreach ($upcoming_events as $event): ?>
-              <div class="list-group-item list-group-item-action student-event-link" data-event-id="<?= isset($event['id']) ? (int)$event['id'] : '' ?>" role="button" data-bs-dismiss="modal">
-                <div class="d-flex w-100 justify-content-between">
-                  <h6 class="mb-1">
-                    <i class="fas fa-calendar-day me-1 text-primary"></i>
-                    <?= htmlspecialchars($event['title'] ?? 'Untitled') ?>
-                  </h6>
-                  <?php if (!empty($event['date'])): ?>
-                    <small class="text-muted">
-                      <?= date('M d, Y', strtotime($event['date'])) ?>
-                    </small>
-                  <?php endif; ?>
-                </div>
-                <div class="mb-1 small text-muted">
-                  <?php if (!empty($event['location'])): ?>
-                    <i class="fas fa-map-marker-alt me-1"></i><?= htmlspecialchars($event['location']) ?>
-                  <?php endif; ?>
-                  <?php if (!empty($event['department'])): ?>
-                    <span class="badge bg-light text-dark ms-2">
-                      <?= htmlspecialchars(eventify_format_department_label((string) $event['department'])) ?>
-                    </span>
-                  <?php endif; ?>
-                </div>
-                <?php if (!empty($event['description'])): ?>
-                  <p class="mb-1 small">
-                    <?= htmlspecialchars(mb_strimwidth($event['description'], 0, 140, '...')) ?>
-                  </p>
-                <?php endif; ?>
+                <?php endforeach; ?>
               </div>
-            <?php endforeach; ?>
-          </div>
-        <?php else: ?>
-          <p class="mb-0 text-muted small">No upcoming events for your department right now.</p>
-        <?php endif; ?>
-      </div>
-      <div class="modal-footer">
-        <a href="<?= BASE_URL ?>/backend/auth/mark_notification_read.php?mark_all=1" class="btn btn-outline-secondary btn-sm" id="studentNotificationsMarkAllLink">
-          <i class="fas fa-check-double me-1"></i> Mark all read
-        </a>
-        <a href="<?= BASE_URL ?>/backend/auth/mark_notification_read.php?clear_all=1" class="btn btn-outline-danger btn-sm js-clear-notifications-link">
-          <i class="fas fa-trash me-1"></i> Clear all
-        </a>
-        <button type="button" class="btn btn-outline-primary btn-sm" id="studentOpenUpcomingFromNotifBtn">
-          <i class="fas fa-external-link-alt me-1"></i> View all upcoming events
-        </button>
-        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Upcoming Events Modal (same structure as Notifications: events first, then in-app messages) -->
-<div class="modal fade" id="studentUpcomingEventsModal" tabindex="-1" aria-labelledby="studentUpcomingEventsModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="studentUpcomingEventsModalLabel">
-          <i class="fas fa-calendar-check me-2"></i>Upcoming Events
-        </h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body" id="studentUpcomingEventsModalBody">
-        <h6 class="text-uppercase small text-muted mb-2">Upcoming events <span class="fw-normal">(tap to open details)</span></h6>
-        <?php if (!empty($upcoming_events)): ?>
-          <div class="list-group mb-4">
-            <?php foreach ($upcoming_events as $event): ?>
-              <div class="list-group-item list-group-item-action student-event-link" data-event-id="<?= isset($event['id']) ? (int)$event['id'] : '' ?>" role="button" data-bs-dismiss="modal">
-                <div class="d-flex w-100 justify-content-between">
-                  <h6 class="mb-1">
-                    <i class="fas fa-calendar-day me-1 text-primary"></i>
-                    <?= htmlspecialchars($event['title'] ?? 'Untitled') ?>
-                  </h6>
-                  <?php if (!empty($event['date'])): ?>
-                    <small class="text-muted">
-                      <?= date('M d, Y', strtotime($event['date'])) ?>
-                    </small>
-                  <?php endif; ?>
-                </div>
-                <div class="mb-1 small text-muted">
-                  <?php if (!empty($event['location'])): ?>
-                    <i class="fas fa-map-marker-alt me-1"></i><?= htmlspecialchars($event['location']) ?>
-                  <?php endif; ?>
-                  <?php if (!empty($event['department'])): ?>
-                    <span class="badge bg-light text-dark ms-2">
-                      <?= htmlspecialchars(eventify_format_department_label((string) $event['department'])) ?>
-                    </span>
-                  <?php endif; ?>
-                </div>
-                <?php if (!empty($event['description'])): ?>
-                  <p class="mb-1 small">
-                    <?= htmlspecialchars(mb_strimwidth($event['description'], 0, 180, '...')) ?>
-                  </p>
-                <?php endif; ?>
+            <?php else: ?>
+              <div class="eventify-notif-empty">
+                <div class="eventify-notif-empty__icon" aria-hidden="true"><i class="fas fa-calendar"></i></div>
+                <div class="eventify-notif-empty__title">No upcoming events</div>
+                <p class="eventify-notif-empty__text">Check back later for events in your department.</p>
               </div>
-            <?php endforeach; ?>
-          </div>
-        <?php else: ?>
-          <p class="small text-muted mb-4">No upcoming events for your department right now.</p>
-        <?php endif; ?>
+            <?php endif; ?>
+          </section>
 
-        <h6 class="text-uppercase small text-muted mb-2">In-app messages</h6>
-        <?php if (!empty($student_notifications)): ?>
-          <div class="list-group">
-            <?php foreach ($student_notifications as $n): ?>
-              <?php
-                $nid = (int) ($n['id'] ?? 0);
-                $isUnread = empty($n['read_at']);
-                $markUrl = BASE_URL . '/backend/auth/mark_notification_read.php?id=' . $nid;
-              ?>
-              <a href="<?= htmlspecialchars($markUrl) ?>" class="list-group-item list-group-item-action <?= $isUnread ? 'list-group-item-light fw-semibold' : '' ?>">
-                <div class="d-flex w-100 justify-content-between align-items-start gap-2">
-                  <div>
-                    <div class="mb-1"><?= htmlspecialchars($n['title'] ?? 'Notification') ?></div>
-                    <?php if (!empty($n['message'])): ?>
-                      <div class="small text-muted"><?= nl2br(htmlspecialchars($n['message'])) ?></div>
-                    <?php endif; ?>
-                    <?php if (!empty($n['created_at'])): ?>
-                      <div class="small text-muted mt-1"><?= htmlspecialchars($n['created_at']) ?></div>
-                    <?php endif; ?>
-                  </div>
-                  <?php if ($isUnread): ?>
-                    <span class="badge bg-primary rounded-pill">New</span>
-                  <?php endif; ?>
-                </div>
-              </a>
-            <?php endforeach; ?>
-          </div>
-        <?php else: ?>
-          <p class="mb-0 small text-muted">No system notifications yet.</p>
-        <?php endif; ?>
+        </div>
       </div>
-      <div class="modal-footer">
-        <a href="<?= BASE_URL ?>/backend/auth/mark_notification_read.php?mark_all=1" class="btn btn-outline-secondary btn-sm">
-          <i class="fas fa-check-double me-1"></i> Mark all read
-        </a>
-        <a href="<?= BASE_URL ?>/backend/auth/mark_notification_read.php?clear_all=1" class="btn btn-outline-danger btn-sm js-clear-notifications-link">
-          <i class="fas fa-trash me-1"></i> Clear all
-        </a>
-        <button type="button" class="btn btn-outline-primary btn-sm" id="studentOpenNotificationsFromUpcomingBtn">
-          <i class="fas fa-bell me-1"></i> Open notifications
-        </button>
-        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+      <div class="modal-footer eventify-notif-modal__footer eventify-notif-modal__footer--single">
+        <button type="button" class="eventify-notif-footer-btn eventify-notif-footer-btn--done" data-bs-dismiss="modal">Done</button>
       </div>
     </div>
   </div>
@@ -895,7 +922,7 @@ window.__studentPendingUrgentFeedback = <?= json_encode($pending_urgent_feedback
             <span><i class="fas fa-camera fa-2x mb-2 d-block"></i>Starting camera…</span>
           </div>
         </div>
-        <p id="scanQRStatus" class="small text-muted mt-2 mb-0">Position the event QR code within the frame.</p>
+        <p id="scanQRStatus" class="small text-muted mt-2 mb-0">Scan an <strong>event</strong> or <strong>activity</strong> QR code. Location may be required at the venue.</p>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
@@ -904,24 +931,10 @@ window.__studentPendingUrgentFeedback = <?= json_encode($pending_urgent_feedback
   </div>
 </div>
 
-<!-- Confirm Clear Notifications -->
-<div class="modal fade" id="clearNotificationsConfirmModal" tabindex="-1" aria-labelledby="clearNotificationsConfirmModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="clearNotificationsConfirmModalLabel"><i class="fas fa-trash me-2 text-danger"></i>Clear all notifications</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        Are you sure you want to clear all notifications? This cannot be undone.
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-danger" id="clearNotificationsConfirmYesBtn">Yes, clear all</button>
-      </div>
-    </div>
-  </div>
-</div>
+<?php
+    $notif_clear_modal_id = 'studentClearNotifsModal';
+    include __DIR__ . '/partials/notification_clear_confirm_modal.php';
+?>
 
 <!-- Attendance record (proof of check-in) -->
 <div class="modal fade" id="studentAttendanceModal" tabindex="-1" aria-labelledby="studentAttendanceModalLabel" aria-hidden="true">
@@ -986,6 +999,33 @@ window.__studentPendingUrgentFeedback = <?= json_encode($pending_urgent_feedback
         <?php else: ?>
           <p class="mb-0 text-muted">You have not checked in to any event yet. Scan the event QR code at the venue to confirm your attendance.</p>
         <?php endif; ?>
+
+        <?php if (!empty($activity_attendance_records)): ?>
+          <hr class="my-4">
+          <h6 class="small text-uppercase text-muted mb-2">Activity check-ins</h6>
+          <div class="table-responsive">
+            <table class="table table-sm table-hover align-middle">
+              <thead>
+                <tr>
+                  <th>Activity</th>
+                  <th>Event</th>
+                  <th>Day</th>
+                  <th>Checked in</th>
+                </tr>
+              </thead>
+              <tbody>
+                <?php foreach ($activity_attendance_records as $ar): ?>
+                  <tr>
+                    <td><?= htmlspecialchars($ar['activity_title'] ?? '') ?></td>
+                    <td class="small"><?= htmlspecialchars($ar['event_title'] ?? '') ?></td>
+                    <td class="small"><?= htmlspecialchars(substr((string) ($ar['schedule_date'] ?? ''), 0, 10)) ?></td>
+                    <td class="small"><?= !empty($ar['checked_in_at']) ? htmlspecialchars(date('M j, Y g:i A', strtotime($ar['checked_in_at']))) : '—' ?></td>
+                  </tr>
+                <?php endforeach; ?>
+              </tbody>
+            </table>
+          </div>
+        <?php endif; ?>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
@@ -993,6 +1033,21 @@ window.__studentPendingUrgentFeedback = <?= json_encode($pending_urgent_feedback
     </div>
   </div>
 </div>
+
+<nav class="student-app-tabbar d-md-none" aria-label="Student app navigation">
+  <button type="button" class="student-app-tabbar__btn" data-student-nav="scan" data-bs-toggle="modal" data-bs-target="#scanQRModal">
+    <i class="fas fa-qrcode"></i><span>Scan</span>
+  </button>
+  <button type="button" class="student-app-tabbar__btn" data-student-nav="myevents" data-scroll-target="#studentMyEventsHub">
+    <i class="fas fa-id-card-alt"></i><span>My Events</span>
+  </button>
+  <button type="button" class="student-app-tabbar__btn" data-student-nav="calendar" data-scroll-target="#studentCalendarSection">
+    <i class="fas fa-calendar"></i><span>Calendar</span>
+  </button>
+  <button type="button" class="student-app-tabbar__btn" data-student-nav="attendance" data-bs-toggle="modal" data-bs-target="#studentAttendanceModal">
+    <i class="fas fa-clipboard-check"></i><span>Attended</span>
+  </button>
+</nav>
 
 <!-- Urgent post-event feedback prompt -->
 <div class="modal fade" id="studentUrgentFeedbackModal" tabindex="-1" aria-labelledby="studentUrgentFeedbackModalLabel" aria-hidden="true">
@@ -1024,7 +1079,8 @@ window.__studentPendingUrgentFeedback = <?= json_encode($pending_urgent_feedback
       <div class="modal-body" id="eventDetailsModalBody">
         <p class="mb-0 text-muted">Loading...</p>
       </div>
-      <div class="modal-footer">
+      <div class="modal-footer flex-wrap gap-2" id="studentEventDetailsModalFooter">
+        <div id="studentEventDetailsRsvpActions" class="d-flex flex-wrap gap-2 me-auto"></div>
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
       </div>
     </div>
@@ -1089,6 +1145,9 @@ window.__studentPendingUrgentFeedback = <?= json_encode($pending_urgent_feedback
 <!-- jsQR for QR code decoding -->
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <!-- Dashboard Scripts -->
+<script src="<?= BASE_URL ?>/assets/js/eventify_calendar_colors.js"></script>
+<script src="<?= BASE_URL ?>/assets/js/event_day_sessions.js"></script>
+<script src="<?= BASE_URL ?>/assets/js/eventify_notifications.js?v=1"></script>
 <script src="<?= BASE_URL ?>/assets/js/dashboard_student.js"></script>
 
 <script>
@@ -1191,37 +1250,8 @@ document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') closeProfilePicFullscreen();
 });
 
-document.addEventListener('DOMContentLoaded', function () {
-    var notifModal = document.getElementById('studentNotificationsModal');
-    var openUpcomingFromNotifBtn = document.getElementById('studentOpenUpcomingFromNotifBtn');
-    var openNotifFromUpcomingBtn = document.getElementById('studentOpenNotificationsFromUpcomingBtn');
-    var upcomingModal = document.getElementById('studentUpcomingEventsModal');
-
-    if (openUpcomingFromNotifBtn && notifModal && upcomingModal) {
-        openUpcomingFromNotifBtn.addEventListener('click', function () {
-            var notifInstance = bootstrap.Modal.getInstance(notifModal);
-            if (notifInstance) {
-                notifInstance.hide();
-            }
-            setTimeout(function () {
-                bootstrap.Modal.getOrCreateInstance(upcomingModal).show();
-            }, 300);
-        });
-    }
-
-    if (openNotifFromUpcomingBtn && notifModal && upcomingModal) {
-        openNotifFromUpcomingBtn.addEventListener('click', function () {
-            var upInstance = bootstrap.Modal.getInstance(upcomingModal);
-            if (upInstance) {
-                upInstance.hide();
-            }
-            setTimeout(function () {
-                bootstrap.Modal.getOrCreateInstance(notifModal).show();
-            }, 300);
-        });
-    }
-});
 </script>
+<script src="<?= BASE_URL ?>/assets/js/eventify_pwa.js"></script>
 
 </body>
 </html>

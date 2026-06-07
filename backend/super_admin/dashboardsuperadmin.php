@@ -7,6 +7,8 @@ include __DIR__ . '/../../config/db.php';
 include __DIR__ . '/../../config/config.php';
 include __DIR__ . '/../../config/csrf.php';
 require_once __DIR__ . '/../lib/event_status_auto.php';
+require_once __DIR__ . '/../lib/event_calendar.php';
+require_once __DIR__ . '/../lib/event_day_sessions.php';
 
 // Only super_admin
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'super_admin') {
@@ -110,7 +112,7 @@ if ($eventsPage > $eventsTotalPages) {
 $eventsOffset = ($eventsPage - 1) * $eventsPerPage;
 $allEvents = [];
 $stmtAll = $conn->prepare("
-    SELECT e.id, e.title, e.description, e.date, e.start_time, e.end_time, e.location, e.department, e.status, e.created_at,
+    SELECT e.id, e.title, e.description, e.date, e.end_date, e.start_time, e.end_time, e.location, e.department, e.status, e.created_at,
            u.name AS organizer_name, u.email AS organizer_email
     FROM events e
     JOIN users u ON e.organizer_id = u.id
@@ -128,6 +130,21 @@ if ($stmtAll) {
     }
     $stmtAll->close();
 }
+eventify_events_attach_schedule_dates($conn, $allEvents);
+
+$saCalendarEvents = eventify_events_to_fullcalendar_list($allEvents, static function ($e) {
+    return [
+        'location' => $e['location'] ?? '',
+        'department' => $e['department'] ?? 'ALL',
+        'status' => $e['status'] ?? '',
+        'organizer_name' => $e['organizer_name'] ?? '',
+        'start_time' => $e['start_time'] ?? null,
+        'end_time'   => $e['end_time'] ?? null,
+    ];
+});
+$saCalendarEvents = array_values(array_filter($saCalendarEvents, static function ($entry) {
+    return !empty($entry['start']);
+}));
 
 // Fetch recent activity logs (latest 20)
 $logs = [];
@@ -234,6 +251,17 @@ if ($resLogins = $conn->query($sqlLoginsToday)) {
 // Success message
 $success = $_GET['success'] ?? '';
 $error = $_GET['error'] ?? '';
+
+$activities_hub_events = [];
+try {
+    $activities_hub_events = eventify_load_activities_hub_picker_events(
+        $conn,
+        (int) ($_SESSION['user_id'] ?? 0),
+        'super_admin'
+    );
+} catch (Throwable $e) {
+    $activities_hub_events = [];
+}
 
 // Load view
 define('EVENTIFY_SUPERADMIN_DASHBOARD_LOADED', true);

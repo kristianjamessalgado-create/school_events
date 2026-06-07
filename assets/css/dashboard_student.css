@@ -84,12 +84,16 @@ body, html {
 /* ===============================
    TOP NAVIGATION BAR
 ================================ */
+:root {
+    --student-navbar-height: 64px;
+}
+
 .top-navbar {
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
-    height: 64px;
+    height: var(--student-navbar-height);
     background: rgba(10, 10, 10, 0.85);
     backdrop-filter: blur(10px);
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
@@ -186,7 +190,8 @@ body, html {
     line-height: 1;
 }
 
-.profile-toggle.dropdown-toggle::after {
+.profile-toggle.dropdown-toggle::after,
+.nav-btn.dropdown-toggle::after {
     display: none;
 }
 
@@ -202,10 +207,16 @@ body, html {
    DASHBOARD LAYOUT
 ================================ */
 .dashboard-layout {
-    display: flex;
-    margin-top: 64px;
-    min-height: calc(100vh - 64px);
+    display: block;
+    margin-top: var(--student-navbar-height);
+    margin-left: 320px;
+    min-height: calc(100vh - var(--student-navbar-height));
     overflow: visible;
+    transition: margin-left 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+body.student-sidebar-collapsed .dashboard-layout {
+    margin-left: 0;
 }
 
 /* ===============================
@@ -222,6 +233,12 @@ body, html {
     flex-direction: column;
     gap: 24px;
     flex-shrink: 0;
+    position: fixed;
+    top: var(--student-navbar-height);
+    left: 0;
+    height: calc(100vh - var(--student-navbar-height));
+    height: calc(100dvh - var(--student-navbar-height));
+    z-index: 900;
 }
 
 .sidebar-close-mobile {
@@ -576,9 +593,9 @@ body, html {
 .calendar-container {
     flex: 0 0 auto;
     padding: 24px;
-    overflow-y: auto;
-    overflow-x: hidden;
-    display: block;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
     min-height: 0;
 }
 
@@ -652,7 +669,8 @@ body, html {
     background: #ffffff;
     font-family: inherit;
     width: 100%;
-    min-height: 0;
+    min-height: 380px;
+    flex: 1 1 auto;
 }
 
 .fc-header-toolbar {
@@ -680,16 +698,6 @@ body, html {
 
 .fc-daygrid-day-frame {
     min-height: 150px !important;
-}
-
-.fc-scroller {
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-}
-
-.fc-scroller-liquid-absolute {
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
 }
 
 .fc-day-today {
@@ -773,6 +781,11 @@ body, html {
 }
 
 /* Event Colors by Lifecycle State (takes priority) */
+.fc-event[data-event-state="pending"] {
+    background-color: #d97706 !important;
+    color: #ffffff !important;
+}
+
 .fc-event[data-event-state="active"] {
     background-color: #16a34a !important;
     color: #ffffff !important;
@@ -797,6 +810,11 @@ body, html {
 .fc-event {
     background-color: #013220 !important;
     color: #ffffff !important;
+}
+
+/* Keep FullCalendar day popovers below Bootstrap modals (1055) */
+.fc-popover {
+    z-index: 1040 !important;
 }
 
 .fc-more-link {
@@ -1120,10 +1138,8 @@ body, html {
     }
 
     .dashboard-layout {
-        flex-direction: row;
-        height: auto;
-        min-height: calc(100vh - 64px);
-        overflow: visible;
+        margin-left: 0;
+        min-height: calc(100vh - var(--student-navbar-height));
         position: relative;
     }
 
@@ -1131,7 +1147,7 @@ body, html {
         display: block;
         position: fixed;
         inset: 0;
-        top: 64px;
+        top: var(--student-navbar-height);
         background: rgba(0, 0, 0, 0.4);
         z-index: 1040;
         opacity: 0;
@@ -1151,10 +1167,10 @@ body, html {
     }
 
     .sidebar {
-        position: fixed;
-        top: 64px;
+        top: var(--student-navbar-height);
         left: 0;
         bottom: 0;
+        height: calc(100dvh - var(--student-navbar-height));
         width: min(320px, 85vw);
         max-width: 320px;
         z-index: 1050;
@@ -1162,7 +1178,9 @@ body, html {
         transition: transform 0.25s ease;
         border-right: 1px solid #e5e7eb;
         box-shadow: 4px 0 24px rgba(0, 0, 0, 0.15);
-        padding-top: 0;
+        padding: 16px 20px 24px;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
     }
 
     body.student-sidebar-open .sidebar {
@@ -1250,7 +1268,7 @@ body, html {
         max-width: none !important;
         padding-right: 2em !important;
         text-overflow: clip !important;
-        overflow: visible !important;
+        overflow: hidden !important;
         animation: fc-event-title-glide 8s linear infinite !important;
         visibility: visible !important;
         opacity: 1 !important;
@@ -1278,17 +1296,17 @@ body, html {
     }
 
     .sidebar {
-        padding-top: 0;
-        position: sticky;
-        top: 64px;
-        height: calc(100vh - 64px);
-        will-change: width, padding, opacity;
+        transform: none;
         transition: width 0.34s cubic-bezier(0.22, 1, 0.36, 1),
                     padding-left 0.34s cubic-bezier(0.22, 1, 0.36, 1),
                     padding-right 0.34s cubic-bezier(0.22, 1, 0.36, 1),
                     opacity 0.22s ease,
                     border-color 0.22s ease,
                     box-shadow 0.22s ease;
+    }
+
+    body.student-sidebar-open .sidebar {
+        transform: none;
     }
 
     body.student-sidebar-collapsed .sidebar {
@@ -1394,6 +1412,7 @@ body, html {
     background: linear-gradient(180deg, var(--school-forest-card) 0%, #021a08 100%);
     border-bottom: 3px solid var(--school-gold);
     box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+    z-index: 1100;
 }
 
 .brand-logo {
@@ -1432,7 +1451,7 @@ body, html {
 }
 
 .sidebar {
-    background: linear-gradient(180deg, rgba(1, 50, 32, 0.94) 0%, rgba(3, 40, 2, 0.97) 100%);
+    background: linear-gradient(180deg, var(--school-forest-card) 0%, #021a08 100%);
     border-right: 2px solid var(--school-border);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
@@ -1604,6 +1623,11 @@ body, html {
 
 .fc-event[data-event-state="closed"] {
     background-color: #4b5563 !important;
+}
+
+/* Keep FullCalendar day popovers below Bootstrap modals (1055) */
+.fc-popover {
+    z-index: 1040 !important;
 }
 
 .fc-more-link {
@@ -1793,5 +1817,117 @@ body, html {
     .view-btn.active::after,
     .action-btn:not(.logout-btn)::after {
         animation: none;
+    }
+}
+
+/* Student app hub + mobile tab bar */
+.student-dashboard--app .main-content {
+    padding-bottom: 5.5rem;
+}
+
+.student-my-events-hub {
+    background: linear-gradient(135deg, #ecfdf5 0%, #fff 55%);
+    border: 1px solid rgba(6, 78, 59, 0.12);
+    border-radius: 16px;
+    padding: 1rem 1.1rem;
+}
+
+.student-my-events-hub__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.85rem;
+}
+
+.student-my-events-hub__list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 0.65rem;
+}
+
+.student-my-event-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 0.85rem 1rem;
+    border: 1px solid rgba(6, 78, 59, 0.1);
+    cursor: pointer;
+    transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.student-my-event-card:hover,
+.student-my-event-card:focus {
+    box-shadow: 0 6px 18px rgba(6, 78, 59, 0.12);
+    transform: translateY(-1px);
+    outline: none;
+}
+
+.student-my-event-card__title {
+    font-weight: 600;
+    color: #064e3b;
+    margin-bottom: 0.35rem;
+}
+
+.student-my-event-card__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+    color: #64748b;
+}
+
+.student-my-event-card__link {
+    display: inline-block;
+    margin-top: 0.5rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #047857;
+    text-decoration: none;
+}
+
+.student-app-tabbar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1040;
+    display: flex;
+    justify-content: space-around;
+    align-items: stretch;
+    background: #fff;
+    border-top: 1px solid rgba(6, 78, 59, 0.15);
+    box-shadow: 0 -4px 20px rgba(15, 23, 42, 0.08);
+    padding: 0.35rem 0 calc(0.35rem + env(safe-area-inset-bottom, 0));
+}
+
+.student-app-tabbar__btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.15rem;
+    border: 0;
+    background: transparent;
+    color: #64748b;
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 0.4rem 0.25rem;
+    min-height: 52px;
+}
+
+.student-app-tabbar__btn i {
+    font-size: 1.15rem;
+    color: #047857;
+}
+
+.student-app-tabbar__btn:active {
+    background: rgba(16, 185, 129, 0.08);
+}
+
+@media (min-width: 768px) {
+    .student-dashboard--app .main-content {
+        padding-bottom: 1.5rem;
     }
 }

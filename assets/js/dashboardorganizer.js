@@ -35,6 +35,65 @@ function eventifyOrganizerTodayYmd() {
     return d.getFullYear() + '-' + m + '-' + day;
 }
 
+function eventifyFormatDayEndTimeLabel(endTime, endTimeNa, tOpts) {
+    if (endTimeNa) {
+        return 'N/A';
+    }
+    if (!endTime) {
+        return '';
+    }
+    const et = new Date('1970-01-01T' + String(endTime).slice(0, 8));
+    if (isNaN(et.getTime())) {
+        return '';
+    }
+    return et.toLocaleTimeString(undefined, tOpts);
+}
+
+function eventifyAppendPerDayEndTimes(dateStr, props, tOpts) {
+    const days = Array.isArray(props.schedule_days) ? props.schedule_days : [];
+    if (days.length < 2) {
+        return dateStr;
+    }
+    const parts = [];
+    let hasPerDayStart = false;
+    days.forEach(function (day) {
+        const ymd = String(day.schedule_date || '').slice(0, 10);
+        if (!ymd) {
+            return;
+        }
+        const d = new Date(ymd + 'T12:00:00');
+        const lbl = isNaN(d.getTime()) ? ymd : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+        const startLbl = day.start_time
+            ? eventifyFormatDayEndTimeLabel(day.start_time, false, tOpts)
+            : '';
+        if (startLbl) {
+            hasPerDayStart = true;
+        }
+        let segment = lbl;
+        if (startLbl) {
+            segment += ' ' + startLbl;
+        }
+        if (!day.end_time_na && day.end_time) {
+            const endLbl = eventifyFormatDayEndTimeLabel(day.end_time, false, tOpts);
+            if (endLbl) {
+                segment += (startLbl ? '–' : ', ends ') + endLbl;
+            }
+        }
+        parts.push(segment);
+    });
+    if (parts.length) {
+        let out = dateStr + ' · ' + parts.join('; ');
+        const allEndNa = days.every(function (day) {
+            return !!day.end_time_na;
+        });
+        if (allEndNa) {
+            out += ' · Ends N/A';
+        }
+        return out;
+    }
+    return dateStr;
+}
+
 function eventifyFormatStoredDeptForModal(stored) {
     const d = String(stored || 'ALL').trim();
     if (d === '' || d === 'ALL') {
@@ -61,6 +120,11 @@ function eventifyFillAndShowEventDetails(event) {
         return;
     }
     const props = event.extendedProps || {};
+    const realEventId = props.event_id || (function () {
+        const id = String(event.id || '');
+        const dash = id.indexOf('-');
+        return dash > 0 ? id.slice(0, dash) : id;
+    })();
 
     const titleEl = document.getElementById('eventTitle');
     if (titleEl) {
@@ -68,17 +132,68 @@ function eventifyFillAndShowEventDetails(event) {
     }
 
     let dateStr = '';
-    if (event.start) {
-        const dOpts = { year: 'numeric', month: 'short', day: 'numeric' };
+    const startYmd = String(props.event_date_ymd || '').trim();
+    const endYmd = String(props.event_end_ymd || props.event_date_ymd || '').trim();
+    const dOpts = { year: 'numeric', month: 'short', day: 'numeric' };
+    const tOpts = { hour: 'numeric', minute: '2-digit', hour12: true };
+  const scheduleDates = Array.isArray(props.schedule_dates) ? props.schedule_dates.filter(Boolean) : [];
+    if (scheduleDates.length > 1) {
+        dateStr = scheduleDates.map(function (ymd) {
+            const d = new Date(ymd + 'T12:00:00');
+            return isNaN(d.getTime()) ? ymd : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+        }).join(', ');
+        const y = scheduleDates[0].slice(0, 4);
+        if (scheduleDates.every(function (d) { return d.slice(0, 4) === y; })) {
+            dateStr += ', ' + y;
+        }
+        const hasPerDayStart = Array.isArray(props.schedule_days) && props.schedule_days.some(function (d) {
+            return d && String(d.start_time || '').trim() !== '';
+        });
+        if (props.start_time && !hasPerDayStart) {
+            const st = new Date('1970-01-01T' + String(props.start_time).slice(0, 8));
+            if (!isNaN(st.getTime())) {
+                dateStr += ' · Starts ' + st.toLocaleTimeString(undefined, tOpts);
+            }
+        }
+        if (Array.isArray(props.schedule_days) && props.schedule_days.length >= 2) {
+            dateStr = eventifyAppendPerDayEndTimes(dateStr, props, tOpts);
+        } else if (props.end_time_na) {
+            dateStr += ' · Ends N/A';
+        } else if (props.end_time) {
+            const et = new Date('1970-01-01T' + String(props.end_time).slice(0, 8));
+            if (!isNaN(et.getTime())) {
+                dateStr += ' · Ends ' + et.toLocaleTimeString(undefined, tOpts);
+            }
+        }
+    } else if (startYmd && endYmd && endYmd > startYmd) {
+        const startD = new Date(startYmd + 'T12:00:00');
+        const endD = new Date(endYmd + 'T12:00:00');
+        dateStr = startD.toLocaleDateString(undefined, dOpts) + ' – ' + endD.toLocaleDateString(undefined, dOpts);
+        if (props.start_time) {
+            const st = new Date('1970-01-01T' + String(props.start_time).slice(0, 8));
+            if (!isNaN(st.getTime())) {
+                dateStr += ' · Starts ' + st.toLocaleTimeString(undefined, tOpts);
+            }
+        }
+        if (props.end_time_na) {
+            dateStr += ' · Ends N/A';
+        } else if (props.end_time) {
+            const et = new Date('1970-01-01T' + String(props.end_time).slice(0, 8));
+            if (!isNaN(et.getTime())) {
+                dateStr += ' · Ends ' + et.toLocaleTimeString(undefined, tOpts);
+            }
+        }
+    } else if (event.start) {
         dateStr = event.start.toLocaleDateString(undefined, dOpts);
-        const tOpts = { hour: 'numeric', minute: '2-digit', hour12: true };
         const startTime = event.start.toLocaleTimeString(undefined, tOpts);
         let range = startTime;
-        if (event.end) {
+        if (event.end && !event.allDay) {
             const endTime = event.end.toLocaleTimeString(undefined, tOpts);
             range = startTime + ' – ' + endTime;
         }
-        dateStr += ' · ' + range;
+        if (!event.allDay) {
+            dateStr += ' · ' + range;
+        }
     }
     const dateCell = document.getElementById('eventDate');
     if (dateCell) {
@@ -107,15 +222,25 @@ function eventifyFillAndShowEventDetails(event) {
 
     const statusEl = document.getElementById('eventStatus');
     const status = (props.status || 'active').toLowerCase();
+    const eventIsLive = props.event_is_live === true;
     if (statusEl) {
-        statusEl.textContent = status.charAt(0).toUpperCase() + status.slice(1);
-        if (status === 'active') {
+        if (status === 'active' && eventIsLive) {
+            statusEl.textContent = 'Active';
             statusEl.className = 'badge bg-success';
+        } else if (status === 'active' && !eventIsLive) {
+            statusEl.textContent = 'Ended';
+            statusEl.className = 'badge bg-warning text-dark';
         } else if (status === 'rejected') {
+            statusEl.textContent = 'Rejected';
             statusEl.className = 'badge bg-danger';
         } else if (status === 'pending') {
+            statusEl.textContent = 'Pending';
             statusEl.className = 'badge bg-warning text-dark';
+        } else if (status === 'closed' || status === 'completed') {
+            statusEl.textContent = 'Closed';
+            statusEl.className = 'badge bg-secondary';
         } else {
+            statusEl.textContent = status.charAt(0).toUpperCase() + status.slice(1);
             statusEl.className = 'badge bg-secondary';
         }
     }
@@ -124,9 +249,9 @@ function eventifyFillAndShowEventDetails(event) {
     const otpEventIdInput = document.getElementById('eventOtpEventId');
     const otpCodeInput = document.getElementById('eventOtpCodeInput');
     if (otpWrap && otpEventIdInput) {
-        const showOtpVerify = status === 'pending' && !!event.id;
+        const showOtpVerify = status === 'pending' && !!realEventId;
         otpWrap.style.display = showOtpVerify ? 'block' : 'none';
-        otpEventIdInput.value = showOtpVerify ? String(event.id) : '';
+        otpEventIdInput.value = showOtpVerify ? String(realEventId) : '';
         if (otpCodeInput) {
             otpCodeInput.value = '';
         }
@@ -161,9 +286,18 @@ function eventifyFillAndShowEventDetails(event) {
 
     const qrLink = document.getElementById('eventQrLink');
     if (qrLink) {
-        if (event.id) {
-            qrLink.href = BASE_URL + '/event_qr.php?id=' + event.id;
+        if (realEventId && eventIsLive) {
+            qrLink.href = BASE_URL + '/event_qr.php?id=' + realEventId;
             qrLink.style.display = 'inline-block';
+            qrLink.classList.remove('disabled');
+            qrLink.setAttribute('aria-disabled', 'false');
+            qrLink.title = '';
+        } else if (realEventId) {
+            qrLink.style.display = 'inline-block';
+            qrLink.href = '#';
+            qrLink.classList.add('disabled');
+            qrLink.setAttribute('aria-disabled', 'true');
+            qrLink.title = 'Event ended — QR check-in is disabled';
         } else {
             qrLink.style.display = 'none';
         }
@@ -171,11 +305,62 @@ function eventifyFillAndShowEventDetails(event) {
 
     const attendanceLink = document.getElementById('eventAttendanceLink');
     if (attendanceLink) {
-        if (event.id) {
-            attendanceLink.href = BASE_URL + '/event_attendance.php?id=' + event.id;
+        if (realEventId) {
+            attendanceLink.href = BASE_URL + '/event_attendance.php?id=' + realEventId;
             attendanceLink.style.display = 'inline-block';
         } else {
             attendanceLink.style.display = 'none';
+        }
+    }
+
+    const ticketsLink = document.getElementById('eventTicketsLink');
+    if (ticketsLink) {
+        if (realEventId) {
+            ticketsLink.href = BASE_URL + '/manage_event_tickets.php?event_id=' + realEventId;
+            ticketsLink.style.display = 'inline-block';
+            ticketsLink.classList.remove('btn-outline-success', 'btn-outline-secondary');
+            if (eventIsLive) {
+                ticketsLink.classList.add('btn-outline-success');
+                ticketsLink.innerHTML = '<i class="fas fa-ticket-alt me-1"></i> Ticket sales';
+                ticketsLink.title = 'Enable paid tickets, add ticket types, confirm payments';
+            } else {
+                ticketsLink.classList.add('btn-outline-secondary');
+                ticketsLink.innerHTML = '<i class="fas fa-ticket-alt me-1"></i> Tickets (closed)';
+                ticketsLink.title = 'View ticket history — sales closed for ended events';
+            }
+        } else {
+            ticketsLink.style.display = 'none';
+        }
+    }
+
+    const regModeEl = document.getElementById('eventRegistrationMode');
+    const regHintEl = document.getElementById('eventRegistrationHint');
+    if (regModeEl) {
+        const regMode = String(props.registration_mode || 'rsvp').toLowerCase();
+        const regLabels = {
+            paid_ticket: 'Paid tickets',
+            rsvp: 'Free RSVP',
+            open: 'Open (no registration)'
+        };
+        regModeEl.textContent = regLabels[regMode] || regMode;
+        if (regHintEl) {
+            if (regMode === 'paid_ticket') {
+                regHintEl.textContent = '— manage types and payments via Ticket sales below';
+            } else if (regMode === 'open') {
+                regHintEl.textContent = '— use Ticket sales below if you need paid entry instead';
+            } else {
+                regHintEl.textContent = '— use Ticket sales below to switch to paid tickets';
+            }
+        }
+    }
+
+    const activitiesHubLink = document.getElementById('eventActivitiesHubLink');
+    if (activitiesHubLink) {
+        if (realEventId) {
+            activitiesHubLink.href = BASE_URL + '/event_activities.php?id=' + realEventId;
+            activitiesHubLink.style.display = 'inline-block';
+        } else {
+            activitiesHubLink.style.display = 'none';
         }
     }
 
@@ -185,15 +370,30 @@ function eventifyFillAndShowEventDetails(event) {
         const canMarkEnded =
             EVENTIFY_ROLE === 'organizer' &&
             status === 'active' &&
-            ymd !== '' &&
-            ymd <= eventifyOrganizerTodayYmd();
-        if (canMarkEnded && event.id) {
+            !eventIsLive;
+        if (canMarkEnded && realEventId) {
             markBtn.style.display = 'inline-block';
-            markBtn.setAttribute('data-eventify-event-id', String(event.id));
+            markBtn.setAttribute('data-eventify-event-id', String(realEventId));
         } else {
             markBtn.style.display = 'none';
             markBtn.setAttribute('data-eventify-event-id', '');
         }
+    }
+
+    if (typeof eventifyLoadDaySessionsForEvent === 'function') {
+        eventifyLoadDaySessionsForEvent(event, EVENTIFY_ROLE === 'organizer');
+    } else {
+        const panel = document.getElementById('eventDaySessionsPanel');
+        if (panel) {
+            panel.style.display = 'none';
+        }
+    }
+
+    if (typeof eventifyCloseFullCalendarPopovers === 'function') {
+        eventifyCloseFullCalendarPopovers();
+    }
+    if (typeof edsForceHideHelperModals === 'function') {
+        edsForceHideHelperModals();
     }
 
     const modalEl = document.getElementById('eventDetailsModal');
@@ -449,6 +649,14 @@ function initOrganizerEventStatusModal() {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('eventify:notif-read', function (e) {
+        var detail = (e && e.detail) || {};
+        if (detail.notifType === 'ticket_payment_pending' && detail.eventId) {
+            var base = (window.BASE_URL || '/school_events').replace(/\/$/, '');
+            window.location.href = base + '/manage_event_tickets.php?event_id=' + encodeURIComponent(String(detail.eventId)) + '#pendingPayments';
+        }
+    });
+
     initOrganizerSidebarToggle();
     initMiniCalendar();
     initFullCalendar();
@@ -645,7 +853,7 @@ function initFullCalendar() {
     const calendarEl = document.getElementById('calendar');
     if (!calendarEl) return;
 
-    const os = window.__organizerSettings || {};
+    const os = (EVENTIFY_ROLE === 'admin' ? window.__adminSettings : window.__organizerSettings) || {};
     const allowedViews = ['dayGridMonth', 'timeGridWeek', 'timeGridDay'];
     let initView = String(os.default_calendar_view || '').trim();
     if (!allowedViews.includes(initView)) {
@@ -684,16 +892,43 @@ function initFullCalendar() {
         headerToolbar: false, // We use custom controls
         events: getFilteredEvents(),
         eventDisplay: 'block',
-        height: 'auto',
+        height: '100%',
+        expandRows: true,
+        slotMinTime: '06:00:00',
+        slotMaxTime: '22:00:00',
+        scrollTime: '07:00:00',
+        slotEventOverlap: false,
+        eventMaxStack: 4,
         dayHeaderFormat: { weekday: 'long' },
         firstDay: weekStartsOn,
         weekends: showWeekends,
         nowIndicator: true,
+        views: {
+            dayGridMonth: {
+                dayMaxEvents: 3
+            },
+            timeGridWeek: {
+                dayMaxEvents: 3,
+                eventMaxStack: 4
+            },
+            timeGridDay: {
+                eventMaxStack: 6
+            }
+        },
         eventTimeFormat: {
             hour: 'numeric',
             minute: '2-digit',
             omitZeroMinute: false,
             meridiem: 'short'
+        },
+        eventContent: function (arg) {
+            if (typeof eventifyCalendarEventContent === 'function') {
+                var custom = eventifyCalendarEventContent(arg);
+                if (custom !== true) {
+                    return custom;
+                }
+            }
+            return true;
         },
 
         // Click empty date -> create event (organizer only)
@@ -709,34 +944,10 @@ function initFullCalendar() {
             info.jsEvent.preventDefault();
         },
 
-        // Custom event rendering to add department + state attributes
-        eventDidMount: function(info) {
-            const dept = info.event.extendedProps?.department || 'ALL';
-            info.el.setAttribute('data-dept', dept);
-            const status = String(info.event.extendedProps?.status || '').toLowerCase();
-            const start = info.event.start instanceof Date ? info.event.start : null;
-            const now = new Date();
-            let state = 'active';
-
-            if (status === 'closed' || status === 'completed') {
-                state = 'closed';
-            } else if (status === 'rejected') {
-                state = 'rejected';
-            } else if (start && start > now) {
-                state = 'upcoming';
-            } else {
-                state = 'active';
+        eventDidMount: function (info) {
+            if (typeof eventifyApplyCalendarEventMount === 'function') {
+                eventifyApplyCalendarEventMount(info);
             }
-            info.el.setAttribute('data-event-state', state);
-
-            // Force color at runtime to avoid CSS/cache conflicts.
-            let bg = '#16a34a'; // active
-            if (state === 'upcoming') bg = '#f59e0b';
-            if (state === 'closed') bg = '#6b7280';
-            if (state === 'rejected') bg = '#dc2626';
-            info.el.style.backgroundColor = bg;
-            info.el.style.borderColor = bg;
-            info.el.style.color = '#ffffff';
         },
 
         // Update title when view changes and sync mini calendar
@@ -751,11 +962,19 @@ function initFullCalendar() {
             if (renderMiniCalendar) {
                 renderMiniCalendar();
             }
+            requestAnimationFrame(function () {
+                try { calendar.updateSize(); } catch (e) { /* ignore */ }
+            });
         }
     });
 
     calendar.render();
     window.eventifyCalendar = calendar;
+
+    var orgCalContainer = calendarEl.closest('.calendar-container');
+    if (typeof eventifyBindCalendarScrollFix === 'function') {
+        eventifyBindCalendarScrollFix(calendar, orgCalContainer);
+    }
 
     document.querySelectorAll('.calendar-item').forEach(function (i) {
         i.classList.toggle('active', (i.getAttribute('data-dept') || '') === selectedDepartment);
@@ -908,14 +1127,63 @@ function previewOrganizerProfilePicture(input) {
     }
 }
 
-function confirmOrganizerProfileChanges(form) {
-    const name = (form.querySelector('input[name="name"]') || {}).value || '';
+function eventifyEscapeHtml(text) {
+    return String(text || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+function buildOrganizerProfileChangeLines(form) {
+    const lines = [];
+    const trim = (v) => String(v || '').trim();
+    const initialName = trim(form.dataset.initialName);
+    const initialMethod = trim(form.dataset.initialContactMethod || 'email');
+    const initialEmail = trim(form.dataset.initialContactEmail);
+    const initialPhone = trim(form.dataset.initialPhone);
+
+    const name = trim((form.querySelector('input[name="name"]') || {}).value);
+    const method = trim((form.querySelector('#organizerContactMethod') || {}).value || 'email');
+    const email = trim((form.querySelector('#organizerContactEmail') || {}).value);
+    const phone = trim((form.querySelector('#organizerPhone') || {}).value);
     const fileInput = form.querySelector('input[name="profile_picture"]');
     const hasFile = fileInput && fileInput.files && fileInput.files.length > 0;
-    let msg = 'Update your display name' + (name ? ` to "${name}"` : '') + '.';
-    if (hasFile) msg += ' A new profile picture will be uploaded.';
+
+    if (name !== initialName) {
+        lines.push('Display name to <strong>' + eventifyEscapeHtml(name) + '</strong>');
+    }
+    if (method !== initialMethod) {
+        lines.push('OTP verification method to <strong>' + eventifyEscapeHtml(method === 'phone' ? 'Phone number' : 'Email') + '</strong>');
+    }
+    if (email !== initialEmail) {
+        lines.push('Verification email to <strong>' + eventifyEscapeHtml(email) + '</strong>');
+    }
+    if (phone !== initialPhone) {
+        lines.push('Verification phone to <strong>' + eventifyEscapeHtml(phone) + '</strong>');
+    }
+    if (hasFile) {
+        lines.push('Upload a new profile picture');
+    }
+    return lines;
+}
+
+function confirmOrganizerProfileChanges(form) {
+    const lines = buildOrganizerProfileChangeLines(form);
     const messageEl = document.getElementById('confirmOrganizerProfileMessage');
-    if (messageEl) messageEl.textContent = msg;
+    if (messageEl) {
+        if (lines.length === 0) {
+            messageEl.textContent = 'No changes detected. Save anyway?';
+        } else if (lines.length === 1) {
+            messageEl.innerHTML = '<p class="mb-0">You are about to update your ' + lines[0] + '.</p>';
+        } else {
+            messageEl.innerHTML =
+                '<p class="mb-2">You are about to save these changes:</p>' +
+                '<ul class="mb-0 ps-3">' +
+                lines.map(function (line) { return '<li>' + line + '</li>'; }).join('') +
+                '</ul>';
+        }
+    }
     const modalEl = document.getElementById('confirmOrganizerProfileModal');
     if (!modalEl) {
         form.submit();

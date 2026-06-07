@@ -6,6 +6,8 @@ if (!defined('BASE_URL')) {
 include __DIR__ . '/config/db.php';
 include __DIR__ . '/config/config.php';
 include __DIR__ . '/config/csrf.php';
+require_once __DIR__ . '/backend/lib/event_calendar.php';
+require_once __DIR__ . '/backend/lib/event_checkin_security.php';
 
 $token = trim($_GET['t'] ?? '');
 $confirmed = false;
@@ -13,20 +15,10 @@ $already_done = false; // Student already confirmed attendance for this event
 $error = '';
 $event = null;
 $geo_required = false;
-$eventHasGeo = false;
-$geo_radius_m = 300.0; // Allowed check-in radius from event pin
+$rsvp_required = eventify_checkin_config_require_rsvp();
+$geo_radius_m = eventify_checkin_geo_radius_m();
 $focus_confirm_mobile = false;
-
-function eventify_haversine_m(float $lat1, float $lon1, float $lat2, float $lon2): float
-{
-    $earth = 6371000.0;
-    $dLat = deg2rad($lat2 - $lat1);
-    $dLon = deg2rad($lon2 - $lon1);
-    $a = sin($dLat / 2) * sin($dLat / 2)
-        + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLon / 2) * sin($dLon / 2);
-    $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
-    return $earth * $c;
-}
+$needs_rsvp_first = false;
 
 if ($token === '') {
     $error = 'Invalid or missing check-in link. Please scan the event QR code again.';
@@ -55,7 +47,20 @@ if ($token === '') {
     if (!$event) {
         $error = 'This check-in link is invalid or has expired.';
     } elseif (!in_array(strtolower($event['status'] ?? ''), ['active'], true)) {
-        $error = 'Check-in is only available for approved events.';
+        $st = strtolower($event['status'] ?? '');
+        $error = in_array($st, ['closed', 'completed'], true)
+            ? 'This event has ended. Check-in is no longer available.'
+            : 'Check-in is only available for approved, active events.';
+    } else {
+        $events = [$event];
+        eventify_events_attach_schedule_dates($conn, $events);
+        $event = $events[0];
+        if (!eventify_event_allows_checkin($event)) {
+            $error = 'Check-in is not available. This event day has ended or has not started yet.';
+        } else {
+            $geo_required = eventify_event_checkin_geo_required($event);
+            $rsvp_required = eventify_event_checkin_rsvp_required($event);
+        }
     }
 }
 
@@ -79,7 +84,10 @@ if (!$error && $event && $_SERVER['REQUEST_METHOD'] !== 'POST') {
         $chk->store_result();
         $already_done = $chk->num_rows > 0;
         $chk->close();
-        $focus_confirm_mobile = !$already_done;
+        if (!$already_done && $rsvp_required && !eventify_student_has_event_registration($conn, $uid, $eid)) {
+            $needs_rsvp_first = true;
+        }
+        $focus_confirm_mobile = !$already_done && !$needs_rsvp_first;
     }
 }
 
@@ -87,133 +95,33 @@ if (!$error && $event && $_SERVER['REQUEST_METHOD'] !== 'POST') {
 if (!$error && $event && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm']) && isset($_SESSION['user_id']) && $_SESSION['role'] === 'student') {
     if (!csrf_validate()) {
         $error = 'Invalid request. Please try again.';
+    } elseif (!eventify_event_allows_checkin($event)) {
+        $error = 'Check-in is not available. This event day has ended or has not started yet.';
     } else {
-    $user_id = (int) $_SESSION['user_id'];
-    $event_id = (int) $event['id'];
-
-    // Security inputs from browser (live geolocation + per-device fingerprint)
-    $device_hash = trim((string)($_POST['device_hash'] ?? ''));
-    $geo_lat_raw = trim((string)($_POST['geo_lat'] ?? ''));
-    $geo_lng_raw = trim((string)($_POST['geo_lng'] ?? ''));
-    $geo_accuracy_raw = trim((string)($_POST['geo_accuracy'] ?? ''));
-    $geo_ts_raw = trim((string)($_POST['geo_ts'] ?? ''));
-
-    $geo_lat = is_numeric($geo_lat_raw) ? (float)$geo_lat_raw : null;
-    $geo_lng = is_numeric($geo_lng_raw) ? (float)$geo_lng_raw : null;
-    $geo_accuracy = is_numeric($geo_accuracy_raw) ? (float)$geo_accuracy_raw : null;
-    $geo_ts = ctype_digit($geo_ts_raw) ? (int)$geo_ts_raw : 0;
-    $server_now_ms = (int) round(microtime(true) * 1000);
-    $event_lat = isset($event['latitude']) && $event['latitude'] !== null ? (float)$event['latitude'] : null;
-    $event_lng = isset($event['longitude']) && $event['longitude'] !== null ? (float)$event['longitude'] : null;
-    $enforce_geofence = $geo_required && $eventHasGeo && $event_lat !== null && $event_lng !== null;
-
-    if ($device_hash === '' || strlen($device_hash) < 16) {
-        $error = 'Device verification failed. Please use a modern browser and try again.';
-    } elseif ($geo_required && ($geo_lat === null || $geo_lng === null)) {
-        $error = 'Live location is required to check in. Please allow location access and try again.';
-    } elseif ($geo_required && ($geo_ts <= 0 || abs($server_now_ms - $geo_ts) > 120000)) {
-        $error = 'Location check expired. Please refresh your location and try again.';
-    } elseif ($geo_required && $geo_accuracy !== null && $geo_accuracy > 2000) {
-        $error = 'Location accuracy is too low. Move to a better signal and try again.';
-    } elseif ($enforce_geofence) {
-        $distance_m = eventify_haversine_m($geo_lat, $geo_lng, $event_lat, $event_lng);
-        if ($distance_m > $geo_radius_m) {
-            $error = 'You are too far from the event location to confirm attendance. Please move closer to the venue and try again.';
-        }
-    } else {
-        // Ensure device-lock table exists (graceful auto-setup)
-        $conn->query("
-            CREATE TABLE IF NOT EXISTS event_checkin_device_locks (
-              id INT AUTO_INCREMENT PRIMARY KEY,
-              event_id INT NOT NULL,
-              user_id INT NOT NULL,
-              device_hash VARCHAR(128) NOT NULL,
-              first_seen_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-              last_seen_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-              last_lat DECIMAL(10,7) NULL DEFAULT NULL,
-              last_lng DECIMAL(10,7) NULL DEFAULT NULL,
-              last_accuracy FLOAT NULL DEFAULT NULL,
-              last_geo_at DATETIME NULL DEFAULT NULL,
-              UNIQUE KEY uniq_event_device (event_id, device_hash),
-              KEY idx_event_user (event_id, user_id),
-              CONSTRAINT fk_checkin_lock_event FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
-              CONSTRAINT fk_checkin_lock_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
-        ");
-
-        try {
-            $conn->begin_transaction();
-
-            // Prevent same device from checking in multiple different accounts on the same event
-            $lockSel = $conn->prepare("SELECT user_id FROM event_checkin_device_locks WHERE event_id = ? AND device_hash = ? LIMIT 1 FOR UPDATE");
-            if (!$lockSel) {
-                throw new Exception('Security lock check failed.');
-            }
-            $lockSel->bind_param("is", $event_id, $device_hash);
-            $lockSel->execute();
-            $lockRes = $lockSel->get_result();
-            $lockRow = $lockRes ? $lockRes->fetch_assoc() : null;
-            $lockSel->close();
-
-            if ($lockRow && (int)$lockRow['user_id'] !== $user_id) {
-                throw new Exception('This device already checked in another account for this event.');
-            }
-
-            if ($lockRow) {
-                $updLock = $conn->prepare("UPDATE event_checkin_device_locks SET last_seen_at = NOW(), last_lat = ?, last_lng = ?, last_accuracy = ?, last_geo_at = NOW() WHERE event_id = ? AND device_hash = ? AND user_id = ?");
-                if (!$updLock) {
-                    throw new Exception('Could not update device lock.');
-                }
-                $updLock->bind_param("dddisi", $geo_lat, $geo_lng, $geo_accuracy, $event_id, $device_hash, $user_id);
-                $updLock->execute();
-                $updLock->close();
-            } else {
-                $insLock = $conn->prepare("INSERT INTO event_checkin_device_locks (event_id, user_id, device_hash, last_lat, last_lng, last_accuracy, last_geo_at) VALUES (?, ?, ?, ?, ?, ?, NOW())");
-                if (!$insLock) {
-                    throw new Exception('Could not create device lock.');
-                }
-                $insLock->bind_param("iisddd", $event_id, $user_id, $device_hash, $geo_lat, $geo_lng, $geo_accuracy);
-                $insLock->execute();
-                $insLock->close();
-            }
-
-            $stmt = $conn->prepare("INSERT INTO registrations (user_id, event_id, status, time_in) VALUES (?, ?, 'present', NOW()) ON DUPLICATE KEY UPDATE status = 'present', time_in = NOW()");
-            if (!$stmt) {
-                throw new Exception('Could not record attendance.');
-            }
-            $stmt->bind_param("ii", $user_id, $event_id);
-            $stmt->execute();
-            $stmt->close();
-
-            $conn->commit();
+        $user_id = (int) $_SESSION['user_id'];
+        $event_id = (int) $event['id'];
+        $result = eventify_process_main_event_checkin($conn, $event, $user_id, $_POST);
+        if ($result['ok']) {
             $confirmed = true;
-
-            // Notify organizer after successful attendance confirmation.
             try {
-                $organizerId = (int)($event['organizer_id'] ?? 0);
+                $organizerId = (int) ($event['organizer_id'] ?? 0);
                 if ($organizerId > 0) {
-                    $studentName = (string)($_SESSION['name'] ?? 'A student');
-                    $eventTitle = (string)($event['title'] ?? 'your event');
+                    $studentName = (string) ($_SESSION['name'] ?? 'A student');
+                    $eventTitle = (string) ($event['title'] ?? 'your event');
                     $n = $conn->prepare("INSERT INTO notifications (user_id, type, title, message, event_id) VALUES (?, 'event_attendance_confirmed', 'Attendance confirmed', ?, ?)");
                     if ($n) {
                         $nMsg = $studentName . ' confirmed attendance for "' . $eventTitle . '".';
-                        $n->bind_param("isi", $organizerId, $nMsg, $event_id);
+                        $n->bind_param('isi', $organizerId, $nMsg, $event_id);
                         $n->execute();
                         $n->close();
                     }
                 }
             } catch (Throwable $e) {
-                // Ignore notification failures so attendance still succeeds.
+                /* ignore */
             }
-        } catch (Throwable $txe) {
-            try { $conn->rollback(); } catch (Throwable $e2) {}
-            if ($txe->getMessage() === 'This device already checked in another account for this event.') {
-                $error = 'Security check blocked this action: this device is already used by another account for this event.';
-            } else {
-                $error = 'Could not record attendance. Please try again.';
-            }
+        } else {
+            $error = $result['error'] ?? 'Could not record attendance. Please try again.';
         }
-    }
     }
 }
 
@@ -339,9 +247,15 @@ $pageTitle = $event ? htmlspecialchars($event['title']) : 'Event Check-in';
                         <div><i class="fas fa-map-marker-alt me-2"></i><?= htmlspecialchars($event['location']) ?></div>
                     <?php endif; ?>
                 </div>
-                <p class="small text-muted mb-2">Scan this QR at the event to confirm your attendance. Only students can check in.</p>
-                <p class="small text-muted mb-2"><strong>Fair use:</strong> each device (browser on this phone or computer) can only confirm <strong>one student account</strong> for this event. That helps prevent one phone from being passed around to fake attendance for several accounts.</p>
-                <p class="small text-muted mb-3">Check-in security uses this device fingerprint plus your account. Live location is temporarily disabled.</p>
+                <p class="small text-muted mb-2">Scan this QR at the venue to confirm attendance. Only students can check in.</p>
+                <?php if ($needs_rsvp_first): ?>
+                    <div class="alert alert-warning small mb-3">
+                        <i class="fas fa-user-plus me-1"></i>
+                        <strong>RSVP required.</strong> Register for this event on your dashboard first, then return here to check in.
+                    </div>
+                    <a href="<?= BASE_URL ?>/backend/auth/dashboard_student.php" class="btn btn-primary w-100 mb-2" target="_top">Go to dashboard &amp; RSVP</a>
+                <?php else: ?>
+                <p class="small text-muted mb-2"><strong>Anti-fake check-in:</strong> one device = one student account per event<?= $geo_required ? ', plus you must be at the venue (GPS within ' . (int) $geo_radius_m . 'm)' : '' ?>.</p>
                 <form method="POST" id="checkinForm">
                     <?= csrf_field() ?>
                     <input type="hidden" name="geo_lat" id="geo_lat" value="">
@@ -349,111 +263,15 @@ $pageTitle = $event ? htmlspecialchars($event['title']) : 'Event Check-in';
                     <input type="hidden" name="geo_accuracy" id="geo_accuracy" value="">
                     <input type="hidden" name="geo_ts" id="geo_ts" value="">
                     <input type="hidden" name="device_hash" id="device_hash" value="">
-                    <button type="submit" name="confirm" value="1" class="btn btn-confirm w-100" id="confirmBtn">
+                    <button type="submit" name="confirm" value="1" class="btn btn-confirm w-100" id="confirmBtn" disabled>
                         <i class="fas fa-check-double me-2"></i>Confirm my attendance
                     </button>
                 </form>
+                <?php endif; ?>
             <?php endif; ?>
         </div>
     </div>
-    <script>
-      (function() {
-        var form = document.getElementById('checkinForm');
-        if (!form) return;
-        var fLat = document.getElementById('geo_lat');
-        var fLng = document.getElementById('geo_lng');
-        var fAcc = document.getElementById('geo_accuracy');
-        var fTs = document.getElementById('geo_ts');
-        var fHash = document.getElementById('device_hash');
-        var confirmBtn = document.getElementById('confirmBtn');
-        var geoRequired = <?= json_encode($geo_required) ?>;
-        var focusConfirmMobile = <?= json_encode($focus_confirm_mobile) ?>;
-
-        function setCanConfirm(canConfirm) {
-          if (!confirmBtn) return;
-          confirmBtn.disabled = !canConfirm;
-        }
-
-        async function buildDeviceHash() {
-          var fpRaw = [
-            navigator.userAgent || '',
-            navigator.platform || '',
-            navigator.language || '',
-            (screen && screen.width ? screen.width : 0) + 'x' + (screen && screen.height ? screen.height : 0),
-            Intl.DateTimeFormat().resolvedOptions().timeZone || '',
-            String(navigator.hardwareConcurrency || 0),
-            String(navigator.maxTouchPoints || 0)
-          ].join('|');
-          try {
-            var enc = new TextEncoder();
-            var data = enc.encode(fpRaw);
-            var hashBuf = await crypto.subtle.digest('SHA-256', data);
-            var hashArr = Array.from(new Uint8Array(hashBuf));
-            return hashArr.map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
-          } catch (e) {
-            return btoa(unescape(encodeURIComponent(fpRaw))).slice(0, 96);
-          }
-        }
-
-        function requestLocation() {
-          if (!geoRequired) {
-            setCanConfirm(true);
-            return;
-          }
-          if (!navigator.geolocation) {
-            setCanConfirm(false);
-            return;
-          }
-          setCanConfirm(false);
-          navigator.geolocation.getCurrentPosition(function(pos) {
-            var c = pos.coords || {};
-            fLat.value = String(c.latitude || '');
-            fLng.value = String(c.longitude || '');
-            fAcc.value = String(c.accuracy || '');
-            fTs.value = String(Date.now());
-            setCanConfirm(true);
-          }, function(err) {
-            setCanConfirm(false);
-          }, {
-            enableHighAccuracy: true,
-            timeout: 15000,
-            maximumAge: 0
-          });
-        }
-
-        function isMobileView() {
-          return window.matchMedia && window.matchMedia('(max-width: 768px)').matches;
-        }
-
-        buildDeviceHash().then(function(h) {
-          fHash.value = h || '';
-          if (!fHash.value) {
-            setCanConfirm(false);
-          }
-        });
-        setCanConfirm(true);
-        if (geoRequired) requestLocation();
-
-        if (focusConfirmMobile && isMobileView() && confirmBtn) {
-          setTimeout(function () {
-            try { confirmBtn.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
-            try { confirmBtn.focus({ preventScroll: true }); } catch (e) {}
-          }, 180);
-        }
-
-        form.addEventListener('submit', function(e) {
-          if (!fHash.value) {
-            e.preventDefault();
-            return;
-          }
-          if (geoRequired && (!fLat.value || !fLng.value)) {
-            e.preventDefault();
-            requestLocation();
-            return;
-          }
-        });
-      })();
-    </script>
+    <?php include __DIR__ . '/views/partials/checkin_security_script.php'; ?>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

@@ -3,6 +3,8 @@ session_start();
 if (!defined('BASE_URL')) define('BASE_URL','/school_events');
 
 $checkin_token = trim($_GET['t'] ?? '');
+$session_checkin_token = trim($_GET['st'] ?? '');
+$ticket_checkin_token = trim($_GET['tk'] ?? '');
 $auth_modal = trim((string)($_GET['auth_modal'] ?? ''));
 $auth_error = trim((string)($_GET['auth_error'] ?? ''));
 $auth_success = trim((string)($_GET['auth_success'] ?? ''));
@@ -32,51 +34,52 @@ try {
     include __DIR__ . '/config/db.php';
     include __DIR__ . '/config/config.php';
     include __DIR__ . '/config/csrf.php';
+    require_once __DIR__ . '/backend/lib/event_calendar.php';
     $today = date('Y-m-d');
     $stmtPub = $conn->prepare("
-        SELECT id, title, description, date, start_time, end_time, location, department, status
+        SELECT id, title, description, date, end_date, start_time, end_time, location, department, status
         FROM events
         WHERE status IN ('active','completed','closed')
         ORDER BY date DESC, start_time DESC, id DESC
         LIMIT 400
     ");
+    $pubRows = [];
     if ($stmtPub) {
         if ($stmtPub->execute()) {
             $res = $stmtPub->get_result();
             while ($row = $res->fetch_assoc()) {
-                $date = trim($row['date'] ?? '');
-                if ($date === '') continue;
-                $startTime = trim((string)($row['start_time'] ?? ''));
-                $endTime = trim((string)($row['end_time'] ?? ''));
-                $start = $startTime !== '' ? ($date . 'T' . $startTime) : $date;
-                $end = $endTime !== '' ? ($date . 'T' . $endTime) : null;
-                $publicAllList[] = [
-                    'id' => (int)($row['id'] ?? 0),
-                    'title' => (string)($row['title'] ?? 'Untitled'),
-                    'description' => (string)($row['description'] ?? ''),
-                    'date' => $date,
-                    'start_time' => $startTime,
-                    'end_time' => $endTime,
-                    'location' => (string)($row['location'] ?? ''),
-                    'department' => (string)($row['department'] ?? 'ALL'),
-                    'status' => (string)($row['status'] ?? 'active'),
-                ];
-                $publicCalendarEvents[] = [
-                    'id' => (int)($row['id'] ?? 0),
-                    'title' => $row['title'] ?? 'Untitled',
-                    'start' => $start,
-                    'end' => $end,
-                    'allDay' => ($startTime === ''),
-                    'extendedProps' => [
-                        'location' => $row['location'] ?? '',
-                        'department' => $row['department'] ?? 'ALL',
-                        'status' => $row['status'] ?? '',
-                    ],
-                ];
+                if (trim($row['date'] ?? '') === '') {
+                    continue;
+                }
+                $pubRows[] = $row;
             }
         }
         $stmtPub->close();
     }
+    eventify_events_attach_schedule_dates($conn, $pubRows);
+    foreach ($pubRows as $row) {
+        $date = trim($row['date'] ?? '');
+        $publicAllList[] = [
+            'id' => (int)($row['id'] ?? 0),
+            'title' => (string)($row['title'] ?? 'Untitled'),
+            'description' => (string)($row['description'] ?? ''),
+            'date' => $date,
+            'end_date' => trim((string)($row['end_date'] ?? '')),
+            'schedule_dates' => $row['schedule_dates'] ?? [],
+            'start_time' => trim((string)($row['start_time'] ?? '')),
+            'end_time' => trim((string)($row['end_time'] ?? '')),
+            'location' => (string)($row['location'] ?? ''),
+            'department' => (string)($row['department'] ?? 'ALL'),
+            'status' => (string)($row['status'] ?? 'active'),
+        ];
+    }
+    $publicCalendarEvents = eventify_events_to_fullcalendar_list($pubRows, static function ($row) {
+        return [
+            'location' => $row['location'] ?? '',
+            'department' => $row['department'] ?? 'ALL',
+            'status' => $row['status'] ?? '',
+        ];
+    });
     // Landing photo preview rail (prefer published-only if migration exists)
     $photoStatusEnabled = false;
     try {
@@ -161,23 +164,39 @@ try {
     $publicPastList = [];
 }
 
-if ($checkin_token !== '') {
-    $scheme = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https' : 'http';
-    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-    $checkin_redirect = $scheme . '://' . $host . BASE_URL . '/checkin.php?t=' . urlencode($checkin_token);
+if (!function_exists('eventify_qr_checkin_route')) {
+    function eventify_qr_checkin_route(string $relativePath): void
+    {
+        $scheme = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https' : 'http';
+        $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+        $targetPath = BASE_URL . $relativePath;
+        $absolute = $scheme . '://' . $host . $targetPath;
+        $uid = (int) ($_SESSION['user_id'] ?? 0);
+        $role = strtolower((string) ($_SESSION['role'] ?? ''));
 
-    // Enforce login step for QR attendance flow.
-    if (isset($_SESSION['user_id']) || isset($_SESSION['role'])) {
-        $_SESSION = [];
-        if (ini_get('session.use_cookies')) {
-            $params = session_get_cookie_params();
-            setcookie(session_name(), '', time() - 42000, $params['path'], $params['domain'], $params['secure'], $params['httponly']);
+        if ($uid > 0 && $role === 'student') {
+            header('Location: ' . $targetPath);
+            exit();
         }
-        session_destroy();
+        if ($uid > 0 && $role !== 'student') {
+            header('Location: ' . BASE_URL . '/views/login.php?redirect=' . urlencode($absolute) . '&error=' . urlencode('Please sign in as a student to check in.'));
+            exit();
+        }
+        header('Location: ' . BASE_URL . '/views/login.php?redirect=' . urlencode($absolute));
+        exit();
     }
+}
 
-    header('Location: ' . BASE_URL . '/views/login.php?redirect=' . urlencode($checkin_redirect));
-    exit();
+if ($session_checkin_token !== '') {
+    eventify_qr_checkin_route('/activity_checkin.php?st=' . urlencode($session_checkin_token));
+}
+
+if ($ticket_checkin_token !== '') {
+    eventify_qr_checkin_route('/ticket_checkin.php?tk=' . urlencode($ticket_checkin_token));
+}
+
+if ($checkin_token !== '') {
+    eventify_qr_checkin_route('/checkin.php?t=' . urlencode($checkin_token));
 }
 
 if (isset($_SESSION['user_id']) && isset($_SESSION['role'])) {

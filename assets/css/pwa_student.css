@@ -1,0 +1,124 @@
+/* EVENTIFY student PWA */
+
+#pwaInstallBanner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin: 0 0 0.75rem;
+    padding: 0.65rem 0.85rem;
+    background: linear-gradient(135deg, #064e3b 0%, #047857 100%);
+    color: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(6, 78, 59, 0.25);
+}
+
+#pwaInstallBanner[hidden] {
+    display: none !important;
+}
+
+.pwa-install-banner__text {
+    font-size: 0.8125rem;
+    line-height: 1.35;
+    flex: 1;
+    min-width: 180px;
+}
+
+.pwa-install-banner__text strong {
+    display: block;
+    font-size: 0.9rem;
+}
+
+.pwa-install-banner__actions {
+    display: flex;
+    gap: 0.4rem;
+    flex-shrink: 0;
+}
+
+.pwa-install-banner__btn {
+    border: none;
+    border-radius: 999px;
+    padding: 0.4rem 0.85rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.pwa-install-banner__btn--primary {
+    background: #facc15;
+    color: #064e3b;
+}
+
+.pwa-install-banner__btn--ghost {
+    background: rgba(255, 255, 255, 0.15);
+    color: #fff;
+}
+
+.pwa-offline-notice {
+    font-size: 0.8125rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 8px;
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    color: #92400e;
+    margin-bottom: 0.75rem;
+}
+
+.pwa-offline-notice[hidden] {
+    display: none !important;
+}
+
+.eventify-offline-page {
+    min-height: 100vh;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #064e3b;
+    font-family: system-ui, -apple-system, sans-serif;
+    padding: 1rem;
+}
+
+.eventify-offline-card {
+    max-width: 360px;
+    text-align: center;
+    background: #fff;
+    border-radius: 16px;
+    padding: 1.5rem 1.25rem;
+}
+
+.eventify-offline-card__icon {
+    border-radius: 16px;
+    margin-bottom: 0.75rem;
+}
+
+.eventify-offline-card h1 {
+    font-size: 1.15rem;
+    margin: 0 0 0.5rem;
+}
+
+.eventify-offline-card p {
+    font-size: 0.875rem;
+    color: #64748b;
+    margin: 0 0 1rem;
+}
+
+.eventify-offline-card__btn {
+    display: inline-block;
+    background: #047857;
+    color: #fff;
+    text-decoration: none;
+    padding: 0.55rem 1.1rem;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+.eventify-offline-card__link {
+    display: block;
+    margin-top: 0.65rem;
+    font-size: 0.8125rem;
+    color: #047857;
+}

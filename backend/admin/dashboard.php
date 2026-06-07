@@ -9,6 +9,8 @@ include __DIR__ . '/../../config/csrf.php';
 require_once __DIR__ . '/../lib/event_status_auto.php';
 require_once __DIR__ . '/../lib/staff_messaging.php';
 require_once __DIR__ . '/../lib/event_feedback_schema.php';
+require_once __DIR__ . '/../lib/event_calendar.php';
+require_once __DIR__ . '/../lib/event_day_sessions.php';
 
 // Only admin users can access this dashboard
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
@@ -162,9 +164,7 @@ try {
 // Fetch all events for calendar (only approved + pending for visibility)
 $events = [];
 $result = $conn->query("
-    SELECT e.id, e.title, e.description, e.date, e.start_time, e.end_time, e.location, e.department,
-           e.created_at, e.status,
-           u.name AS organizer_name
+    SELECT e.*, u.name AS organizer_name
     FROM events e
     JOIN users u ON e.organizer_id = u.id
     ORDER BY e.date ASC, e.id ASC
@@ -174,6 +174,7 @@ if ($result) {
         $events[] = $row;
     }
 }
+eventify_events_attach_schedule_dates($conn, $events);
 
 // Fetch count of pending events and pending list for modal
 $pendingCount = 0;
@@ -204,7 +205,7 @@ if ($stmtPending && $stmtPending->execute()) {
 $todayAdmin = date('Y-m-d');
 $upcomingAdminEvents = [];
 $stmtUp = $conn->prepare("
-    SELECT e.id, e.title, e.description, e.date, e.start_time, e.end_time, e.location, e.department, e.status,
+    SELECT e.id, e.title, e.description, e.date, e.end_date, e.start_time, e.end_time, e.location, e.department, e.status,
            u.name AS organizer_name
     FROM events e
     JOIN users u ON e.organizer_id = u.id
@@ -249,19 +250,32 @@ if ($resDept) {
     }
 }
 
-// Chart data: events by status (dynamic; supports legacy/custom status values)
-$chartStatusLabels = [];
-$chartStatusCounts = [];
-$resStatusChart = $conn->query("SELECT COALESCE(NULLIF(TRIM(status), ''), 'unknown') AS s, COUNT(*) AS cnt FROM events GROUP BY s ORDER BY cnt DESC, s ASC");
+// Chart data: events by status (normalized buckets so legend matches slice colors)
+$statusBuckets = ['Pending' => 0, 'Active' => 0, 'Rejected' => 0, 'Closed' => 0];
+$resStatusChart = $conn->query("SELECT COALESCE(NULLIF(TRIM(status), ''), 'unknown') AS s, COUNT(*) AS cnt FROM events GROUP BY s");
 if ($resStatusChart) {
     while ($row = $resStatusChart->fetch_assoc()) {
-        $raw = (string) ($row['s'] ?? 'unknown');
-        $label = ucfirst($raw);
-        if (strtolower($raw) === 'all') {
-            $label = 'All';
+        $raw = strtolower((string) ($row['s'] ?? 'unknown'));
+        $cnt = (int) ($row['cnt'] ?? 0);
+        if ($raw === 'pending') {
+            $statusBuckets['Pending'] += $cnt;
+        } elseif ($raw === 'active') {
+            $statusBuckets['Active'] += $cnt;
+        } elseif ($raw === 'rejected') {
+            $statusBuckets['Rejected'] += $cnt;
+        } elseif (in_array($raw, ['closed', 'completed', 'unknown'], true)) {
+            $statusBuckets['Closed'] += $cnt;
+        } else {
+            $statusBuckets['Closed'] += $cnt;
         }
+    }
+}
+$chartStatusLabels = [];
+$chartStatusCounts = [];
+foreach ($statusBuckets as $label => $cnt) {
+    if ($cnt > 0) {
         $chartStatusLabels[] = $label;
-        $chartStatusCounts[] = (int) $row['cnt'];
+        $chartStatusCounts[] = $cnt;
     }
 }
 
@@ -362,6 +376,17 @@ if ($resAudit) {
     while ($row = $resAudit->fetch_assoc()) {
         $auditLogs[] = $row;
     }
+}
+
+$activities_hub_events = [];
+try {
+    $activities_hub_events = eventify_load_activities_hub_picker_events(
+        $conn,
+        $session_user_id,
+        'admin'
+    );
+} catch (Throwable $e) {
+    $activities_hub_events = [];
 }
 
 $conn->close();

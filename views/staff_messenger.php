@@ -25,22 +25,26 @@ $peerLabel = ($role === 'admin') ? 'Organizers' : 'Admins';
     <title><?= htmlspecialchars($pageTitle) ?> — EVENTIFY</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="<?= htmlspecialchars(BASE_URL) ?>/assets/css/staff_messenger.css">
+    <link rel="stylesheet" href="<?= htmlspecialchars(BASE_URL) ?>/assets/css/staff_messenger.css?v=2">
 </head>
 <body class="msgr-body">
 <div class="msgr-detail-backdrop" id="msgrDetailBackdrop" hidden aria-hidden="true"></div>
 <div class="msgr-app" id="staffMessengerApp">
     <aside class="msgr-rail" aria-label="Shortcuts">
+        <div class="msgr-rail-brand">EVENTIFY</div>
         <a href="<?= htmlspecialchars($dashboardHref) ?>" class="msgr-rail-btn" title="Back to dashboard">
             <i class="fas fa-arrow-left"></i>
         </a>
-        <span class="msgr-rail-btn msgr-rail-btn-active" title="Chats"><i class="fas fa-comment-dots"></i></span>
+        <span class="msgr-rail-btn msgr-rail-btn-active" title="Staff messages"><i class="fas fa-comments"></i></span>
     </aside>
 
     <aside class="msgr-inbox">
         <div class="msgr-inbox-head">
-            <div class="d-flex align-items-center justify-content-between mb-2">
-                <h1 class="msgr-inbox-title mb-0">Chats</h1>
+            <div class="d-flex align-items-start justify-content-between mb-1">
+                <div>
+                    <h1 class="msgr-inbox-title mb-0">Staff messages</h1>
+                    <p class="msgr-inbox-sub mb-0">Chat with <?= htmlspecialchars(strtolower($peerLabel)) ?></p>
+                </div>
                 <a href="<?= htmlspecialchars($dashboardHref) ?>" class="msgr-icon-btn" title="Close"><i class="fas fa-times"></i></a>
             </div>
             <div class="msgr-search-wrap">
@@ -56,7 +60,7 @@ $peerLabel = ($role === 'admin') ? 'Organizers' : 'Admins';
             <?php if ($messaging_error): ?>
                 <div class="p-3 small text-danger"><?= htmlspecialchars($messaging_error) ?></div>
             <?php elseif (empty($peersList)): ?>
-                <div class="p-3 small msgr-muted">No <?= htmlspecialchars(strtolower($peerLabel)) ?> to message yet.</div>
+                <div class="msgr-list-empty">No <?= htmlspecialchars(strtolower($peerLabel)) ?> to message yet.</div>
             <?php endif; ?>
         </div>
     </aside>
@@ -83,7 +87,7 @@ $peerLabel = ($role === 'admin') ? 'Organizers' : 'Admins';
                 <input type="hidden" name="csrf_token" id="msgrCsrf" value="<?= htmlspecialchars(function_exists('csrf_token') ? csrf_token() : '') ?>">
                 <input type="hidden" name="recipient_id" id="msgrRecipientId" value="">
                 <button type="button" class="msgr-composer-icon" disabled title="Attachments (coming soon)"><i class="fas fa-plus"></i></button>
-                <textarea class="msgr-input" name="body" id="msgrBody" rows="1" placeholder="Aa" maxlength="8000" disabled></textarea>
+                <textarea class="msgr-input" name="body" id="msgrBody" rows="1" placeholder="Write a message…" maxlength="8000" disabled></textarea>
                 <button type="submit" class="msgr-send" id="msgrSendBtn" disabled title="Send"><i class="fas fa-paper-plane"></i></button>
             </form>
         </footer>
@@ -95,14 +99,15 @@ $peerLabel = ($role === 'admin') ? 'Organizers' : 'Admins';
                 <div class="msgr-avatar msgr-avatar-xl" id="msgrDetailAvatar">?</div>
                 <h2 class="msgr-detail-name" id="msgrDetailName">—</h2>
                 <p class="msgr-detail-email msgr-muted small mb-0" id="msgrDetailEmail"></p>
+                <span class="msgr-detail-role" id="msgrDetailRole"><?= htmlspecialchars($peerLabel) ?></span>
             </div>
             <div class="msgr-detail-actions">
                 <button type="button" class="msgr-pill-btn" disabled><i class="fas fa-bell-slash me-2"></i>Mute</button>
                 <button type="button" class="msgr-pill-btn" disabled><i class="fas fa-magnifying-glass me-2"></i>Search</button>
             </div>
             <div class="msgr-detail-section">
-                <div class="msgr-detail-section-title">Chat info</div>
-                <p class="small msgr-muted mb-0">School staff messages on EVENTIFY. Only admins and organizers can use this chat.</p>
+                <div class="msgr-detail-section-title"><i class="fas fa-shield-alt me-1"></i> Staff channel</div>
+                <p class="small msgr-muted mb-0">Official admin ↔ organizer messaging on EVENTIFY. Use this for event approvals, updates, and coordination.</p>
             </div>
         </div>
     </aside>
@@ -118,6 +123,6 @@ window.__staffMessengerInitialWith = <?= (int)$initialWith ?>;
 window.__staffMessengerPeerLabel = <?= json_encode($peerLabel) ?>;
 window.__staffMessengerError = <?= json_encode($messaging_error) ?>;
 </script>
-<script src="<?= htmlspecialchars(BASE_URL) ?>/assets/js/staff_messenger.js"></script>
+<script src="<?= htmlspecialchars(BASE_URL) ?>/assets/js/staff_messenger.js?v=2"></script>
 </body>
 </html>

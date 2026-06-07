@@ -1,4 +1,11 @@
 <?php
+if (!defined('EVENTIFY_APP_TIMEZONE')) {
+    define('EVENTIFY_APP_TIMEZONE', 'Asia/Manila');
+}
+if (function_exists('date_default_timezone_set')) {
+    @date_default_timezone_set(EVENTIFY_APP_TIMEZONE);
+}
+
 $host = "localhost";
 $user = "root";
 $pass = "";

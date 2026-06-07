@@ -9,6 +9,8 @@ $messengerHref = BASE_URL . '/backend/messaging/staff_messenger.php';
 $fb = $feedbackStats ?? ['total_feedback' => 0, 'avg_rating' => 0, 'five_star' => 0];
 $organizer_feedback_list = $organizer_feedback_list ?? [];
 $eventsHasGeo = !empty($eventsHasGeo);
+$eventsHasEndDate = !empty($eventsHasEndDate);
+$daySessionsHaveGeo = !empty($daySessionsHaveGeo);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -28,10 +30,14 @@ $eventsHasGeo = !empty($eventsHasGeo);
 
     <!-- Custom CSS -->
     <link rel="stylesheet" href="<?= BASE_URL; ?>/assets/css/dashboardorganizer.css">
+    <link rel="stylesheet" href="<?= BASE_URL; ?>/assets/css/calendar_legend.css">
+    <link rel="stylesheet" href="<?= BASE_URL; ?>/assets/css/event_day_sessions.css">
+    <link rel="stylesheet" href="<?= BASE_URL; ?>/assets/css/notifications.css">
+    <link rel="stylesheet" href="<?= BASE_URL; ?>/assets/css/calendar_scroll_fix.css">
 
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
 </head>
-<body>
+<body class="organizer-dashboard">
 
 <!-- Top Navigation Bar -->
 <nav class="top-navbar">
@@ -71,37 +77,33 @@ $eventsHasGeo = !empty($eventsHasGeo);
                     <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.55rem;"><?= count($org_notifications) ?></span>
                 <?php endif; ?>
             </button>
-            <ul class="dropdown-menu dropdown-menu-end shadow-sm" style="min-width: 320px; max-width: 90vw;">
-                <li class="px-3 py-2 border-bottom">
-                    <strong><i class="fas fa-bell me-2"></i>Notifications</strong>
+            <ul class="dropdown-menu dropdown-menu-end eventify-notif-dropdown">
+                <li class="eventify-notif-dropdown__header">
+                    <i class="fas fa-bell me-2"></i>Notifications
+                    <?php if (count($org_notifications) > 0): ?>
+                        <span class="badge bg-warning text-dark ms-1" style="font-size: 0.65rem;"><?= count($org_notifications) ?> new</span>
+                    <?php endif; ?>
                 </li>
-                <?php if (empty($org_notifications)): ?>
-                    <li class="px-3 py-4 text-muted small text-center">No new notifications.</li>
-                <?php else: ?>
-                    <?php foreach ($org_notifications as $n): ?>
-                        <li>
-                            <a class="dropdown-item py-2 text-decoration-none" href="<?= BASE_URL ?>/backend/auth/mark_notification_read.php?id=<?= (int)$n['id'] ?>">
-                                <div class="d-flex w-100">
-                                    <span class="me-2"><?= (($n['type'] ?? '') === 'event_approved') ? '<i class="fas fa-check-circle text-success"></i>' : '<i class="fas fa-times-circle text-danger"></i>'; ?></span>
-                                    <div class="flex-grow-1 small">
-                                        <div class="fw-semibold"><?= htmlspecialchars($n['title'] ?? '') ?></div>
-                                        <?php if (!empty($n['message'])): ?>
-                                            <div class="text-muted"><?= htmlspecialchars(mb_strimwidth($n['message'], 0, 80, '...')) ?></div>
-                                        <?php endif; ?>
-                                        <div class="text-muted" style="font-size: 0.75rem;"><?= date('M j, g:i A', strtotime($n['created_at'] ?? 'now')) ?></div>
-                                    </div>
-                                </div>
-                            </a>
-                        </li>
-                        <li><hr class="dropdown-divider my-0"></li>
-                    <?php endforeach; ?>
-                    <li>
-                        <a class="dropdown-item small text-center py-2" href="<?= BASE_URL ?>/backend/auth/mark_notification_read.php?mark_all=1"><i class="fas fa-check-double me-1"></i> Mark all as read</a>
-                    </li>
-                    <li>
-                        <button type="button" class="dropdown-item small text-center py-2 text-danger" data-bs-toggle="modal" data-bs-target="#organizerClearNotifsModal">
-                            <i class="fas fa-trash me-1"></i> Clear all
-                        </button>
+                <li class="eventify-notif-dropdown__scroll">
+                    <div class="eventify-notif-scroll eventify-notif-scroll--dropdown">
+                        <?php
+                            $notifications = $org_notifications;
+                            $empty_title = 'All caught up';
+                            $empty_text = 'No new notifications right now.';
+                            $notif_interactive = true;
+                            include __DIR__ . '/partials/notification_cards.php';
+                        ?>
+                    </div>
+                </li>
+                <?php if (!empty($org_notifications)): ?>
+                    <li class="eventify-notif-dropdown__footer">
+                        <?php
+                            $notif_show_mark_all = true;
+                            $notif_show_clear = true;
+                            $notif_clear_modal_id = 'organizerClearNotifsModal';
+                            $notif_context = 'dropdown';
+                            include __DIR__ . '/partials/notification_footer_actions.php';
+                        ?>
                     </li>
                 <?php endif; ?>
             </ul>
@@ -237,6 +239,10 @@ $eventsHasGeo = !empty($eventsHasGeo);
                 <i class="fas fa-list"></i>
                 <span>My Events</span>
             </a>
+            <?php
+                $activities_hub_btn_class = '';
+                include __DIR__ . '/partials/activities_hub_quick_action.php';
+            ?>
             <button type="button" class="action-btn" data-bs-toggle="modal" data-bs-target="#organizerFeedbackModal">
                 <i class="fas fa-star-half-stroke"></i>
                 <span>Feedback insights</span>
@@ -282,6 +288,11 @@ $eventsHasGeo = !empty($eventsHasGeo);
                 <button class="view-btn" data-view="today">Today</button>
             </div>
         </div>
+
+        <?php
+        $legendId = 'organizerCalendarLegend';
+        include __DIR__ . '/partials/calendar_event_state_legend.php';
+        ?>
 
         <!-- FullCalendar Container -->
         <div class="calendar-container mb-4">
@@ -407,15 +418,32 @@ $eventsHasGeo = !empty($eventsHasGeo);
                   $evStatus = $event['status'] ?? '';
                   $evRejectReason = trim($event['reject_reason'] ?? '');
                   $evStatusLower = strtolower((string) $evStatus);
+                  $evStatusUi = function_exists('eventify_event_status_ui') ? eventify_event_status_ui($event) : ['label' => ucfirst($evStatusLower ?: 'Unknown'), 'badge' => 'secondary', 'is_live' => ($evStatusLower === 'active')];
+                  $evIsLive = !empty($evStatusUi['is_live']);
                   ?>
+                  <p class="event-meta mb-2">
+                    <span class="badge bg-<?= htmlspecialchars($evStatusUi['badge']) ?>"><?= htmlspecialchars($evStatusUi['label']) ?></span>
+                    <?php if (!$evIsLive && in_array($evStatusLower, ['closed', 'completed', 'active'], true)): ?>
+                      <span class="small text-muted ms-1">— ticket sales and QR check-in are off</span>
+                    <?php endif; ?>
+                  </p>
                   <?php if ($evStatus === 'rejected' && $evRejectReason !== ''): ?>
                     <p class="event-meta text-danger small mb-1"><i class="fas fa-info-circle"></i> <strong>Rejection reason:</strong> <?= htmlspecialchars($evRejectReason) ?></p>
                   <?php endif; ?>
                   <div class="event-actions d-flex gap-1 flex-wrap">
                     <a class="btn btn-sm btn-outline-primary" href="<?= BASE_URL ?>/backend/auth/edit_event.php?id=<?= urlencode($event['id']) ?>">Edit</a>
-                    <a class="btn btn-sm btn-outline-secondary" href="<?= BASE_URL ?>/event_qr.php?id=<?= urlencode($event['id']) ?>" target="_blank" rel="noopener" title="Show QR for check-in"><i class="fas fa-qrcode"></i> QR</a>
+                    <?php if ($evIsLive): ?>
+                      <a class="btn btn-sm btn-outline-secondary" href="<?= BASE_URL ?>/event_qr.php?id=<?= urlencode($event['id']) ?>" target="_blank" rel="noopener" title="Show QR for check-in"><i class="fas fa-qrcode"></i> QR</a>
+                    <?php else: ?>
+                      <span class="btn btn-sm btn-outline-secondary disabled" title="Event ended — check-in QR disabled"><i class="fas fa-qrcode"></i> QR</span>
+                    <?php endif; ?>
                     <a class="btn btn-sm btn-outline-info" href="<?= BASE_URL ?>/event_attendance.php?id=<?= urlencode($event['id']) ?>" target="_blank" rel="noopener" title="View who attended"><i class="fas fa-clipboard-check"></i> Attendance</a>
-                    <a class="btn btn-sm btn-outline-success" href="<?= BASE_URL ?>/event_rsvp.php?id=<?= urlencode($event['id']) ?>" target="_blank" rel="noopener" title="RSVP list and CSV export"><i class="fas fa-user-check"></i> RSVP</a>
+                    <?php if ($evIsLive): ?>
+                      <a class="btn btn-sm btn-outline-success" href="<?= BASE_URL ?>/manage_event_tickets.php?event_id=<?= urlencode($event['id']) ?>" title="Ticket sales (pageant)"><i class="fas fa-ticket-alt"></i> Tickets</a>
+                    <?php else: ?>
+                      <a class="btn btn-sm btn-outline-secondary" href="<?= BASE_URL ?>/manage_event_tickets.php?event_id=<?= urlencode($event['id']) ?>" title="View ticket history (sales closed)"><i class="fas fa-ticket-alt"></i> Tickets (closed)</a>
+                    <?php endif; ?>
+                    <a class="btn btn-sm btn-outline-secondary" href="<?= BASE_URL ?>/event_rsvp.php?id=<?= urlencode($event['id']) ?>" target="_blank" rel="noopener" title="RSVP list and CSV export"><i class="fas fa-user-check"></i> RSVP list</a>
                     <?php if ($evStatusLower === 'pending'): ?>
                       <form method="POST" action="<?= BASE_URL ?>/backend/auth/verify_event_approval_otp.php" class="d-inline-flex gap-1 align-items-center">
                         <?= csrf_field() ?>
@@ -461,7 +489,11 @@ $eventsHasGeo = !empty($eventsHasGeo);
         <h5 class="modal-title" id="organizerProfileModalLabel">Profile</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
-      <form id="organizerProfileForm" action="<?= BASE_URL ?>/backend/auth/update_organizer_profile.php" method="POST" enctype="multipart/form-data" onsubmit="event.preventDefault(); confirmOrganizerProfileChanges(this);">
+      <form id="organizerProfileForm" action="<?= BASE_URL ?>/backend/auth/update_organizer_profile.php" method="POST" enctype="multipart/form-data" onsubmit="event.preventDefault(); confirmOrganizerProfileChanges(this);"
+        data-initial-name="<?= htmlspecialchars($user['name'] ?? $user_name, ENT_QUOTES, 'UTF-8') ?>"
+        data-initial-contact-method="<?= htmlspecialchars($user['organizer_contact_method'] ?? 'email', ENT_QUOTES, 'UTF-8') ?>"
+        data-initial-contact-email="<?= htmlspecialchars($user['organizer_contact_email'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
+        data-initial-phone="<?= htmlspecialchars($user['organizer_phone'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
         <?= csrf_field() ?>
         <div class="modal-body">
           <div class="organizer-profile-picture-container mb-3">
@@ -526,7 +558,7 @@ $eventsHasGeo = !empty($eventsHasGeo);
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
-        <p id="confirmOrganizerProfileMessage" class="mb-0"></p>
+        <div id="confirmOrganizerProfileMessage" class="mb-0"></div>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -652,26 +684,14 @@ $eventsHasGeo = !empty($eventsHasGeo);
   </div>
 </div>
 
-<!-- Clear all notifications (in-app) -->
-<div class="modal fade" id="organizerClearNotifsModal" tabindex="-1" aria-labelledby="organizerClearNotifsModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header border-0 pb-0">
-        <h5 class="modal-title" id="organizerClearNotifsModalLabel"><i class="fas fa-trash-alt me-2 text-danger"></i>Clear all notifications?</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body pt-2">
-        <p class="mb-0 small">This removes every in-app notification for your account. It cannot be undone.</p>
-      </div>
-      <div class="modal-footer border-0 pt-0">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <a class="btn btn-danger" href="<?= htmlspecialchars(BASE_URL . '/backend/auth/mark_notification_read.php?clear_all=1') ?>">Yes, clear all</a>
-      </div>
-    </div>
-  </div>
-</div>
+<?php
+    $notif_clear_modal_id = 'organizerClearNotifsModal';
+    include __DIR__ . '/partials/notification_clear_confirm_modal.php';
+?>
 
 <!-- Logout Modal -->
+<?php include __DIR__ . '/partials/activities_hub_pick_modal.php'; ?>
+
 <div class="modal fade" id="logoutModal" tabindex="-1" aria-labelledby="logoutModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
@@ -709,19 +729,26 @@ $eventsHasGeo = !empty($eventsHasGeo);
             <label for="ceDescription" class="form-label">Description</label>
             <textarea name="description" id="ceDescription" class="form-control" rows="3" maxlength="1000"></textarea>
           </div>
-          <div class="row g-3">
-            <div class="col-md-4">
-              <label for="ceDate" class="form-label">Event Date <span class="text-danger">*</span></label>
-              <input type="date" name="date" id="ceDate" class="form-control" min="<?= date('Y-m-d') ?>" required>
-            </div>
-            <div class="col-md-4">
-              <label for="ceStartTime" class="form-label">Start Time <span class="text-danger">*</span></label>
+          <?php
+          $scheduleModeValue = 'single';
+          $postedScheduleDates = [];
+          $postedStartDate = '';
+          $postedEndDate = '';
+          $postedEndTimeOption = 'none';
+          $postedEndTime = '';
+          $postedDayEndTimes = [];
+          $postedDayStartTimes = [];
+          if (!empty($_GET['date']) && preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $_GET['date'])) {
+              $postedStartDate = (string) $_GET['date'];
+          }
+          $idPrefix = 'ce';
+          include __DIR__ . '/partials/event_schedule_fields.php';
+          ?>
+          <div class="row g-3 mt-1" id="ceStartTimeRow">
+            <div class="col-md-6">
+              <label for="ceStartTime" class="form-label">Event start time <span class="text-danger">*</span></label>
+              <p class="text-muted small mb-1">For multi-day events, set start time on each day in the schedule section above.</p>
               <input type="time" name="start_time" id="ceStartTime" class="form-control" required>
-            </div>
-            <div class="col-md-4">
-              <label for="ceEndTime" class="form-label">End Time</label>
-              <input type="time" name="end_time" id="ceEndTime" class="form-control">
-              <small class="text-muted">Optional — leave blank if the event has no fixed end. Active events then auto-complete after that calendar day (end of day). On the event date you can also <strong>Mark as ended</strong> anytime from My Events or the calendar details.</small>
             </div>
           </div>
           <div class="mb-3 mt-3">
@@ -778,31 +805,24 @@ $eventsHasGeo = !empty($eventsHasGeo);
 <script>
 window.BASE_URL = <?= json_encode(BASE_URL) ?>;
 window.csrfToken = <?= json_encode(function_exists('csrf_token') ? csrf_token() : '') ?>;
-window.eventsData = <?= json_encode(array_map(function($e) use ($user_name) {
+window.eventsData = <?= json_encode(eventify_events_to_fullcalendar_list($events, function ($e) use ($user_name) {
     return [
-        'id'    => $e['id'],
-        'title' => $e['title'],
-        // Combine date + time so FullCalendar can show proper times
-        'start' => trim(($e['date'] ?? '') . ' ' . ($e['start_time'] ?? '')),
-        'end'   => isset($e['end_time']) && $e['end_time'] !== null
-            ? trim(($e['date'] ?? '') . ' ' . $e['end_time'])
-            : null,
-        'extendedProps' => [
-            'description'   => $e['description'],
-            'location'      => $e['location'],
-            'created_at'    => $e['created_at'],
-            'status'        => $e['status'],
-            'reject_reason' => $e['reject_reason'] ?? null,
-            'start_time'    => $e['start_time'] ?? null,
+        'description'   => $e['description'],
+        'location'      => $e['location'],
+        'created_at'    => $e['created_at'],
+        'status'        => $e['status'],
+        'reject_reason' => $e['reject_reason'] ?? null,
+        'start_time'    => $e['start_time'] ?? null,
             'end_time'      => $e['end_time'] ?? null,
-            'editUrl'       => 'edit_event.php?id=' . $e['id'],
-            'organizer'     => $user_name,
-            'department'    => $e['department'] ?? 'ALL',
-            'department_display' => eventify_format_department_label((string)($e['department'] ?? 'ALL')),
-            'event_date_ymd' => !empty($e['date']) ? substr(trim((string) $e['date']), 0, 10) : '',
-        ],
+            'end_time_na'   => !empty($e['end_time_na']),
+        'editUrl'       => 'edit_event.php?id=' . $e['id'],
+        'organizer'     => $user_name,
+        'department'    => $e['department'] ?? 'ALL',
+        'department_display' => eventify_format_department_label((string)($e['department'] ?? 'ALL')),
+        'event_is_live'   => function_exists('eventify_event_is_live') ? eventify_event_is_live($e) : (($e['status'] ?? '') === 'active'),
+        'registration_mode' => function_exists('eventify_event_registration_mode') ? eventify_event_registration_mode($e) : (string) ($e['registration_mode'] ?? 'rsvp'),
     ];
-}, $events), JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP); ?>;
+}), JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP); ?>;
 
 window.currentUser = {
     name: <?= json_encode($user_name) ?>,
@@ -814,7 +834,7 @@ window.__organizerSettings = <?= json_encode($organizer_settings, JSON_HEX_TAG|J
 
 <!-- Event Details Modal -->
 <div class="modal fade" id="eventDetailsModal" tabindex="-1" aria-labelledby="eventDetailsLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title" id="eventDetailsLabel">Event Details</h5>
@@ -825,11 +845,30 @@ window.__organizerSettings = <?= json_encode($organizer_settings, JSON_HEX_TAG|J
         <p class="mb-1"><strong>Date:</strong> <span id="eventDate"></span></p>
         <p class="mb-1"><strong>Location:</strong> <span id="eventLocation"></span></p>
         <p class="mb-1"><strong>Status:</strong> <span id="eventStatus" class="badge bg-success"></span></p>
+        <p class="mb-1"><strong>Registration:</strong> <span id="eventRegistrationMode">Free RSVP</span> <span class="text-muted small" id="eventRegistrationHint">— use <strong>Ticket sales</strong> below to switch to paid tickets</span></p>
         <p class="mb-1" id="eventRejectReasonWrap" style="display:none;"><strong>Rejection reason:</strong> <span id="eventRejectReason" class="text-danger"></span></p>
         <p class="mb-1"><strong>Target Department:</strong> <span id="eventDepartment"></span></p>
         <p class="mb-1"><strong>Created by:</strong> <span id="eventOrganizer"></span></p>
         <p class="mt-3 mb-1"><strong>Description:</strong></p>
         <p id="eventDescription" class="mb-2 text-muted"></p>
+
+        <div id="eventDaySessionsPanel" class="event-day-sessions-panel mt-3" style="display:none;">
+          <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+            <div>
+              <strong class="small text-uppercase text-muted">Activities on this day</strong>
+              <div class="small fw-semibold" id="eventDaySessionsDayLabel"></div>
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-primary" id="eventDaySessionsManageBtn" style="display:none;">
+              <i class="fas fa-plus me-1"></i>Manage activities
+            </button>
+          </div>
+          <div id="eventDaySessionsPreview"></div>
+          <p class="text-muted small mb-0 mt-2">
+            Add activities, venues, or sessions for this day.
+            <a href="#" id="eventDaySessionsHubLink" class="ms-1" target="_blank" rel="noopener" style="display:none;">Open activities hub</a>
+          </p>
+        </div>
+
         <div id="eventOtpVerifyWrap" class="mt-3" style="display:none;">
           <div class="small text-muted mb-2">This event is pending. Enter the OTP sent by admin to verify and activate it.</div>
           <form method="POST" action="<?= BASE_URL ?>/backend/auth/verify_event_approval_otp.php" class="d-flex gap-2 align-items-center flex-wrap" id="eventOtpVerifyForm">
@@ -854,7 +893,9 @@ window.__organizerSettings = <?= json_encode($organizer_settings, JSON_HEX_TAG|J
         <p class="mb-0"><small><strong>Created at:</strong> <span id="eventCreatedAt"></span></small></p>
       </div>
       <div class="modal-footer">
+        <a href="#" id="eventActivitiesHubLink" class="btn btn-outline-success" target="_blank" rel="noopener" style="display:none;"><i class="fas fa-th-large me-1"></i> Activities hub</a>
         <a href="#" id="eventEditLink" class="btn btn-primary">Edit Event</a>
+        <a href="#" id="eventTicketsLink" class="btn btn-outline-success" target="_blank" rel="noopener" style="display:none;" title="Enable paid tickets, add ticket types, confirm payments"><i class="fas fa-ticket-alt me-1"></i> Ticket sales</a>
         <a href="#" id="eventQrLink" class="btn btn-outline-secondary" target="_blank" rel="noopener" style="display:none;"><i class="fas fa-qrcode me-1"></i> Show QR</a>
         <a href="#" id="eventAttendanceLink" class="btn btn-outline-info" target="_blank" rel="noopener" style="display:none;"><i class="fas fa-clipboard-check me-1"></i> Attendance</a>
         <button type="button" class="btn btn-outline-secondary" id="organizerMarkEndedBtn" style="display:none;" data-eventify-event-id=""><i class="fas fa-flag-checkered me-1"></i>Mark as ended</button>
@@ -864,20 +905,154 @@ window.__organizerSettings = <?= json_encode($organizer_settings, JSON_HEX_TAG|J
   </div>
 </div>
 
+<!-- Manage day activities -->
+<div class="modal fade" id="eventDaySessionsModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-layer-group me-2"></i>Activities on <span id="eventDaySessionsDateLabel"></span></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div id="eventDaySessionsList" class="mb-3"></div>
+        <hr>
+        <h6 class="mb-3" id="eventDaySessionFormTitle">Add activity</h6>
+        <form id="eventDaySessionForm">
+          <input type="hidden" id="edsSessionId" value="">
+          <div class="row g-2">
+            <div class="col-md-6">
+              <label class="form-label" for="edsTitle">Activity name <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" id="edsTitle" maxlength="150" required placeholder="e.g. Badminton">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="edsCategory">Category</label>
+              <select class="form-select" id="edsCategory">
+                <option value="">— Select —</option>
+                <?php foreach (eventify_day_session_category_options() as $catOpt): ?>
+                  <option value="<?= htmlspecialchars($catOpt) ?>"><?= htmlspecialchars($catOpt) ?></option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label" for="edsStatus">Status</label>
+              <select class="form-select" id="edsStatus">
+                <option value="scheduled">Scheduled</option>
+                <option value="delayed">Delayed</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label" for="edsMaxCapacity">Max capacity <span class="text-muted fw-normal">(optional)</span></label>
+              <input type="number" class="form-control" id="edsMaxCapacity" placeholder="No limit">
+              <small class="text-muted">Leave blank if there is no RSVP cap for this activity.</small>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label" for="edsSortOrder">Sort order</label>
+              <input type="number" class="form-control" id="edsSortOrder" min="0" value="0">
+            </div>
+            <div class="col-12">
+              <?php if ($daySessionsHaveGeo): ?>
+              <label class="form-label">Map location <span class="text-danger">*</span></label>
+              <p class="text-muted small mb-2">Search, tap the map, or use your device location — same as when creating an event.</p>
+              <input type="hidden" id="edsLatitude" value="">
+              <input type="hidden" id="edsLongitude" value="">
+              <div class="d-flex flex-wrap gap-2 align-items-center mb-2">
+                <input type="search" id="edsLocSearch" class="form-control" style="min-width:160px;flex:1" placeholder="Search place or address" autocomplete="off">
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="edsLocSearchBtn">Search</button>
+                <button type="button" class="btn btn-outline-primary btn-sm" id="edsLocUseGps" title="Use GPS"><i class="fas fa-location-crosshairs"></i></button>
+              </div>
+              <div id="edsLocResults" class="list-group mb-2 organizer-loc-results" style="display:none;"></div>
+              <div id="edsLocationMap" class="event-location-map mb-2"></div>
+              <?php else: ?>
+              <input type="hidden" id="edsLatitude" value="">
+              <input type="hidden" id="edsLongitude" value="">
+              <?php endif; ?>
+              <label class="form-label" for="edsLocation">Venue name / address <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" id="edsLocation" maxlength="255" required placeholder="Shown to attendees">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label" for="edsStartTime">Start time</label>
+              <input type="time" class="form-control" id="edsStartTime">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label" for="edsEndTime">End time</label>
+              <input type="time" class="form-control" id="edsEndTime">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="edsContactName">Contact person <span class="text-muted fw-normal">(optional)</span></label>
+              <input type="text" class="form-control" id="edsContactName" maxlength="100" placeholder="Name of on-site contact">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="edsContactPhone">Contact number <span class="text-muted fw-normal">(optional)</span></label>
+              <input type="text" class="form-control" id="edsContactPhone" maxlength="50" placeholder="Phone or email">
+            </div>
+            <div class="col-12">
+              <label class="form-label" for="edsNotes">Notes / instructions</label>
+              <textarea class="form-control" id="edsNotes" rows="2" maxlength="2000" placeholder="Venue details, what to bring, etc."></textarea>
+            </div>
+          </div>
+          <div class="mt-3 d-flex flex-wrap gap-2">
+            <button type="submit" class="btn btn-primary"><i class="fas fa-save me-1"></i>Save activity</button>
+            <button type="button" class="btn btn-outline-secondary" id="edsCancelEditBtn" style="display:none;">Cancel edit</button>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <a href="#" class="btn btn-outline-success btn-sm" id="edsActivitiesHubBtn" target="_blank" rel="noopener" style="display:none;"><i class="fas fa-th-large me-1"></i>Activities hub</a>
+        <a href="#" class="btn btn-outline-secondary btn-sm" id="edsPrintScheduleBtn" target="_blank" rel="noopener" style="display:none;"><i class="fas fa-print me-1"></i>Print schedule</a>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Done</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<?php if (!empty($promptActivitiesEventId)): ?>
+<div class="modal fade" id="promptActivitiesModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-layer-group me-2"></i>Add day activities?</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-0">Your multi-day event was created. Click a day on the calendar, open <strong>Event Details</strong>, then use <strong>Manage activities</strong> to add activities, venues, and times for each day.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Got it</button>
+      </div>
+    </div>
+  </div>
+</div>
+<?php endif; ?>
+
 <!-- FullCalendar JS -->
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
 
 <!-- Bootstrap JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="<?= BASE_URL ?>/assets/js/logout_confirm.js"></script>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="<?= BASE_URL ?>/assets/js/event_location_picker.js"></script>
+<script src="<?= BASE_URL ?>/assets/js/event_schedule_picker.js"></script>
 
 <!-- Dashboard Scripts -->
+<script src="<?= BASE_URL ?>/assets/js/eventify_calendar_colors.js"></script>
+<script src="<?= BASE_URL ?>/assets/js/event_day_sessions.js"></script>
+<script src="<?= BASE_URL ?>/assets/js/eventify_notifications.js?v=1"></script>
 <script src="<?= BASE_URL ?>/assets/js/dashboardorganizer.js"></script>
 
 <script>
 window.EVENTIFY_GEOCODE_URL = <?= json_encode(BASE_URL . '/backend/auth/geocode_proxy.php') ?>;
+window.EVENTIFY_SESSIONS_HAVE_GEO = <?= $daySessionsHaveGeo ? 'true' : 'false' ?>;
+<?php if (!empty($promptActivitiesEventId)): ?>
+document.addEventListener('DOMContentLoaded', function () {
+    var el = document.getElementById('promptActivitiesModal');
+    if (el && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+        bootstrap.Modal.getOrCreateInstance(el).show();
+    }
+});
+<?php endif; ?>
 </script>
 
 <script>
@@ -926,6 +1101,15 @@ document.addEventListener('DOMContentLoaded', function () {
   var ceForm = document.getElementById('createEventModalForm');
   if (ceForm) {
     ceForm.addEventListener('submit', function (e) {
+      var startTime = (document.getElementById('ceStartTime') || {}).value;
+      if (typeof eventifySyncScheduleBeforeSubmit === 'function') {
+        eventifySyncScheduleBeforeSubmit('ce');
+      }
+      startTime = (document.getElementById('ceStartTime') || {}).value;
+      if (typeof eventifyValidateScheduleOnSubmit === 'function' && !eventifyValidateScheduleOnSubmit('ce')) {
+        e.preventDefault();
+        return false;
+      }
       if (ceForm.getAttribute('data-require-geo') !== '1') return;
       var lat = (document.getElementById('ceEventLatitude') || {}).value;
       var lng = (document.getElementById('ceEventLongitude') || {}).value;

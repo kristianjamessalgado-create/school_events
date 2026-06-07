@@ -8,6 +8,10 @@ include __DIR__ . '/../../config/csrf.php';
 include __DIR__ . '/../../config/departments.php';
 require_once __DIR__ . '/../../config/student_profile_fields.php';
 require_once __DIR__ . '/../lib/event_status_auto.php';
+require_once __DIR__ . '/../lib/event_calendar.php';
+require_once __DIR__ . '/../lib/event_ticketing.php';
+
+eventify_ticketing_ensure_schema($conn);
 
 // Only allow logged-in students
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'student') {
@@ -139,6 +143,7 @@ if ($department) {
         $stmt2->close();
     }
 }
+eventify_events_attach_schedule_dates($conn, $events);
 
 // Fetch this student's attendance records (events they checked into via QR)
 $attendance_records = [];
@@ -296,6 +301,8 @@ foreach ($attendance_records as $rec) {
 }
 }
 
+require_once __DIR__ . '/../lib/event_day_sessions.php';
+
 // In-app notifications
 $student_notifications = [];
 $unread_notif_count = 0;
@@ -319,6 +326,67 @@ try {
 } catch (Throwable $e) {
     $student_notifications = [];
     $unread_notif_count = 0;
+}
+
+$today_activities = [];
+try {
+    eventify_event_day_sessions_ensure_enhanced($conn);
+    $today_activities = eventify_load_student_today_activities(
+        $conn,
+        (int) $session_user_id,
+        $department,
+        date('Y-m-d')
+    );
+} catch (Throwable $e) {
+    $today_activities = [];
+}
+
+$upcoming_events = array_values(array_filter($events, static function ($row) {
+    return eventify_event_is_upcoming($row);
+}));
+
+$my_registered_events = array_values(array_filter($events, static function ($row) use ($registered_event_ids) {
+    $eid = (int) ($row['id'] ?? 0);
+    return $eid > 0 && in_array($eid, $registered_event_ids, true) && eventify_event_is_upcoming($row);
+}));
+
+$activity_attendance_records = [];
+try {
+    eventify_event_day_sessions_ensure_enhanced($conn);
+    $stmtActAtt = $conn->prepare(
+        'SELECT a.checked_in_at, s.id AS session_id, s.title AS activity_title, s.schedule_date, s.start_time, s.end_time,
+                e.id AS event_id, e.title AS event_title
+         FROM event_day_session_attendance a
+         INNER JOIN event_day_sessions s ON s.id = a.session_id
+         INNER JOIN events e ON e.id = s.event_id
+         WHERE a.user_id = ?
+         ORDER BY a.checked_in_at DESC
+         LIMIT 30'
+    );
+    if ($stmtActAtt) {
+        $stmtActAtt->bind_param('i', $session_user_id);
+        if ($stmtActAtt->execute()) {
+            $resAct = $stmtActAtt->get_result();
+            if ($resAct) {
+                $activity_attendance_records = $resAct->fetch_all(MYSQLI_ASSOC);
+            }
+        }
+        $stmtActAtt->close();
+    }
+} catch (Throwable $e) {
+    $activity_attendance_records = [];
+}
+
+$activities_hub_events = [];
+try {
+    $activities_hub_events = eventify_load_activities_hub_picker_events(
+        $conn,
+        (int) $session_user_id,
+        'student',
+        $department
+    );
+} catch (Throwable $e) {
+    $activities_hub_events = [];
 }
 
 // Include the view

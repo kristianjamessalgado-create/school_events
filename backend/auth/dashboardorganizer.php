@@ -8,6 +8,9 @@ require_once __DIR__ . '/../../config/departments.php';
 require_once __DIR__ . '/../lib/event_status_auto.php';
 require_once __DIR__ . '/../lib/staff_messaging.php';
 require_once __DIR__ . '/../lib/event_feedback_schema.php';
+require_once __DIR__ . '/../lib/event_calendar.php';
+require_once __DIR__ . '/../lib/event_day_sessions.php';
+require_once __DIR__ . '/../lib/event_ticketing.php';
 
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'organizer') {
@@ -88,6 +91,7 @@ if ($result) {
     $events = $result->fetch_all(MYSQLI_ASSOC);
 }
 $stmt2->close();
+eventify_events_attach_schedule_dates($conn, $events);
 
 // Quick stats for organizer dashboard
 $today = date('Y-m-d');
@@ -212,6 +216,8 @@ try {
     $eventsHasGeo = false;
 }
 
+$eventsHasEndDate = eventify_events_has_end_date($conn);
+
 // Admin ↔ Organizer messaging
 $messaging_admins = [];
 $staff_messaging_unread = 0;
@@ -291,6 +297,23 @@ try {
     }
 } catch (Throwable $e) {
     // keep defaults
+}
+
+require_once __DIR__ . '/../lib/event_day_sessions.php';
+
+$daySessionsHaveGeo = eventify_day_sessions_have_geo_columns($conn);
+$daySessionsEnhanced = eventify_day_sessions_have_enhanced_columns($conn);
+$promptActivitiesEventId = (int) ($_GET['prompt_activities'] ?? 0);
+
+$activities_hub_events = [];
+try {
+    $activities_hub_events = eventify_load_activities_hub_picker_events(
+        $conn,
+        (int) $session_user_id,
+        'organizer'
+    );
+} catch (Throwable $e) {
+    $activities_hub_events = [];
 }
 
 $conn->close();

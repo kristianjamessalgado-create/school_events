@@ -107,6 +107,12 @@ $error = $error ?? '';
                     <span><i class="fas fa-calendar-alt me-2"></i>Calendar</span>
                     <i class="fas fa-chevron-right"></i>
                 </button>
+                <?php
+                    $activities_hub_btn_class = 'sa-nav-btn mb-1';
+                    $activities_hub_show_chevron = true;
+                    $activities_hub_sa_style = true;
+                    include __DIR__ . '/../views/partials/activities_hub_quick_action.php';
+                ?>
             </div>
 
             <div class="sa-nav-footer">
@@ -713,6 +719,8 @@ $error = $error ?? '';
 </div>
 
 <!-- Logout Confirmation Modal -->
+<?php include __DIR__ . '/../views/partials/activities_hub_pick_modal.php'; ?>
+
 <div class="modal fade" id="logoutModal" tabindex="-1" aria-labelledby="logoutModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -775,34 +783,14 @@ $error = $error ?? '';
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="<?= BASE_URL ?>/assets/js/logout_confirm.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
 window.BASE_URL = <?= json_encode(BASE_URL ?? '/school_events') ?>;
 window.saUserRoles = <?= json_encode(['labels' => $saUserRoleLabels, 'counts' => $saUserRoleCounts]) ?>;
 window.saEventStatus = <?= json_encode(['labels' => $saEventStatusLabels, 'counts' => $saEventStatusCounts]) ?>;
-window.saAllEventsJson = <?= json_encode(array_values(array_filter(array_map(function($e) {
-    $date = trim($e['date'] ?? '');
-    if ($date === '') return null;
-    $start = trim($date . ' ' . ($e['start_time'] ?? ''));
-    $end   = isset($e['end_time']) && $e['end_time'] !== null
-        ? trim($date . ' ' . $e['end_time'])
-        : null;
-    return [
-        'id' => (int)$e['id'],
-        'title' => $e['title'] ?? 'Untitled',
-        'start' => $start,
-        'end'   => $end,
-        'extendedProps' => [
-            'location' => $e['location'] ?? '',
-            'department' => $e['department'] ?? 'ALL',
-            'status' => $e['status'] ?? '',
-            'organizer_name' => $e['organizer_name'] ?? '',
-            'start_time' => $e['start_time'] ?? null,
-            'end_time'   => $e['end_time'] ?? null,
-        ],
-    ];
-}, $allEvents))), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
+window.saAllEventsJson = <?= json_encode($saCalendarEvents ?? [], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
 </script>
 <script src="<?= BASE_URL ?>/assets/js/dashboardsuperadmin.js"></script>
 <script>

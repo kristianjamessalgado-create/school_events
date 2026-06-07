@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/event_calendar.php';
+
 /**
  * Status used when an event is finished (auto or organizer "mark as ended").
  * Matches ENUM if `completed` exists, otherwise `closed`.
@@ -36,13 +38,37 @@ function eventify_auto_complete_past_events(mysqli $conn): void
     try {
         $targetStatus = eventify_events_completed_or_closed_target($conn);
 
-        // End time fallback: if end_time is missing, treat it as 23:59:59 on event date.
-        $sql = "
-            UPDATE events
-            SET status = ?
-            WHERE status = 'active'
-              AND TIMESTAMP(`date`, COALESCE(NULLIF(end_time, ''), '23:59:59')) < NOW()
-        ";
+        $hasScheduleTable = eventify_event_schedule_dates_table_exists($conn);
+        $endDateExpr = eventify_events_has_end_date($conn)
+            ? 'COALESCE(NULLIF(end_date, \'\'), `date`)'
+            : '`date`';
+        if ($hasScheduleTable) {
+            $sql = "
+                UPDATE events e
+                SET status = ?
+                WHERE e.status = 'active'
+                  AND (
+                    (
+                      EXISTS (SELECT 1 FROM event_schedule_dates sd WHERE sd.event_id = e.id)
+                      AND TIMESTAMP(
+                        (SELECT MAX(sd.schedule_date) FROM event_schedule_dates sd WHERE sd.event_id = e.id),
+                        COALESCE(NULLIF(e.end_time, ''), '23:59:59')
+                      ) < NOW()
+                    )
+                    OR (
+                      NOT EXISTS (SELECT 1 FROM event_schedule_dates sd WHERE sd.event_id = e.id)
+                      AND TIMESTAMP({$endDateExpr}, COALESCE(NULLIF(e.end_time, ''), '23:59:59')) < NOW()
+                    )
+                  )
+            ";
+        } else {
+            $sql = "
+                UPDATE events
+                SET status = ?
+                WHERE status = 'active'
+                  AND TIMESTAMP({$endDateExpr}, COALESCE(NULLIF(end_time, ''), '23:59:59')) < NOW()
+            ";
+        }
         $stmt = $conn->prepare($sql);
         if ($stmt) {
             $stmt->bind_param("s", $targetStatus);

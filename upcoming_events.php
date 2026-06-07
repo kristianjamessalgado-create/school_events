@@ -5,7 +5,10 @@ session_start();
 include __DIR__ . '/config/db.php';
 include __DIR__ . '/config/config.php';
 include __DIR__ . '/config/departments.php';
+require_once __DIR__ . '/backend/lib/event_status_auto.php';
+require_once __DIR__ . '/backend/lib/event_calendar.php';
 
+eventify_auto_complete_past_events($conn);
 eventify_events_department_ensure_varchar($conn);
 
 // Allow logged-in users (student / multimedia / organizer) to view upcoming events
@@ -59,17 +62,14 @@ switch ($role) {
         break;
 }
 
-// Get today's date (for filtering upcoming events only)
-$today = date('Y-m-d');
 
-// Fetch upcoming events filtered by user's department (if set); supports multi-audience JSON
+// Fetch active events for the user's department; filter to truly upcoming after schedule is loaded
 $deptSql = eventify_department_match_sql('department');
 if ($department) {
-    $stmt2 = $conn->prepare("SELECT * FROM events WHERE status IN ('active','completed','closed') AND date >= ? AND {$deptSql} ORDER BY date ASC");
-    $stmt2->bind_param("sss", $today, $department, $department);
+    $stmt2 = $conn->prepare("SELECT * FROM events WHERE status = 'active' AND {$deptSql} ORDER BY date ASC");
+    $stmt2->bind_param('ss', $department, $department);
 } else {
-    $stmt2 = $conn->prepare("SELECT * FROM events WHERE status IN ('active','completed','closed') AND date >= ? ORDER BY date ASC");
-    $stmt2->bind_param("s", $today);
+    $stmt2 = $conn->prepare("SELECT * FROM events WHERE status = 'active' ORDER BY date ASC");
 }
 
 if ($stmt2 && $stmt2->execute()) {
@@ -79,6 +79,11 @@ if ($stmt2 && $stmt2->execute()) {
     }
     $stmt2->close();
 }
+
+eventify_events_attach_schedule_dates($conn, $events);
+$events = array_values(array_filter($events, static function ($row) {
+    return eventify_event_is_upcoming($row);
+}));
 
 $conn->close();
 ?>

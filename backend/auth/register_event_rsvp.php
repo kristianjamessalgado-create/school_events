@@ -7,6 +7,11 @@ include __DIR__ . '/../../config/db.php';
 include __DIR__ . '/../../config/config.php';
 include __DIR__ . '/../../config/csrf.php';
 include __DIR__ . '/../../config/departments.php';
+require_once __DIR__ . '/student_rsvp_ajax.php';
+require_once __DIR__ . '/../lib/event_calendar.php';
+require_once __DIR__ . '/../lib/event_ticketing.php';
+
+$wantsAjax = student_rsvp_wants_ajax();
 
 if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'student') {
     header("Location: " . BASE_URL . "/views/login.php?error=" . urlencode("Access denied"));
@@ -14,6 +19,9 @@ if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'student') {
 }
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !csrf_validate()) {
+    if ($wantsAjax) {
+        student_rsvp_json_response($conn, ['ok' => false, 'message' => 'Invalid request.']);
+    }
     header("Location: " . BASE_URL . "/backend/auth/dashboard_student.php?msg=" . urlencode("Invalid request."));
     exit();
 }
@@ -21,6 +29,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !csrf_validate()) {
 $user_id  = (int) $_SESSION['user_id'];
 $event_id = isset($_POST['event_id']) ? (int) $_POST['event_id'] : 0;
 $msg      = 'Invalid event.';
+$ok       = false;
 
 $eventsHasMaxCapacity = false;
 try {
@@ -34,11 +43,14 @@ try {
 
 if ($event_id > 0) {
     if ($eventsHasMaxCapacity) {
-        $stmt = $conn->prepare("SELECT e.id, e.title, e.organizer_id, e.status, e.max_capacity, e.department, u.department AS student_department FROM events e JOIN users u ON u.id = ? WHERE e.id = ?");
+        $stmt = $conn->prepare("SELECT e.id, e.title, e.organizer_id, e.status, e.max_capacity, e.department, e.date, e.end_date, e.start_time, e.end_time, e.end_time_na, u.department AS student_department FROM events e JOIN users u ON u.id = ? WHERE e.id = ?");
     } else {
-        $stmt = $conn->prepare("SELECT e.id, e.title, e.organizer_id, e.status, e.department, u.department AS student_department FROM events e JOIN users u ON u.id = ? WHERE e.id = ?");
+        $stmt = $conn->prepare("SELECT e.id, e.title, e.organizer_id, e.status, e.department, e.date, e.end_date, e.start_time, e.end_time, e.end_time_na, u.department AS student_department FROM events e JOIN users u ON u.id = ? WHERE e.id = ?");
     }
     if (!$stmt) {
+        if ($wantsAjax) {
+            student_rsvp_json_response($conn, ['ok' => false, 'message' => 'Server error.', 'event_id' => $event_id]);
+        }
         $conn->close();
         header("Location: " . BASE_URL . "/backend/auth/dashboard_student.php?msg=" . urlencode("Server error."));
         exit();
@@ -51,8 +63,20 @@ if ($event_id > 0) {
         $ev['max_capacity'] = null;
     }
 
+    if ($ev) {
+        $evRows = [$ev];
+        eventify_events_attach_schedule_dates($conn, $evRows);
+        $ev = $evRows[0];
+    }
+
     if (!$ev || ($ev['status'] ?? '') !== 'active') {
         $msg = 'Event not found or not open for registration.';
+    } elseif (eventify_event_uses_paid_ticketing($ev)) {
+        $msg = 'This event requires a paid ticket. Use Buy tickets on the event page.';
+    } elseif (eventify_event_registration_mode($ev) === 'open') {
+        $msg = 'This event does not use RSVP. Just attend or check in with QR when available.';
+    } elseif (!eventify_event_is_upcoming($ev)) {
+        $msg = 'This event has ended. RSVP is no longer available.';
     } elseif (!eventify_student_sees_event_department((string)($ev['department'] ?? 'ALL'), $ev['student_department'] ?? null)) {
         $msg = 'This event is not available for your department.';
     } else {
@@ -77,6 +101,14 @@ if ($event_id > 0) {
                 $cStmt->close();
                 if ((int) $cnt >= $maxCap) {
                     $msg = 'This event is full. No more seats available.';
+                    if ($wantsAjax) {
+                        $meta = student_event_registration_meta($conn, $event_id, $user_id);
+                        student_rsvp_json_response($conn, array_merge([
+                            'ok' => false,
+                            'message' => $msg,
+                            'event_id' => $event_id,
+                        ], $meta));
+                    }
                     header("Location: " . BASE_URL . "/backend/auth/dashboard_student.php?msg=" . urlencode($msg));
                     exit();
                 }
@@ -85,6 +117,7 @@ if ($event_id > 0) {
             $ins->bind_param("ii", $user_id, $event_id);
             if ($ins->execute()) {
                 $msg = 'Successfully registered!';
+                $ok = true;
                 // Student notification copy (for in-app history)
                 try {
                     $evTitle = (string)($ev['title'] ?? '');
@@ -115,6 +148,15 @@ if ($event_id > 0) {
             $ins->close();
         }
     }
+}
+
+if ($wantsAjax) {
+    $meta = student_event_registration_meta($conn, $event_id, $user_id);
+    student_rsvp_json_response($conn, array_merge([
+        'ok' => $ok,
+        'message' => $msg,
+        'event_id' => $event_id,
+    ], $meta));
 }
 
 $conn->close();

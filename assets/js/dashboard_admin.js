@@ -108,93 +108,139 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    var deptData = window.__adminChartDept || { labels: [], counts: [] };
-    var stData = window.__adminChartStatus || { labels: [], counts: [] };
-    var deptLabels = deptData.labels && deptData.labels.length ? deptData.labels : ['No events'];
-    var deptCounts = deptData.counts && deptData.counts.length ? deptData.counts : [0];
-    function showEmptyChartMessage(canvasId, msg) {
-        var el = document.getElementById(canvasId);
-        if (!el || !el.parentElement) return;
-        el.parentElement.innerHTML = '<div class="adm-chart-empty">' + msg + '</div>';
+    var adminChartInstances = [];
+
+    function restoreAdminChartCanvas(wrapId, canvasId, ariaLabel) {
+        var wrap = document.getElementById(wrapId);
+        if (!wrap) return null;
+        var existing = document.getElementById(canvasId);
+        if (existing) return existing;
+        wrap.innerHTML = '<canvas id="' + canvasId + '" aria-label="' + ariaLabel + '"></canvas>';
+        return document.getElementById(canvasId);
     }
-    if (typeof Chart === 'undefined') {
-        showEmptyChartMessage('adminChartDept', 'Charts unavailable (Chart.js failed to load).');
-        showEmptyChartMessage('adminChartStatus', 'Charts unavailable (Chart.js failed to load).');
+
+    function showEmptyChartMessage(wrapId, msg) {
+        var wrap = document.getElementById(wrapId);
+        if (!wrap) return;
+        wrap.innerHTML = '<div class="adm-chart-empty">' + msg + '</div>';
     }
-    var cdept = document.getElementById('adminChartDept');
-    if (cdept && typeof Chart !== 'undefined' && deptData.counts && deptData.counts.length) {
-        new Chart(cdept, {
-            type: 'bar',
-            data: {
-                labels: deptLabels,
-                datasets: [{
-                    label: 'Events',
-                    data: deptCounts,
-                    backgroundColor: 'rgba(14, 165, 233, 0.55)',
-                    borderColor: 'rgba(14, 165, 233, 1)',
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: {
-                    y: { beginAtZero: true, ticks: { precision: 0 } },
-                    x: { ticks: { maxRotation: 45, minRotation: 0 } }
+
+    function destroyAdminCharts() {
+        adminChartInstances.forEach(function (chart) {
+            try { chart.destroy(); } catch (e) { /* ignore */ }
+        });
+        adminChartInstances = [];
+    }
+
+    function initAdminAnalyticsCharts() {
+        destroyAdminCharts();
+
+        var deptData = window.__adminChartDept || { labels: [], counts: [] };
+        var stData = window.__adminChartStatus || { labels: [], counts: [] };
+        var fData = window.__adminChartFeedback || { labels: ['1★', '2★', '3★', '4★', '5★'], counts: [0, 0, 0, 0, 0] };
+        var deptLabels = deptData.labels && deptData.labels.length ? deptData.labels : ['No events'];
+        var deptCounts = deptData.counts && deptData.counts.length ? deptData.counts : [0];
+
+        if (typeof Chart === 'undefined') {
+            showEmptyChartMessage('adminChartDeptWrap', 'Charts unavailable (Chart.js failed to load).');
+            showEmptyChartMessage('adminChartStatusWrap', 'Charts unavailable (Chart.js failed to load).');
+            showEmptyChartMessage('adminChartFeedbackWrap', 'Charts unavailable (Chart.js failed to load).');
+            return;
+        }
+
+        var cdept = restoreAdminChartCanvas('adminChartDeptWrap', 'adminChartDept', 'Bar chart of events by department');
+        if (cdept && deptData.counts && deptData.counts.length) {
+            adminChartInstances.push(new Chart(cdept, {
+                type: 'bar',
+                data: {
+                    labels: deptLabels,
+                    datasets: [{
+                        label: 'Events',
+                        data: deptCounts,
+                        backgroundColor: 'rgba(14, 165, 233, 0.55)',
+                        borderColor: 'rgba(14, 165, 233, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true, ticks: { precision: 0 } },
+                        x: { ticks: { maxRotation: 45, minRotation: 0 } }
+                    }
                 }
-            }
-        });
-    } else if (cdept && typeof Chart !== 'undefined') {
-        showEmptyChartMessage('adminChartDept', 'No events yet for department chart.');
+            }));
+        } else if (cdept) {
+            showEmptyChartMessage('adminChartDeptWrap', 'No events yet for department chart.');
+        }
+
+        var statusColorMap = {
+            Pending: 'rgba(234, 179, 8, 0.85)',
+            Active: 'rgba(16, 185, 129, 0.85)',
+            Rejected: 'rgba(239, 68, 68, 0.85)',
+            Closed: 'rgba(100, 116, 139, 0.85)',
+            Completed: 'rgba(100, 116, 139, 0.85)',
+            Unknown: 'rgba(148, 163, 184, 0.85)'
+        };
+        var cst = restoreAdminChartCanvas('adminChartStatusWrap', 'adminChartStatus', 'Doughnut chart of events by status');
+        if (cst && stData.counts && stData.counts.length) {
+            var statusLabels = stData.labels || [];
+            var statusColors = statusLabels.map(function (label) {
+                return statusColorMap[label] || statusColorMap.Unknown;
+            });
+            adminChartInstances.push(new Chart(cst, {
+                type: 'doughnut',
+                data: {
+                    labels: statusLabels,
+                    datasets: [{
+                        data: stData.counts || [],
+                        backgroundColor: statusColors,
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom' } }
+                }
+            }));
+        } else if (cst) {
+            showEmptyChartMessage('adminChartStatusWrap', 'No events yet for status chart.');
+        }
+
+        var cfb = restoreAdminChartCanvas('adminChartFeedbackWrap', 'adminChartFeedback', 'Bar chart of feedback ratings');
+        if (cfb && fData.counts && fData.counts.length) {
+            adminChartInstances.push(new Chart(cfb, {
+                type: 'bar',
+                data: {
+                    labels: fData.labels || [],
+                    datasets: [{
+                        label: 'Feedback',
+                        data: fData.counts || [],
+                        backgroundColor: 'rgba(99, 102, 241, 0.6)',
+                        borderColor: 'rgba(99, 102, 241, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+                }
+            }));
+        }
     }
-    var cst = document.getElementById('adminChartStatus');
-    if (cst && typeof Chart !== 'undefined' && stData.counts && stData.counts.length) {
-        new Chart(cst, {
-            type: 'doughnut',
-            data: {
-                labels: stData.labels || [],
-                datasets: [{
-                    data: stData.counts || [],
-                    backgroundColor: [
-                        'rgba(234, 179, 8, 0.85)',
-                        'rgba(16, 185, 129, 0.85)',
-                        'rgba(239, 68, 68, 0.85)',
-                        'rgba(100, 116, 139, 0.85)'
-                    ],
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { position: 'bottom' } }
-            }
+
+    var analyticsModalEl = document.getElementById('adminAnalyticsModal');
+    if (analyticsModalEl) {
+        analyticsModalEl.addEventListener('shown.bs.modal', function () {
+            initAdminAnalyticsCharts();
         });
-    } else if (cst && typeof Chart !== 'undefined') {
-        showEmptyChartMessage('adminChartStatus', 'No events yet for status chart.');
-    }
-    var fData = window.__adminChartFeedback || { labels: ['1★', '2★', '3★', '4★', '5★'], counts: [0, 0, 0, 0, 0] };
-    var cfb = document.getElementById('adminChartFeedback');
-    if (cfb && typeof Chart !== 'undefined' && fData.counts && fData.counts.length) {
-        new Chart(cfb, {
-            type: 'bar',
-            data: {
-                labels: fData.labels || [],
-                datasets: [{
-                    label: 'Feedback',
-                    data: fData.counts || [],
-                    backgroundColor: 'rgba(99, 102, 241, 0.6)',
-                    borderColor: 'rgba(99, 102, 241, 1)',
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
-            }
+        analyticsModalEl.addEventListener('hidden.bs.modal', function () {
+            destroyAdminCharts();
         });
     }
 
@@ -291,6 +337,11 @@ document.addEventListener('DOMContentLoaded', function () {
         if (nm && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
             bootstrap.Modal.getOrCreateInstance(nm).show();
         }
+    } else if (openModal === 'charts' || openModal === 'analytics') {
+        var am = document.getElementById('adminAnalyticsModal');
+        if (am && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+            bootstrap.Modal.getOrCreateInstance(am).show();
+        }
     }
 
     document.querySelectorAll('.admin-upcoming-event-link').forEach(function (btn) {
@@ -319,11 +370,11 @@ document.addEventListener('DOMContentLoaded', function () {
             }, 250);
         }
     } else if (defaultView === 'charts') {
-        var chartsSection = document.querySelector('.adm-charts');
-        if (chartsSection) {
+        var analyticsModal = document.getElementById('adminAnalyticsModal');
+        if (analyticsModal && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
             setTimeout(function () {
-                chartsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }, 150);
+                bootstrap.Modal.getOrCreateInstance(analyticsModal).show();
+            }, 250);
         }
     }
 

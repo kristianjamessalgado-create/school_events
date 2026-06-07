@@ -47,6 +47,7 @@ CREATE TABLE `events` (
   `title` varchar(150) NOT NULL,
   `description` text DEFAULT NULL,
   `date` date DEFAULT NULL,
+  `end_date` date DEFAULT NULL,
   -- optional separate time fields to support hourly events
   `start_time` time DEFAULT NULL,
   `end_time` time DEFAULT NULL,
@@ -63,6 +64,23 @@ CREATE TABLE `events` (
   `checkin_token` varchar(64) DEFAULT NULL,
   `reject_reason` text DEFAULT NULL,
   UNIQUE KEY `checkin_token` (`checkin_token`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `event_schedule_dates`
+--
+
+CREATE TABLE `event_schedule_dates` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `event_id` int(11) NOT NULL,
+  `schedule_date` date NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `event_schedule_unique` (`event_id`, `schedule_date`),
+  KEY `event_id` (`event_id`),
+  KEY `schedule_date` (`schedule_date`),
+  CONSTRAINT `event_schedule_dates_event_fk` FOREIGN KEY (`event_id`) REFERENCES `events` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --

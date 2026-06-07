@@ -1,3 +1,80 @@
+/* Admin shell — neutral page background (student dashboard CSS also loads globally). */
+body.admin-dashboard {
+    background: #eef2f7 !important;
+    background-attachment: scroll !important;
+    min-height: 100vh;
+    color: #0f172a;
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+}
+
+/* Student CSS uses margin-left:320px + fixed sidebar; admin uses flex — reset fully. */
+body.admin-dashboard .dashboard-layout {
+    display: flex !important;
+    flex-direction: row;
+    align-items: stretch;
+    margin: 0 !important;
+    margin-left: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: calc(100vh - 64px);
+    overflow: visible;
+    box-sizing: border-box;
+}
+
+body.admin-dashboard .adm-navbar {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+body.admin-dashboard #adminSidebar,
+body.admin-dashboard .sidebar {
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    flex: 0 0 320px;
+    width: 320px !important;
+    min-width: 320px;
+    max-width: 320px;
+    height: auto !important;
+    min-height: calc(100vh - 64px);
+    margin: 0 !important;
+    transform: none !important;
+}
+
+body.admin-dashboard .main-content {
+    flex: 1 1 auto !important;
+    width: auto !important;
+    min-width: 0;
+    max-width: none !important;
+    background: #f8fafc !important;
+}
+
+body.admin-dashboard .calendar-container {
+    background: #ffffff !important;
+}
+
+body.admin-dashboard .adm-stat-card,
+body.admin-dashboard .adm-chart-card {
+    background: #ffffff;
+}
+
+body.admin-dashboard .sidebar .action-btn {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(230, 197, 74, 0.28);
+    color: #f8fafc;
+    box-shadow: none;
+}
+
+body.admin-dashboard .sidebar .action-btn:hover {
+    background: rgba(230, 197, 74, 0.16);
+    border-color: #e6c54a;
+    color: #e6c54a;
+    transform: none;
+}
+
 /* Stack above .dashboard-layout so dropdowns are not painted underneath the sidebar/main (sibling stacking). Keep below Bootstrap modals (~1055). */
 .adm-navbar {
     position: relative;
@@ -6,19 +83,27 @@
     align-items: center;
     justify-content: space-between;
     padding: 1rem 1.5rem;
-    background: rgba(10, 10, 10, 0.9);
-    border-bottom: 1px solid rgba(255,255,255,0.08);
+    background: linear-gradient(180deg, #1b4a1b 0%, #021a08 100%);
+    border-bottom: 3px solid #e6c54a;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
     overflow: visible;
 }
-.adm-brand { display: flex; align-items: center; gap: 0.5rem; font-weight: 800; font-size: 1.25rem; color: #e5e7eb; text-decoration: none; }
-.adm-brand i { color: #0ea5e9; }
+.adm-brand { display: flex; align-items: center; gap: 0.5rem; font-weight: 800; font-size: 1.25rem; color: #ffffff; text-decoration: none; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35); }
+.adm-brand i { color: #e6c54a; }
+.admin-dashboard .adm-navbar .nav-btn {
+    color: rgba(247, 244, 231, 0.9);
+}
+.admin-dashboard .adm-navbar .nav-btn:hover {
+    background: rgba(230, 197, 74, 0.18);
+    color: #e6c54a;
+}
 .adm-user { color: #94a3b8; font-size: 0.9rem; margin-right: 0.75rem; }
 .adm-logout { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; color: #94a3b8; text-decoration: none; font-weight: 600; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); }
 .adm-logout:hover { color: #0ea5e9; border-color: #0ea5e9; background: rgba(14, 165, 233, 0.1); }
 .adm-user-menu {
     background: transparent;
-    border: 1px solid rgba(255, 255, 255, 0.18);
-    color: #e2e8f0;
+    border: 1px solid rgba(230, 197, 74, 0.45);
+    color: #f7f4e7;
     border-radius: 8px;
     padding: 0.45rem 0.8rem;
     font-size: 0.9rem;
@@ -26,9 +111,9 @@
 }
 .adm-user-menu:hover,
 .adm-user-menu:focus {
-    color: #38bdf8;
-    border-color: #38bdf8;
-    background: rgba(14, 165, 233, 0.12);
+    color: #e6c54a;
+    border-color: #e6c54a;
+    background: rgba(230, 197, 74, 0.14);
 }
 .adm-dropdown-menu {
     border-radius: 10px;
@@ -59,6 +144,7 @@
     color: #fef08a !important;
 }
 
+.admin-action-badge,
 .admin-pending-badge {
     display: inline-flex;
     align-items: center;
@@ -68,29 +154,57 @@
     margin-left: 0.45rem;
     padding: 0 0.4rem;
     border-radius: 999px;
-    background: #dc2626;
-    color: #ffffff;
     font-size: 0.72rem;
     font-weight: 700;
     line-height: 1;
     border: 1px solid rgba(255, 255, 255, 0.35);
+    flex-shrink: 0;
+}
+.admin-action-badge--red,
+.admin-pending-badge {
+    background: #dc2626;
+    color: #ffffff;
+}
+.admin-action-badge--gold {
+    background: #e6c54a;
+    color: #1b4a1b;
+    border-color: rgba(27, 74, 27, 0.35);
+}
+.admin-action-badge--green {
+    background: #16a34a;
+    color: #ffffff;
 }
 #auditLogModal .modal-body { max-height: min(70vh, 520px); overflow-y: auto; }
 #auditLogModal .table { font-size: 0.8rem; }
 #auditLogModal .table thead th { position: sticky; top: 0; background: #f8fafc; z-index: 1; }
 .adm-charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; padding: 0 1.5rem 1rem; }
+.adm-charts--modal {
+    padding: 0;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+.adm-stats--modal {
+    padding: 0;
+    margin-bottom: 0;
+}
+body.admin-dashboard .admin-calendar-controls {
+    margin-top: 0;
+}
+body.admin-dashboard .main-content .calendar-container {
+    min-height: calc(100vh - 180px);
+}
+body.admin-dashboard .main-content #calendar {
+    min-height: calc(100vh - 220px);
+}
+#adminAnalyticsModal .adm-chart-wrap {
+    height: 240px;
+}
+#adminAnalyticsModal .modal-body {
+    background: #f8fafc;
+}
 .adm-chart-card { border-radius: 12px; border: 1px solid #e2e8f0; padding: 1rem; background: #fff; }
 .adm-chart-card h6 { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; margin-bottom: 0.75rem; }
 .adm-chart-wrap { position: relative; height: 220px; }
 .adm-chart-empty { display: flex; align-items: center; justify-content: center; height: 100%; color: #64748b; font-size: 0.85rem; text-align: center; }
-.admin-dashboard .dashboard-layout {
-    display: flex;
-    margin-top: 0 !important;
-    padding-top: 0 !important;
-    min-height: calc(100vh - 64px);
-    overflow: visible;
-}
-
 .admin-dashboard #adminSidebar {
     margin-top: 0 !important;
     padding-top: 0 !important;
@@ -138,13 +252,9 @@
 .sidebar-toggle-mobile {
     display: inline-flex;
 }
-/* Admin navbar is in normal flow, so remove inherited 64px top offset from student CSS. */
-.dashboard-layout {
-    margin-top: 0 !important;
-}
 /* Remove inherited top inset in sidebar so it sits flush under admin navbar. */
-.sidebar,
-#adminSidebar {
+body.admin-dashboard .sidebar,
+body.admin-dashboard #adminSidebar {
     padding-top: 0 !important;
     margin-top: 0 !important;
 }
@@ -173,18 +283,8 @@
 }
 
 @media (min-width: 769px) {
-    .dashboard-layout {
-        margin-top: 0 !important;
-        padding-top: 0 !important;
-    }
-
-    /* Cancel inherited student desktop sticky offset on admin sidebar. */
-    #adminSidebar {
-        position: relative !important;
-        top: 0 !important;
-        height: auto !important;
-        margin-top: 0 !important;
-        padding-top: 0 !important;
+    body.admin-dashboard .dashboard-layout {
+        overflow: visible !important;
     }
 
     #adminSidebar {
@@ -196,10 +296,8 @@
                     box-shadow 0.22s ease;
     }
 
-    .admin-dashboard #adminSidebar {
-        position: relative !important;
-        top: 0 !important;
-        height: auto !important;
+    body.admin-sidebar-collapsed .dashboard-layout {
+        margin-left: 0 !important;
     }
 
     body.admin-sidebar-collapsed #adminSidebar {
@@ -228,6 +326,8 @@
 
     body.admin-sidebar-collapsed .main-content {
         border-left: 0 !important;
+        flex: 1 1 auto !important;
+        width: auto !important;
     }
 }
 
@@ -349,18 +449,13 @@
         text-overflow: ellipsis;
     }
 
-    .dashboard-layout {
-        flex-direction: column;
-        margin-top: 0 !important;
-        height: auto;
+    body.admin-dashboard .dashboard-layout {
+        flex-direction: row;
+        margin-left: 0 !important;
         min-height: calc(100vh - 64px);
         position: relative;
         z-index: 1;
-    }
-
-    .admin-dashboard .dashboard-layout {
-        flex-direction: row;
-        min-height: calc(100vh - 64px);
+        width: 100% !important;
     }
     .main-content {
         min-width: 0;
@@ -436,3 +531,67 @@
         animation: none;
     }
 }
+
+/* Admin calendar: readable event blocks (no cramped/overlapping text) */
+.admin-dashboard .calendar-controls {
+    margin: 0 1.5rem;
+    border-radius: 10px 10px 0 0;
+}
+.admin-dashboard .calendar-container {
+    margin: 0 1.5rem 1.5rem;
+    border-radius: 0 0 12px 12px;
+    border: 1px solid #e2e8f0;
+    border-top: none;
+    padding: 12px 16px 16px;
+}
+.admin-dashboard .fc-daygrid-day-frame {
+    min-height: 108px;
+}
+.admin-dashboard .fc-daygrid-day-events {
+    margin-top: 4px;
+}
+.admin-dashboard .fc-daygrid-event {
+    margin-top: 2px !important;
+    margin-bottom: 2px !important;
+}
+.admin-dashboard .fc-event {
+    overflow: hidden !important;
+    white-space: nowrap !important;
+    text-overflow: ellipsis !important;
+    padding: 4px 6px !important;
+    font-size: 11px !important;
+    line-height: 1.35 !important;
+}
+.admin-dashboard .fc-event .fc-event-title {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    animation: none !important;
+    transform: none !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    display: block !important;
+}
+.admin-dashboard .fc-event .fc-event-main,
+.admin-dashboard .fc-event .fc-event-main-frame,
+.admin-dashboard .fc-event .fc-event-title-container {
+    overflow: hidden !important;
+    min-width: 0 !important;
+    width: 100% !important;
+}
+.admin-dashboard .fc-more-link {
+    font-size: 0.72rem !important;
+    font-weight: 600;
+}
+@media (max-width: 768px) {
+    .admin-dashboard .calendar-controls,
+    .admin-dashboard .calendar-container {
+        margin-left: 1rem;
+        margin-right: 1rem;
+    }
+    .admin-dashboard .fc-daygrid-day-frame {
+        min-height: 92px;
+    }
+}
+

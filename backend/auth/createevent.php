@@ -5,6 +5,7 @@ include __DIR__ . '/../../config/config.php';
 include __DIR__ . '/../../config/csrf.php';
 include __DIR__ . '/../../config/departments.php';
 require_once __DIR__ . '/../../config/organizer_departments.php';
+require_once __DIR__ . '/../lib/event_calendar.php';
 
 // Check if user is logged in as organizer
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'organizer') {
@@ -38,6 +39,9 @@ try {
     $eventsHasMaxCapacity = false;
 }
 
+$eventsHasEndDate = eventify_events_has_end_date($conn);
+eventify_event_schedule_dates_ensure_table($conn);
+
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!csrf_validate()) {
@@ -47,8 +51,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $title = trim($_POST['title'] ?? '');
     $description = trim($_POST['description'] ?? '');
     $date = $_POST['date'] ?? '';
+    $end_date = trim($_POST['end_date'] ?? '');
     $start_time = $_POST['start_time'] ?? '';
-    $end_time = $_POST['end_time'] ?? '';
+    $endParsed = eventify_parse_event_end_time_from_request($_POST);
+    $end_time = $endParsed['end_time'] ?? '';
+    $end_time_na = !empty($endParsed['end_time_na']);
+    $dayEndTimes = eventify_parse_schedule_day_end_times_from_request($_POST);
+    $dayStartTimes = eventify_parse_schedule_day_start_times_from_request($_POST);
     $location = trim($_POST['location'] ?? '');
     $max_capacity_raw = trim($_POST['max_capacity'] ?? '');
     $maxCapVal = null;
@@ -63,9 +72,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($title)) {
         $error = "Title is required.";
     } elseif (empty($date)) {
-        $error = "Date is required.";
-    } elseif (empty($start_time)) {
-        $error = "Start time is required.";
+        $error = "Click at least one day on the calendar for your event.";
     } elseif (empty($location)) {
         $error = "Location is required.";
     } elseif (strlen($title) > 150) {
@@ -78,30 +85,129 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!$dateObj || $dateObj->format('Y-m-d') !== $date) {
             $error = "Invalid date format.";
         } else {
-            // Validate time format (HH:MM)
-            $startTimeObj = DateTime::createFromFormat('H:i', $start_time);
-            if (!$startTimeObj || $startTimeObj->format('H:i') !== $start_time) {
-                $error = "Invalid start time format.";
-            }
+            $startTimeObj = null;
+            $scheduleMode = eventify_resolve_schedule_mode_from_request($_POST);
+            $scheduleDates = eventify_parse_schedule_dates_from_request($_POST);
 
             $endTimeObj = null;
-            if ($end_time !== '') {
+            if (!$end_time_na && $end_time !== '') {
                 $endTimeObj = DateTime::createFromFormat('H:i', $end_time);
                 if (!$endTimeObj || $endTimeObj->format('H:i') !== $end_time) {
                     $error = "Invalid end time format.";
-                } elseif ($endTimeObj <= $startTimeObj) {
-                    $error = "End time must be after start time.";
+                }
+            } elseif ($end_time_na) {
+                $end_time = '';
+            }
+
+            $endDateObj = null;
+            $endDateYmd = '';
+            if ($scheduleMode === 'range' && $eventsHasEndDate && $end_date !== '') {
+                $endDateObj = DateTime::createFromFormat('Y-m-d', $end_date);
+                if (!$endDateObj || $endDateObj->format('Y-m-d') !== $end_date) {
+                    $error = "Invalid end date format.";
+                } else {
+                    $endDateYmd = $end_date;
                 }
             }
 
-            // Check if date is in the past
+            if (!$error && $scheduleMode === 'range' && $endDateYmd === '') {
+                $error = "Please enter an end date for a date-range event, or choose specific days.";
+            }
+
+            if (!$error && $scheduleMode === 'range' && $endDateYmd !== '' && $endDateYmd < $date) {
+                $error = "End date cannot be before the start date.";
+            }
+
+            if (!$error && $scheduleMode === 'specific' && count($scheduleDates) < 1) {
+                $error = "Add at least one event day for a specific-days schedule.";
+            }
+
+            if (!$error && $scheduleMode === 'specific') {
+                $todayYmd = (new DateTime())->format('Y-m-d');
+                foreach ($scheduleDates as $sd) {
+                    if ($sd < $todayYmd) {
+                        $error = "Event days cannot be in the past.";
+                        break;
+                    }
+                }
+                if (!$error) {
+                    $date = $scheduleDates[0];
+                    $endDateYmd = '';
+                }
+            }
+
+            $scheduleDatesToStore = [];
+            if (!$error && $scheduleMode === 'range' && $endDateYmd !== '' && $endDateYmd >= $date) {
+                $scheduleDatesToStore = eventify_dates_between_inclusive($date, $endDateYmd);
+            } elseif (!$error && $scheduleMode === 'specific' && count($scheduleDates) > 0) {
+                $scheduleDatesToStore = $scheduleDates;
+            }
+
+            if (!$error && count($scheduleDatesToStore) > 0) {
+                $lastYmd = $scheduleDatesToStore[count($scheduleDatesToStore) - 1];
+                if (isset($dayEndTimes[$lastYmd])) {
+                    $end_time = $dayEndTimes[$lastYmd]['end_time'];
+                    $end_time_na = !empty($dayEndTimes[$lastYmd]['end_time_na']);
+                }
+            }
+
+            if (!$error && count($scheduleDatesToStore) >= 2) {
+                foreach ($scheduleDatesToStore as $ymd) {
+                    $st = trim((string) ($dayStartTimes[$ymd] ?? $start_time));
+                    if ($st === '') {
+                        $error = 'Please set a start time for each event day.';
+                        break;
+                    }
+                    $stObj = DateTime::createFromFormat('H:i', $st);
+                    if (!$stObj || $stObj->format('H:i') !== $st) {
+                        $error = 'Invalid start time for one or more event days.';
+                        break;
+                    }
+                    $dayStartTimes[$ymd] = $st;
+                    $dayEnd = $dayEndTimes[$ymd] ?? null;
+                    if ($dayEnd && empty($dayEnd['end_time_na']) && !empty($dayEnd['end_time']) && $dayEnd['end_time'] <= $st) {
+                        $error = 'End time must be after start time on each event day.';
+                        break;
+                    }
+                }
+                if (!$error) {
+                    $start_time = $dayStartTimes[$scheduleDatesToStore[0]];
+                    $startTimeObj = DateTime::createFromFormat('H:i', $start_time);
+                }
+            } elseif (!$error) {
+                if ($start_time === '') {
+                    $error = 'Start time is required.';
+                } else {
+                    $startTimeObj = DateTime::createFromFormat('H:i', $start_time);
+                    if (!$startTimeObj || $startTimeObj->format('H:i') !== $start_time) {
+                        $error = 'Invalid start time format.';
+                    }
+                }
+            }
+
+            if (!$error && !$end_time_na && $end_time !== '') {
+                $endTimeObj = DateTime::createFromFormat('H:i', $end_time);
+                if (!$endTimeObj || $endTimeObj->format('H:i') !== $end_time) {
+                    $error = 'Invalid end time format.';
+                }
+            }
+
+            $isMultiDay = $scheduleMode === 'range' && $endDateYmd !== '' && $endDateYmd > $date;
+            if (!$error && $scheduleMode === 'single' && !$end_time_na && $endTimeObj && $startTimeObj && $endTimeObj <= $startTimeObj) {
+                $error = "End time must be after start time on the same day.";
+            }
+            if (!$error && $end_time_na === false && $end_time === '' && ($_POST['end_time_option'] ?? '') === 'time') {
+                $error = "Please enter an end time or choose Not applicable.";
+            }
+
+            // Check if start date is in the past
             $today = new DateTime();
             $today->setTime(0, 0, 0);
             $eventDate = new DateTime($date);
             $eventDate->setTime(0, 0, 0);
             
             if ($eventDate < $today) {
-                $error = "Event date cannot be in the past.";
+                $error = "Event start date cannot be in the past.";
             }
 
             if (!$error) {
@@ -134,11 +240,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (!$error) {
                     $checkin_token = bin2hex(random_bytes(16));
                     $start_time_param = $start_time ?: null;
-                    $end_time_param = $end_time !== '' ? $end_time : null;
+                    $end_time_param = ($end_time !== '' && !$end_time_na) ? $end_time : null;
+                    $end_date_param = ($eventsHasEndDate && $endDateYmd !== '') ? $endDateYmd : null;
                     $executed = false;
 
                     if ($eventsHasGeo && $latVal !== null && $lngVal !== null) {
-                        if ($eventsHasMaxCapacity) {
+                        if ($eventsHasEndDate) {
+                            if ($eventsHasMaxCapacity) {
+                                $stmt = $conn->prepare("INSERT INTO events (title, description, date, end_date, start_time, end_time, location, latitude, longitude, max_capacity, organizer_id, department, status, checkin_token) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)");
+                                if ($stmt) {
+                                    $stmt->bind_param("sssssssddiiss", $title, $description, $date, $end_date_param, $start_time_param, $end_time_param, $location, $latVal, $lngVal, $maxCapVal, $session_user_id, $department, $checkin_token);
+                                    if ($stmt->execute()) {
+                                        $executed = true;
+                                    }
+                                    $stmt->close();
+                                }
+                            }
+                            if (!$executed) {
+                                $stmt = $conn->prepare("INSERT INTO events (title, description, date, end_date, start_time, end_time, location, latitude, longitude, organizer_id, department, status, checkin_token) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)");
+                                if ($stmt) {
+                                    $stmt->bind_param("sssssssddiss", $title, $description, $date, $end_date_param, $start_time_param, $end_time_param, $location, $latVal, $lngVal, $session_user_id, $department, $checkin_token);
+                                    if ($stmt->execute()) {
+                                        $executed = true;
+                                    }
+                                    $stmt->close();
+                                }
+                            }
+                        } elseif ($eventsHasMaxCapacity) {
                             $stmt = $conn->prepare("INSERT INTO events (title, description, date, start_time, end_time, location, latitude, longitude, max_capacity, organizer_id, department, status, checkin_token) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)");
                             if ($stmt) {
                                 $stmt->bind_param("ssssssddiiss", $title, $description, $date, $start_time_param, $end_time_param, $location, $latVal, $lngVal, $maxCapVal, $session_user_id, $department, $checkin_token);
@@ -148,7 +276,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 $stmt->close();
                             }
                         }
-                        if (!$executed) {
+                        if (!$executed && !$eventsHasEndDate) {
                             $stmt = $conn->prepare("INSERT INTO events (title, description, date, start_time, end_time, location, latitude, longitude, organizer_id, department, status, checkin_token) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)");
                             if ($stmt) {
                                 $stmt->bind_param("ssssssddiss", $title, $description, $date, $start_time_param, $end_time_param, $location, $latVal, $lngVal, $session_user_id, $department, $checkin_token);
@@ -161,7 +289,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
 
                     if (!$executed && !$eventsHasGeo) {
-                        if ($eventsHasMaxCapacity) {
+                        if ($eventsHasEndDate) {
+                            if ($eventsHasMaxCapacity) {
+                                $stmt = $conn->prepare("INSERT INTO events (title, description, date, end_date, start_time, end_time, location, max_capacity, organizer_id, department, status, checkin_token) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)");
+                                if ($stmt) {
+                                    $stmt->bind_param("sssssssiiss", $title, $description, $date, $end_date_param, $start_time_param, $end_time_param, $location, $maxCapVal, $session_user_id, $department, $checkin_token);
+                                    if ($stmt->execute()) {
+                                        $executed = true;
+                                    }
+                                    $stmt->close();
+                                }
+                            }
+                            if (!$executed) {
+                                $stmt = $conn->prepare("INSERT INTO events (title, description, date, end_date, start_time, end_time, location, organizer_id, department, status, checkin_token) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)");
+                                if ($stmt) {
+                                    $stmt->bind_param("sssssssiss", $title, $description, $date, $end_date_param, $start_time_param, $end_time_param, $location, $session_user_id, $department, $checkin_token);
+                                    if ($stmt->execute()) {
+                                        $executed = true;
+                                    }
+                                    $stmt->close();
+                                }
+                            }
+                        } elseif ($eventsHasMaxCapacity) {
                             $stmt = $conn->prepare("INSERT INTO events (title, description, date, start_time, end_time, location, max_capacity, organizer_id, department, status, checkin_token) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)");
                             if ($stmt) {
                                 $stmt->bind_param("ssssssiiss", $title, $description, $date, $start_time_param, $end_time_param, $location, $maxCapVal, $session_user_id, $department, $checkin_token);
@@ -171,7 +320,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 $stmt->close();
                             }
                         }
-                        if (!$executed) {
+                        if (!$executed && !$eventsHasEndDate) {
                             $stmt = $conn->prepare("INSERT INTO events (title, description, date, start_time, end_time, location, organizer_id, department, status, checkin_token) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)");
                             if ($stmt) {
                                 $stmt->bind_param("ssssssiss", $title, $description, $date, $start_time_param, $end_time_param, $location, $session_user_id, $department, $checkin_token);
@@ -185,6 +334,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     if ($executed) {
                         $newEventId = (int) $conn->insert_id;
+                        if (count($scheduleDatesToStore) >= 2) {
+                            eventify_save_event_schedule_dates($conn, $newEventId, $scheduleDatesToStore, $dayEndTimes, $dayStartTimes);
+                        } else {
+                            eventify_save_event_schedule_dates($conn, $newEventId, []);
+                        }
+                        if (eventify_events_has_end_time_na($conn)) {
+                            $naFlag = $end_time_na ? 1 : 0;
+                            $upNa = $conn->prepare('UPDATE events SET end_time_na = ? WHERE id = ?');
+                            if ($upNa) {
+                                $upNa->bind_param('ii', $naFlag, $newEventId);
+                                $upNa->execute();
+                                $upNa->close();
+                            }
+                        }
                         require_once __DIR__ . '/../lib/activity_logger.php';
                         log_activity(
                             $conn,
@@ -216,7 +379,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             // ignore
                         }
                         $success = "Event submitted successfully and is now pending approval from the administrator.";
-                        header("Location: " . BASE_URL . "/backend/auth/dashboardorganizer.php?msg=" . urlencode($success));
+                        $redirect = BASE_URL . "/backend/auth/dashboardorganizer.php?msg=" . urlencode($success);
+                        if (count($scheduleDatesToStore) >= 2) {
+                            $redirect .= "&prompt_activities=" . $newEventId;
+                        }
+                        header("Location: " . $redirect);
                         exit();
                     }
 
@@ -672,27 +839,50 @@ $pageDeptCheckboxState = eventify_organizer_department_form_checkbox_state(
                     ><?= htmlspecialchars($_POST['description'] ?? '') ?></textarea>
                 </div>
                 
-                <div class="form-group">
-                    <label for="date">
-                        Event Date <span class="required">*</span>
-                    </label>
-                    <div class="input-icon">
-                        <i class="fas fa-calendar-alt"></i>
-                        <input 
-                            type="date" 
-                            id="date" 
-                            name="date" 
-                            class="form-control" 
-                            value="<?= htmlspecialchars($prefilled_date ?: ($_POST['date'] ?? '')) ?>"
-                            required
-                            min="<?= date('Y-m-d') ?>"
-                        >
-                    </div>
-                </div>
+                <?php
+                $scheduleModeValue = $_SERVER['REQUEST_METHOD'] === 'POST'
+                    ? eventify_resolve_schedule_mode_from_request($_POST)
+                    : 'single';
+                $postedScheduleDates = $_SERVER['REQUEST_METHOD'] === 'POST'
+                    ? eventify_parse_schedule_dates_from_request($_POST)
+                    : [];
+                $postedStartDate = $_SERVER['REQUEST_METHOD'] === 'POST'
+                    ? trim($_POST['date'] ?? '')
+                    : trim($prefilled_date ?: '');
+                $postedEndDate = $_SERVER['REQUEST_METHOD'] === 'POST'
+                    ? trim($_POST['end_date'] ?? '')
+                    : '';
+                $postedEndTimeOption = $_SERVER['REQUEST_METHOD'] === 'POST'
+                    ? trim($_POST['end_time_option'] ?? 'none')
+                    : 'none';
+                $postedEndTime = ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['end_time_option'] ?? '') === 'time')
+                    ? trim($_POST['end_time'] ?? '')
+                    : '';
+                $postedDayEndTimes = [];
+                $postedDayStartTimes = [];
+                if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['schedule_day_end']) && is_array($_POST['schedule_day_end'])) {
+                    foreach ($_POST['schedule_day_end'] as $ymd => $row) {
+                        if (!is_array($row)) {
+                            continue;
+                        }
+                        $postedDayEndTimes[$ymd] = [
+                            'mode' => $row['mode'] ?? 'none',
+                            'time' => $row['time'] ?? '',
+                        ];
+                    }
+                }
+                if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['schedule_day_start']) && is_array($_POST['schedule_day_start'])) {
+                    foreach ($_POST['schedule_day_start'] as $ymd => $time) {
+                        $postedDayStartTimes[$ymd] = trim((string) $time);
+                    }
+                }
+                $idPrefix = 'standalone';
+                include __DIR__ . '/../../views/partials/event_schedule_fields.php';
+                ?>
 
-                <div class="form-group">
+                <div class="form-group" id="standaloneStartTimeRow">
                     <label for="start_time">
-                        Start time <span class="required">*</span>
+                        Event start time <span class="required">*</span>
                     </label>
                     <div class="input-icon">
                         <i class="fas fa-clock"></i>
@@ -707,21 +897,6 @@ $pageDeptCheckboxState = eventify_organizer_department_form_checkbox_state(
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <label for="end_time">End time</label>
-                    <div class="input-icon">
-                        <i class="fas fa-clock"></i>
-                        <input
-                            type="time"
-                            id="end_time"
-                            name="end_time"
-                            class="form-control"
-                            value="<?= htmlspecialchars($_POST['end_time'] ?? '') ?>"
-                        >
-                    </div>
-                    <small class="text-muted d-block mt-1">Optional — leave blank if the event has no fixed end. Active events then auto-complete after that calendar day; on the event date you can <strong>Mark as ended</strong> from the dashboard.</small>
-                </div>
-                
                 <div class="form-group">
                     <label for="location">
                         Location <span class="required">*</span>
@@ -850,6 +1025,7 @@ $pageDeptCheckboxState = eventify_organizer_department_form_checkbox_state(
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script src="<?= htmlspecialchars(BASE_URL) ?>/assets/js/event_location_picker.js"></script>
+    <script src="<?= htmlspecialchars(BASE_URL) ?>/assets/js/event_schedule_picker.js"></script>
 
     <script>
         function showMessageModal(msg) {
@@ -945,8 +1121,10 @@ $pageDeptCheckboxState = eventify_organizer_department_form_checkbox_state(
         document.getElementById('createEventForm').addEventListener('submit', function(e) {
             const form = e.target;
             const title = document.getElementById('title').value.trim();
-            const date = document.getElementById('date').value;
             const startTime = (document.getElementById('start_time') || {}).value;
+            if (typeof eventifySyncScheduleBeforeSubmit === 'function') {
+                eventifySyncScheduleBeforeSubmit('standalone');
+            }
             const location = document.getElementById('location').value.trim();
             const allD = document.getElementById('standaloneDeptAll');
             const specsD = form.querySelectorAll('.standalone-dept-specific');
@@ -968,13 +1146,6 @@ $pageDeptCheckboxState = eventify_organizer_department_form_checkbox_state(
                 return false;
             }
             
-            if (!date) {
-                e.preventDefault();
-                showMessageModal('Please select an event date.');
-                document.getElementById('date').focus();
-                return false;
-            }
-
             if (!startTime) {
                 e.preventDefault();
                 showMessageModal('Please select a start time.');
@@ -1000,14 +1171,8 @@ $pageDeptCheckboxState = eventify_organizer_department_form_checkbox_state(
                 }
             }
             
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const eventDate = new Date(date);
-            
-            if (eventDate < today) {
+            if (typeof eventifyValidateScheduleOnSubmit === 'function' && !eventifyValidateScheduleOnSubmit('standalone')) {
                 e.preventDefault();
-                showMessageModal('Event date cannot be in the past.');
-                document.getElementById('date').focus();
                 return false;
             }
         });

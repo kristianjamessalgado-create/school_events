@@ -24,6 +24,7 @@ if (is_array($events)) {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/dashboard_multimedia.css">
+    <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/notifications.css">
 </head>
 <body>
 <input type="hidden" id="csrf_token_value" value="<?= htmlspecialchars(csrf_token()) ?>">
@@ -39,6 +40,49 @@ if (is_array($events)) {
         </div>
     </div>
     <div class="navbar-right">
+        <?php
+            $mm_notifications = $multimedia_notifications ?? [];
+            $mm_unread_count = (int) ($multimedia_unread_count ?? 0);
+            $mm_notif_dropdown = $multimedia_notif_dropdown ?? [];
+        ?>
+        <div class="dropdown me-2">
+            <button class="nav-btn position-relative dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" title="Notifications">
+                <i class="fas fa-bell"></i>
+                <?php if ($mm_unread_count > 0): ?>
+                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.55rem;"><?= $mm_unread_count > 99 ? '99+' : $mm_unread_count ?></span>
+                <?php endif; ?>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end eventify-notif-dropdown">
+                <li class="eventify-notif-dropdown__header">
+                    <i class="fas fa-bell me-2"></i>Notifications
+                    <?php if ($mm_unread_count > 0): ?>
+                        <span class="badge bg-warning text-dark ms-1" style="font-size: 0.65rem;"><?= $mm_unread_count ?> new</span>
+                    <?php endif; ?>
+                </li>
+                <li class="eventify-notif-dropdown__scroll">
+                    <div class="eventify-notif-scroll eventify-notif-scroll--dropdown">
+                        <?php
+                            $notifications = $mm_notif_dropdown;
+                            $empty_title = 'All caught up';
+                            $empty_text = 'No new notifications right now.';
+                            $notif_interactive = true;
+                            include __DIR__ . '/partials/notification_cards.php';
+                        ?>
+                    </div>
+                </li>
+                <?php if ($mm_unread_count > 0 || !empty($mm_notifications)): ?>
+                    <li class="eventify-notif-dropdown__footer">
+                        <?php
+                            $notif_show_mark_all = $mm_unread_count > 0;
+                            $notif_show_clear = !empty($mm_notifications);
+                            $notif_clear_modal_id = 'multimediaClearNotifsModal';
+                            $notif_context = 'dropdown';
+                            include __DIR__ . '/partials/notification_footer_actions.php';
+                        ?>
+                    </li>
+                <?php endif; ?>
+            </ul>
+        </div>
         <div class="dropdown">
             <button class="profile-avatar profile-toggle dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="<?= htmlspecialchars($user_name) ?>">
                 <?php if (!empty($user['profile_picture'])): ?>
@@ -101,6 +145,10 @@ if (is_array($events)) {
                 <i class="fas fa-calendar-check"></i>
                 <span>Upcoming events</span>
             </a>
+            <?php
+                $activities_hub_btn_class = '';
+                include __DIR__ . '/partials/activities_hub_quick_action.php';
+            ?>
             <a href="#" class="action-btn" data-bs-toggle="modal" data-bs-target="#logoutModal">
                 <i class="fas fa-sign-out-alt"></i>
                 <span>Logout</span>
@@ -483,6 +531,13 @@ if (is_array($events)) {
 </div>
 
 <!-- Logout modal -->
+<?php include __DIR__ . '/partials/activities_hub_pick_modal.php'; ?>
+
+<?php
+    $notif_clear_modal_id = 'multimediaClearNotifsModal';
+    include __DIR__ . '/partials/notification_clear_confirm_modal.php';
+?>
+
 <div class="modal fade" id="logoutModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -609,6 +664,9 @@ if (is_array($events)) {
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>window.csrfToken = <?= json_encode(function_exists('csrf_token') ? csrf_token() : '') ?>;</script>
+<script src="<?= BASE_URL ?>/assets/js/eventify_notifications.js?v=1"></script>
+<script src="<?= BASE_URL ?>/assets/js/logout_confirm.js"></script>
 <script>
 // Upload modal helper:
 // - Uses Bootstrap modal if available

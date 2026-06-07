@@ -3,6 +3,9 @@ if (!defined('EVENTIFY_ADMIN_DASHBOARD_LOADED')) {
     header('Location: ' . (defined('BASE_URL') ? BASE_URL : '/school_events') . '/views/login.php');
     exit;
 }
+if (!defined('BASE_URL')) {
+    define('BASE_URL', '/school_events');
+}
 $admin_name    = $admin_name    ?? 'Admin';
 $admin_email   = $admin_email   ?? '';
 $events        = $events        ?? [];
@@ -24,6 +27,26 @@ $success       = $_GET['success'] ?? '';
 $error         = $_GET['error'] ?? '';
 $openModal     = strtolower((string)($_GET['open_modal'] ?? ''));
 $staff_messaging_unread = isset($staff_messaging_unread) ? (int) $staff_messaging_unread : 0;
+$otpTableReady = $otpTableReady ?? false;
+$usersHasOtpContactColumns = $usersHasOtpContactColumns ?? false;
+$messaging_organizers = $messaging_organizers ?? [];
+$adminSettings = $adminSettings ?? [
+    'notify_email_new_event' => 1,
+    'notify_pending_reminder' => 1,
+    'notification_retention_days' => 30,
+    'otp_required_sensitive_actions' => 1,
+    'otp_expiry_minutes' => 10,
+    'otp_max_attempts' => 5,
+    'event_lead_days' => 3,
+    'auto_complete_past_events' => 1,
+    'max_event_photos' => 10,
+    'max_upload_size_mb' => 10,
+    'session_timeout_minutes' => 30,
+    'force_relogin_sensitive_actions' => 1,
+    'default_dashboard_view' => 'calendar',
+    'calendar_legend_visible' => 1,
+    'table_page_size' => 10,
+];
 $messengerHref = BASE_URL . '/backend/messaging/staff_messenger.php';
 ?>
 <!DOCTYPE html>
@@ -37,6 +60,9 @@ $messengerHref = BASE_URL . '/backend/messaging/staff_messenger.php';
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="<?= BASE_URL; ?>/assets/css/dashboard_student.css">
     <link rel="stylesheet" href="<?= BASE_URL; ?>/assets/css/dashboard_admin.css">
+    <link rel="stylesheet" href="<?= BASE_URL; ?>/assets/css/calendar_legend.css">
+    <link rel="stylesheet" href="<?= BASE_URL; ?>/assets/css/notifications.css">
+    <link rel="stylesheet" href="<?= BASE_URL; ?>/assets/css/calendar_scroll_fix.css">
 </head>
 <body class="admin-dashboard">
 
@@ -112,27 +138,43 @@ $messengerHref = BASE_URL . '/backend/messaging/staff_messenger.php';
                 <i class="fas fa-inbox"></i>
                 <span>Pending Events</span>
                 <?php if ($pendingCount > 0): ?>
-                    <span class="admin-pending-badge" aria-label="<?= (int)$pendingCount ?> pending events">
-                        <?= (int)$pendingCount ?>
-                    </span>
+                    <span class="admin-action-badge admin-action-badge--red" aria-label="<?= (int) $pendingCount ?> pending events"><?= $pendingCount > 99 ? '99+' : (int) $pendingCount ?></span>
                 <?php endif; ?>
                 <i class="fas fa-chevron-right ms-auto"></i>
             </button>
+            <button type="button" class="action-btn w-100 text-start border-0 bg-transparent" data-bs-toggle="modal" data-bs-target="#adminAnalyticsModal">
+                <i class="fas fa-chart-pie"></i>
+                <span>Analytics</span>
+                <?php if ((int)($eventStats['pending'] ?? 0) > 0): ?>
+                    <span class="admin-action-badge admin-action-badge--red" aria-label="<?= (int) $eventStats['pending'] ?> pending approvals"><?= (int) $eventStats['pending'] ?></span>
+                <?php endif; ?>
+                <i class="fas fa-chevron-right ms-auto"></i>
+            </button>
+            <?php
+                $activities_hub_show_chevron = true;
+                include __DIR__ . '/../views/partials/activities_hub_quick_action.php';
+            ?>
             <button type="button" class="action-btn w-100 text-start border-0 bg-transparent" data-bs-toggle="modal" data-bs-target="#adminUpcomingEventsModal">
                 <i class="fas fa-calendar-check"></i>
-                <span>Upcoming Events<?= $upcomingAdminCount > 0 ? ' (' . $upcomingAdminCount . ')' : '' ?></span>
+                <span>Upcoming Events</span>
+                <?php if ($upcomingAdminCount > 0): ?>
+                    <span class="admin-action-badge admin-action-badge--gold" aria-label="<?= (int) $upcomingAdminCount ?> upcoming events"><?= $upcomingAdminCount > 99 ? '99+' : (int) $upcomingAdminCount ?></span>
+                <?php endif; ?>
                 <i class="fas fa-chevron-right ms-auto"></i>
             </button>
             <a class="action-btn w-100 text-start border-0 bg-transparent text-decoration-none text-reset" href="<?= htmlspecialchars($messengerHref) ?>" target="_blank" rel="noopener noreferrer">
                 <i class="fas fa-comments"></i>
-                <span>Messages<?= $staff_messaging_unread > 0 ? ' (' . $staff_messaging_unread . ')' : '' ?></span>
+                <span>Messages</span>
+                <?php if ($staff_messaging_unread > 0): ?>
+                    <span class="admin-action-badge admin-action-badge--gold" aria-label="<?= (int) $staff_messaging_unread ?> unread messages"><?= $staff_messaging_unread > 99 ? '99+' : (int) $staff_messaging_unread ?></span>
+                <?php endif; ?>
                 <i class="fas fa-chevron-right ms-auto"></i>
             </a>
             <button type="button" class="action-btn w-100 text-start border-0 bg-transparent" data-bs-toggle="modal" data-bs-target="#adminStudentFeedbackModal">
                 <i class="fas fa-star-half-stroke"></i>
                 <span>Student feedback</span>
                 <?php if (!empty($admin_feedback_list)): ?>
-                    <span class="badge bg-success ms-1"><?= count($admin_feedback_list) > 99 ? '99+' : count($admin_feedback_list) ?></span>
+                    <span class="admin-action-badge admin-action-badge--green" aria-label="<?= count($admin_feedback_list) ?> feedback items"><?= count($admin_feedback_list) > 99 ? '99+' : count($admin_feedback_list) ?></span>
                 <?php endif; ?>
                 <i class="fas fa-chevron-right ms-auto"></i>
             </button>
@@ -166,7 +208,42 @@ $messengerHref = BASE_URL . '/backend/messaging/staff_messenger.php';
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
         <?php endif; ?>
-        <div class="adm-stats">
+        <div class="calendar-controls admin-calendar-controls">
+            <div class="controls-left">
+                <button class="control-nav" id="calPrev"><i class="fas fa-chevron-left"></i></button>
+                <h2 class="calendar-title" id="calendarTitle">Calendar</h2>
+                <button class="control-nav" id="calNext"><i class="fas fa-chevron-right"></i></button>
+            </div>
+            <div class="controls-right">
+                <span class="text-muted small me-2"><i class="fas fa-user-shield me-1"></i> <?= htmlspecialchars($admin_name) ?></span>
+                <button class="view-btn active" data-view="dayGridMonth">Month</button>
+                <button class="view-btn" data-view="timeGridWeek">Week</button>
+                <button class="view-btn" data-view="timeGridDay">Day</button>
+                <button class="view-btn" data-view="today">Today</button>
+            </div>
+        </div>
+        <?php
+        $legendId = 'adminCalendarLegend';
+        $legendClass = 'eventify-calendar-legend admin-calendar-legend';
+        include __DIR__ . '/../views/partials/calendar_event_state_legend.php';
+        ?>
+        <div class="calendar-container">
+            <div id="calendar"></div>
+        </div>
+    </main>
+</div>
+
+<!-- Analytics charts (Quick action) -->
+<div class="modal fade" id="adminAnalyticsModal" tabindex="-1" aria-labelledby="adminAnalyticsModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="adminAnalyticsModalLabel"><i class="fas fa-chart-pie me-2"></i>Analytics &amp; insights</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p class="small text-muted mb-3">System-wide overview of events and student feedback ratings.</p>
+        <div class="adm-stats adm-stats--modal mb-3">
             <div class="adm-stat-card">
                 <div class="adm-stat-label">Pending approval</div>
                 <div class="adm-stat-value"><?= (int)$eventStats['pending'] ?></div>
@@ -184,50 +261,32 @@ $messengerHref = BASE_URL . '/backend/messaging/staff_messenger.php';
                 <div class="adm-stat-value"><?= number_format((float)($feedbackStats['avg_rating'] ?? 0), 2) ?></div>
             </div>
         </div>
-        <div class="adm-charts">
+        <div class="adm-charts adm-charts--modal">
             <div class="adm-chart-card">
                 <h6 class="mb-0">Events by department</h6>
-                <div class="adm-chart-wrap">
+                <div class="adm-chart-wrap" id="adminChartDeptWrap">
                     <canvas id="adminChartDept" aria-label="Bar chart of events by department"></canvas>
                 </div>
             </div>
             <div class="adm-chart-card">
                 <h6 class="mb-0">Events by status</h6>
-                <div class="adm-chart-wrap">
+                <div class="adm-chart-wrap" id="adminChartStatusWrap">
                     <canvas id="adminChartStatus" aria-label="Doughnut chart of events by status"></canvas>
                 </div>
             </div>
             <div class="adm-chart-card">
                 <h6 class="mb-0">Feedback ratings distribution</h6>
-                <div class="adm-chart-wrap">
+                <div class="adm-chart-wrap" id="adminChartFeedbackWrap">
                     <canvas id="adminChartFeedback" aria-label="Bar chart of feedback ratings"></canvas>
                 </div>
             </div>
         </div>
-        <div class="calendar-controls">
-            <div class="controls-left">
-                <button class="control-nav" id="calPrev"><i class="fas fa-chevron-left"></i></button>
-                <h2 class="calendar-title" id="calendarTitle">Calendar</h2>
-                <button class="control-nav" id="calNext"><i class="fas fa-chevron-right"></i></button>
-            </div>
-            <div class="controls-right">
-                <span class="text-muted small me-2"><i class="fas fa-user-shield me-1"></i> <?= htmlspecialchars($admin_name) ?></span>
-                <button class="view-btn active" data-view="dayGridMonth">Month</button>
-                <button class="view-btn" data-view="timeGridWeek">Week</button>
-                <button class="view-btn" data-view="timeGridDay">Day</button>
-                <button class="view-btn" data-view="today">Today</button>
-            </div>
-        </div>
-        <div class="admin-calendar-legend" id="adminCalendarLegend">
-            <span><i class="fas fa-circle text-warning me-1"></i>Pending</span>
-            <span><i class="fas fa-circle text-success me-1"></i>Active</span>
-            <span><i class="fas fa-circle text-danger me-1"></i>Rejected</span>
-            <span><i class="fas fa-circle text-secondary me-1"></i>Closed/Completed</span>
-        </div>
-        <div class="calendar-container">
-            <div id="calendar"></div>
-        </div>
-    </main>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- Admin settings modal -->
@@ -383,44 +442,53 @@ $messengerHref = BASE_URL . '/backend/messaging/staff_messenger.php';
 </div>
 
 <!-- Admin Notifications Modal -->
-<div class="modal fade" id="adminNotificationsModal" tabindex="-1" aria-labelledby="adminNotificationsModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+<div class="modal fade eventify-notif-modal" id="adminNotificationsModal" tabindex="-1" aria-labelledby="adminNotificationsModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
     <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="adminNotificationsModalLabel"><i class="fas fa-bell me-2"></i>Notifications</h5>
+      <div class="modal-header eventify-notif-modal__header">
+        <div>
+          <h5 class="modal-title" id="adminNotificationsModalLabel"><i class="fas fa-bell me-2"></i>Notifications</h5>
+          <p class="eventify-notif-modal__subtitle mb-0">
+            <?php if ($admin_unread_count > 0): ?>
+              <?= (int) $admin_unread_count ?> unread · tap to mark read
+            <?php else: ?>
+              You're all caught up
+            <?php endif; ?>
+          </p>
+        </div>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
-      <div class="modal-body">
-        <?php if (empty($admin_notifications)): ?>
-          <p class="text-muted mb-0">No notifications yet.</p>
-        <?php else: ?>
-          <div class="list-group">
-            <?php foreach ($admin_notifications as $n): ?>
-              <a href="<?= BASE_URL ?>/backend/auth/mark_notification_read.php?id=<?= (int)($n['id'] ?? 0) ?>" class="list-group-item list-group-item-action <?= empty($n['read_at']) ? 'fw-semibold list-group-item-light' : '' ?>">
-                <div class="d-flex w-100 justify-content-between align-items-start gap-2">
-                  <div>
-                    <div><?= htmlspecialchars($n['title'] ?? 'Notification') ?></div>
-                    <?php if (!empty($n['message'])): ?>
-                      <div class="small text-muted"><?= nl2br(htmlspecialchars($n['message'])) ?></div>
-                    <?php endif; ?>
-                  </div>
-                  <small class="text-muted text-nowrap"><?= htmlspecialchars($n['created_at'] ?? '') ?></small>
-                </div>
-              </a>
-            <?php endforeach; ?>
-          </div>
-        <?php endif; ?>
+      <div class="modal-body eventify-notif-modal__body">
+        <div class="eventify-notif-scroll">
+          <?php
+            $notifications = $admin_notifications;
+            $empty_title = 'No notifications yet';
+            $empty_text = 'Event reviews and system alerts will appear here.';
+            $notif_interactive = true;
+            include __DIR__ . '/../views/partials/notification_cards.php';
+          ?>
+        </div>
       </div>
-      <div class="modal-footer">
-        <a href="<?= BASE_URL ?>/backend/auth/mark_notification_read.php?mark_all=1" class="btn btn-outline-secondary btn-sm"><i class="fas fa-check-double me-1"></i>Mark all read</a>
-        <a href="<?= BASE_URL ?>/backend/auth/mark_notification_read.php?clear_all=1" class="btn btn-outline-danger btn-sm" onclick="return confirm('Clear all notifications? This cannot be undone.');"><i class="fas fa-trash me-1"></i>Clear all</a>
-        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
-      </div>
+      <?php
+        $notif_show_mark_all = ($admin_unread_count ?? 0) > 0;
+        $notif_show_clear = !empty($admin_notifications);
+        $notif_show_done = true;
+        $notif_clear_modal_id = 'adminClearNotifsModal';
+        $notif_context = 'modal';
+        include __DIR__ . '/../views/partials/notification_footer_actions.php';
+      ?>
     </div>
   </div>
 </div>
 
+<?php
+    $notif_clear_modal_id = 'adminClearNotifsModal';
+    include __DIR__ . '/../views/partials/notification_clear_confirm_modal.php';
+?>
+
 <!-- Logout Confirmation Modal -->
+<?php include __DIR__ . '/../views/partials/activities_hub_pick_modal.php'; ?>
+
 <div class="modal fade" id="logoutModal" tabindex="-1" aria-labelledby="logoutModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
@@ -823,30 +891,32 @@ window.currentRole = 'admin';
 window.__adminOpenModal = <?= json_encode($openModal) ?>;
 window.__adminSettings = <?= json_encode($adminSettings ?? []) ?>;
 window.__adminCsrfToken = <?= json_encode(function_exists('csrf_token') ? csrf_token() : '') ?>;
-window.eventsData = <?= json_encode(array_map(function($e) {
+window.csrfToken = window.__adminCsrfToken;
+window.eventsData = <?= json_encode(eventify_events_to_fullcalendar_list($events, function ($e) {
     return [
-        'id'    => $e['id'],
-        'title' => $e['title'],
-        'start' => trim(($e['date'] ?? '') . ' ' . ($e['start_time'] ?? '')),
-        'end'   => isset($e['end_time']) && $e['end_time'] !== null
-            ? trim(($e['date'] ?? '') . ' ' . $e['end_time'])
-            : null,
-        'extendedProps' => [
-            'description' => $e['description'],
-            'location'    => $e['location'],
-            'created_at'  => $e['created_at'],
-            'status'      => $e['status'],
-            'start_time'  => $e['start_time'] ?? null,
-            'end_time'    => $e['end_time'] ?? null,
-            'department'  => $e['department'] ?? 'ALL',
-            'organizer'   => $e['organizer_name'] ?? 'Organizer',
-        ],
+        'description'         => $e['description'] ?? '',
+        'location'            => $e['location'] ?? '',
+        'created_at'          => $e['created_at'] ?? '',
+        'status'              => $e['status'] ?? 'pending',
+        'reject_reason'       => $e['reject_reason'] ?? null,
+        'start_time'          => $e['start_time'] ?? null,
+        'end_time'            => $e['end_time'] ?? null,
+        'end_time_na'         => !empty($e['end_time_na']),
+        'department'          => $e['department'] ?? 'ALL',
+        'department_display'  => function_exists('eventify_format_department_label')
+            ? eventify_format_department_label((string) ($e['department'] ?? 'ALL'))
+            : (string) ($e['department'] ?? 'ALL'),
+        'organizer'           => $e['organizer_name'] ?? 'Organizer',
+        'event_is_live'       => function_exists('eventify_event_is_live') ? eventify_event_is_live($e) : (($e['status'] ?? '') === 'active'),
     ];
-}, $events), JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP); ?>;
+}), JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP); ?>;
 </script>
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="<?= BASE_URL ?>/assets/js/logout_confirm.js"></script>
+<script src="<?= BASE_URL ?>/assets/js/eventify_calendar_colors.js"></script>
 <script src="<?= BASE_URL ?>/assets/js/dashboardorganizer.js"></script>
+<script src="<?= BASE_URL ?>/assets/js/eventify_notifications.js?v=1"></script>
 <script src="<?= BASE_URL ?>/assets/js/dashboard_admin.js"></script>
 </body>
 </html>

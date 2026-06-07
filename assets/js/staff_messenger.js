@@ -1,5 +1,5 @@
 /**
- * Full-page staff messenger (admin ↔ organizer), Messenger-style UI.
+ * Full-page staff messenger (admin ↔ organizer), EVENTIFY UI.
  */
 (function () {
     function esc(s) {
@@ -86,6 +86,7 @@
         var detailAvatar = document.getElementById('msgrDetailAvatar');
         var detailName = document.getElementById('msgrDetailName');
         var detailEmail = document.getElementById('msgrDetailEmail');
+        var detailRole = document.getElementById('msgrDetailRole');
         var detailToggle = document.getElementById('msgrToggleDetail');
         var detailPanel = document.getElementById('msgrDetailPanel');
         var detailBackdrop = document.getElementById('msgrDetailBackdrop');
@@ -158,7 +159,7 @@
         function renderPeerList() {
             if (!listEl) return;
             if (!peers.length) {
-                listEl.innerHTML = '<div class="p-3 small msgr-muted">No contacts available.</div>';
+                listEl.innerHTML = '<div class="msgr-list-empty">No ' + esc(peerLabel.toLowerCase()) + ' available yet.</div>';
                 return;
             }
             var q = (searchEl && searchEl.value) ? searchEl.value.trim() : '';
@@ -189,7 +190,7 @@
                 listEl.appendChild(btn);
             });
             if (!any && peers.length) {
-                listEl.innerHTML = '<div class="p-3 small msgr-muted">No chats match this filter.</div>';
+                listEl.innerHTML = '<div class="msgr-list-empty">No chats match this filter.</div>';
             }
         }
 
@@ -205,6 +206,7 @@
                 if (detailName) detailName.textContent = '—';
                 if (detailEmail) detailEmail.textContent = '';
                 if (detailAvatar) detailAvatar.textContent = '?';
+                if (detailRole) detailRole.style.display = 'none';
                 return;
             }
             var ini = initials(p.name);
@@ -214,6 +216,10 @@
             if (detailName) detailName.textContent = p.name || 'User';
             if (detailEmail) detailEmail.textContent = p.email || '';
             if (detailAvatar) detailAvatar.textContent = ini;
+            if (detailRole) {
+                detailRole.textContent = peerLabel;
+                detailRole.style.display = '';
+            }
         }
 
         function selectPeer(id) {
@@ -241,15 +247,20 @@
             threadEl.innerHTML = '';
             lastDayLabel = null;
             if (!selectedPeerId) {
-                threadEl.innerHTML = '<div class="msgr-empty-thread msgr-muted">' +
-                    '<i class="far fa-comments msgr-empty-icon"></i>' +
-                    '<p class="mb-0">Choose someone from the list to read and send messages.</p></div>';
+                threadEl.innerHTML =
+                    '<div class="msgr-empty-thread">' +
+                    '<div class="msgr-empty-icon-wrap"><i class="fas fa-comments"></i></div>' +
+                    '<div class="msgr-empty-title">Select a conversation</div>' +
+                    '<p class="mb-0 msgr-muted small">Pick someone from the list to read and send staff messages.</p></div>';
                 return;
             }
             if (!rows || !rows.length) {
                 var empty = document.createElement('div');
-                empty.className = 'msgr-empty-thread msgr-muted';
-                empty.innerHTML = '<p class="mb-0">No messages yet. Say hello below.</p>';
+                empty.className = 'msgr-empty-thread';
+                empty.innerHTML =
+                    '<div class="msgr-empty-icon-wrap"><i class="fas fa-paper-plane"></i></div>' +
+                    '<div class="msgr-empty-title">Start the conversation</div>' +
+                    '<p class="mb-0 msgr-muted small">No messages yet — say hello below.</p>';
                 threadEl.appendChild(empty);
                 return;
             }

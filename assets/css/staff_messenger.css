@@ -1,14 +1,45 @@
-/* Facebook Messenger–inspired staff DM (admin ↔ organizer), dark theme */
+/* EVENTIFY Staff Messenger — admin ↔ organizer (school green / gold) */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+:root {
+    --msgr-green-900: #013220;
+    --msgr-green-800: #064e3b;
+    --msgr-green-700: #047857;
+    --msgr-green-100: #ecfdf5;
+    --msgr-green-50: #f0f9f4;
+    --msgr-gold-500: #eab308;
+    --msgr-gold-400: #facc15;
+    --msgr-text: #0f172a;
+    --msgr-muted: #64748b;
+    --msgr-border: #cfe7d8;
+    --msgr-surface: #ffffff;
+    --msgr-surface-2: #f8fafc;
+    --msgr-shadow: 0 8px 28px rgba(6, 78, 59, 0.1);
+}
 
 .msgr-body {
     margin: 0;
     min-height: 100vh;
     min-height: 100dvh;
     overflow: hidden;
-    background: #18191a;
-    color: #e4e6eb;
-    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--msgr-green-50);
+    color: var(--msgr-text);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
     -webkit-text-size-adjust: 100%;
+    -webkit-font-smoothing: antialiased;
+}
+
+.msgr-detail-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 1040;
+    background: rgba(1, 50, 32, 0.35);
+    -webkit-tap-highlight-color: transparent;
+}
+
+.msgr-detail-backdrop.is-visible {
+    display: block;
 }
 
 .msgr-app {
@@ -21,64 +52,66 @@
     max-height: 100dvh;
     overflow: hidden;
     min-width: 0;
+    box-shadow: var(--msgr-shadow);
 }
 
-/* Dimmed overlay when detail drawer is open (tablet / small laptop) */
-.msgr-detail-backdrop {
-    display: none;
-    position: fixed;
-    inset: 0;
-    z-index: 1040;
-    background: rgba(0, 0, 0, 0.45);
-    -webkit-tap-highlight-color: transparent;
-}
-
-.msgr-detail-backdrop.is-visible {
-    display: block;
-}
-
-/* Left icon rail */
+/* Left brand rail */
 .msgr-rail {
     width: 72px;
     flex-shrink: 0;
-    background: #242526;
-    border-right: 1px solid #3a3b3c;
+    background: linear-gradient(180deg, var(--msgr-green-900) 0%, var(--msgr-green-800) 100%);
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 0.75rem 0;
-    gap: 0.5rem;
+    padding: 0.85rem 0;
+    gap: 0.65rem;
+}
+
+.msgr-rail-brand {
+    font-weight: 800;
+    font-size: 0.62rem;
+    letter-spacing: 0.06em;
+    color: var(--msgr-gold-400);
+    text-align: center;
+    line-height: 1.2;
+    padding: 0 0.35rem 0.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    margin-bottom: 0.25rem;
+    width: 100%;
 }
 
 .msgr-rail-btn {
-    width: 48px;
-    height: 48px;
+    width: 46px;
+    height: 46px;
     border-radius: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #b0b3b8;
+    color: rgba(255, 255, 255, 0.75);
     text-decoration: none;
-    transition: background 0.15s, color 0.15s;
+    transition: background 0.15s, color 0.15s, transform 0.15s;
 }
 
 .msgr-rail-btn:hover {
-    background: #3a3b3c;
-    color: #e4e6eb;
+    background: rgba(255, 255, 255, 0.12);
+    color: #fff;
+    transform: translateY(-1px);
 }
 
 .msgr-rail-btn-active {
-    background: #263951;
-    color: #4599ff;
+    background: rgba(234, 179, 8, 0.22);
+    color: var(--msgr-gold-400);
+    box-shadow: inset 0 0 0 1px rgba(234, 179, 8, 0.35);
 }
 
-/* Chat list column */
+/* Inbox column */
 .msgr-inbox {
     width: 360px;
     max-width: 100%;
     flex-shrink: 0;
-    background: #242526;
-    border-right: 1px solid #3a3b3c;
+    background: var(--msgr-surface);
+    border-right: 1px solid var(--msgr-border);
     display: flex;
     flex-direction: column;
     min-width: 0;
@@ -86,45 +119,66 @@
 }
 
 .msgr-inbox-head {
-    padding: 1rem 1rem 0.75rem;
-    border-bottom: 1px solid #3a3b3c;
+    padding: 1rem 1rem 0.85rem;
+    background: linear-gradient(135deg, var(--msgr-green-900) 0%, var(--msgr-green-700) 72%, #1a6b42 100%);
+    color: #fff;
+    border-bottom: none;
 }
 
 .msgr-inbox-title {
-    font-size: 1.5rem;
-    font-weight: 700;
+    font-size: 1.35rem;
+    font-weight: 800;
     letter-spacing: -0.02em;
+    color: #fff;
+}
+
+.msgr-inbox-sub {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.82);
+    margin-top: 0.15rem;
 }
 
 .msgr-muted {
-    color: #b0b3b8;
+    color: var(--msgr-muted);
 }
 
 .msgr-icon-btn {
-    width: 44px;
-    height: 44px;
-    min-width: 44px;
-    min-height: 44px;
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    min-height: 40px;
     border: none;
-    border-radius: 50%;
-    background: transparent;
-    color: #b0b3b8;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.12);
+    color: rgba(255, 255, 255, 0.9);
     display: inline-flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     text-decoration: none;
     touch-action: manipulation;
+    transition: background 0.15s;
 }
 
 .msgr-icon-btn:hover {
-    background: #3a3b3c;
-    color: #e4e6eb;
+    background: rgba(255, 255, 255, 0.22);
+    color: #fff;
+}
+
+.msgr-conv-head .msgr-icon-btn {
+    background: var(--msgr-surface-2);
+    color: var(--msgr-muted);
+    border: 1px solid var(--msgr-border);
+}
+
+.msgr-conv-head .msgr-icon-btn:hover {
+    background: var(--msgr-green-100);
+    color: var(--msgr-green-800);
 }
 
 .msgr-search-wrap {
     position: relative;
-    margin-top: 0.75rem;
+    margin-top: 0.85rem;
 }
 
 .msgr-search-icon {
@@ -132,126 +186,149 @@
     left: 12px;
     top: 50%;
     transform: translateY(-50%);
-    color: #8a8d91;
+    color: rgba(255, 255, 255, 0.65);
     font-size: 0.85rem;
     pointer-events: none;
 }
 
 .msgr-search {
     width: 100%;
-    border: none;
+    border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 999px;
-    background: #3a3b3c;
-    color: #e4e6eb;
+    background: rgba(255, 255, 255, 0.14);
+    color: #fff;
     padding: 0.55rem 0.85rem 0.55rem 2.25rem;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
+    font-family: inherit;
 }
 
 .msgr-search::placeholder {
-    color: #8a8d91;
+    color: rgba(255, 255, 255, 0.6);
 }
 
 .msgr-search:focus {
     outline: none;
-    box-shadow: 0 0 0 2px #2374e1;
+    background: rgba(255, 255, 255, 0.2);
+    border-color: var(--msgr-gold-400);
+    box-shadow: 0 0 0 2px rgba(234, 179, 8, 0.25);
 }
 
 .msgr-tabs {
     display: flex;
-    gap: 0.35rem;
+    gap: 0.4rem;
     margin-top: 0.75rem;
-    margin-bottom: 0.25rem;
 }
 
 .msgr-tab {
-    border: none;
+    border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 999px;
-    padding: 0.35rem 0.85rem;
-    font-size: 0.8rem;
-    font-weight: 600;
+    padding: 0.35rem 0.9rem;
+    font-size: 0.78rem;
+    font-weight: 700;
     background: transparent;
-    color: #b0b3b8;
+    color: rgba(255, 255, 255, 0.8);
     cursor: pointer;
+    font-family: inherit;
+    transition: background 0.15s, color 0.15s;
 }
 
 .msgr-tab:hover {
-    background: #3a3b3c;
-    color: #e4e6eb;
+    background: rgba(255, 255, 255, 0.12);
+    color: #fff;
 }
 
 .msgr-tab.active {
-    background: #263951;
-    color: #4599ff;
+    background: var(--msgr-gold-400);
+    color: var(--msgr-green-900);
+    border-color: var(--msgr-gold-400);
 }
 
 .msgr-chat-list {
     flex: 1;
     overflow-y: auto;
     overflow-x: hidden;
-    padding: 0.25rem 0.5rem 0.75rem;
+    padding: 0.5rem 0.65rem 0.85rem;
+    background: var(--msgr-surface-2);
     -webkit-overflow-scrolling: touch;
+}
+
+.msgr-chat-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.msgr-chat-list::-webkit-scrollbar-thumb {
+    background: rgba(6, 78, 59, 0.2);
+    border-radius: 999px;
 }
 
 .msgr-chat-row {
     display: flex;
     align-items: center;
-    gap: 0.65rem;
+    gap: 0.7rem;
     width: 100%;
-    min-height: 52px;
+    min-height: 56px;
     text-align: left;
-    border: none;
-    border-radius: 12px;
-    padding: 0.6rem 0.5rem;
-    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 14px;
+    padding: 0.65rem 0.6rem;
+    background: var(--msgr-surface);
     color: inherit;
     cursor: pointer;
-    transition: background 0.12s;
+    transition: background 0.12s, border-color 0.12s, box-shadow 0.12s;
     touch-action: manipulation;
+    margin-bottom: 0.35rem;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
 }
 
 .msgr-chat-row:hover {
-    background: #3a3b3c;
+    background: var(--msgr-green-100);
+    border-color: var(--msgr-border);
 }
 
 .msgr-chat-row.active {
-    background: #3a3b3c;
+    background: linear-gradient(90deg, rgba(234, 179, 8, 0.12) 0%, var(--msgr-surface) 55%);
+    border-color: rgba(234, 179, 8, 0.45);
+    box-shadow: 0 4px 14px rgba(6, 78, 59, 0.08);
 }
 
 .msgr-chat-row.unread .msgr-chat-name {
-    font-weight: 700;
+    font-weight: 800;
+    color: var(--msgr-green-900);
 }
 
 .msgr-avatar {
     flex-shrink: 0;
-    width: 56px;
-    height: 56px;
+    width: 52px;
+    height: 52px;
     border-radius: 50%;
-    background: linear-gradient(145deg, #2374e1, #6b4dc4);
+    background: linear-gradient(145deg, var(--msgr-green-800), var(--msgr-green-700));
     display: flex;
     align-items: center;
     justify-content: center;
-    font-weight: 700;
-    font-size: 1.1rem;
+    font-weight: 800;
+    font-size: 1rem;
     color: #fff;
+    box-shadow: 0 2px 8px rgba(6, 78, 59, 0.2);
 }
 
 .msgr-avatar-sm {
-    width: 52px;
-    height: 52px;
-    font-size: 1rem;
-}
-
-.msgr-avatar-lg {
-    width: 40px;
-    height: 40px;
+    width: 48px;
+    height: 48px;
     font-size: 0.95rem;
 }
 
+.msgr-avatar-lg {
+    width: 42px;
+    height: 42px;
+    font-size: 0.9rem;
+}
+
 .msgr-avatar-xl {
-    width: 96px;
-    height: 96px;
-    font-size: 2rem;
+    width: 88px;
+    height: 88px;
+    font-size: 1.75rem;
     margin: 0 auto;
+    border: 3px solid var(--msgr-gold-400);
 }
 
 .msgr-chat-body {
@@ -267,22 +344,23 @@
 }
 
 .msgr-chat-name {
-    font-size: 0.95rem;
+    font-size: 0.92rem;
     font-weight: 600;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    color: var(--msgr-text);
 }
 
 .msgr-chat-time {
-    font-size: 0.7rem;
-    color: #8a8d91;
+    font-size: 0.68rem;
+    color: var(--msgr-muted);
     flex-shrink: 0;
 }
 
 .msgr-chat-preview {
     font-size: 0.8rem;
-    color: #b0b3b8;
+    color: var(--msgr-muted);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -293,48 +371,52 @@
     width: 10px;
     height: 10px;
     border-radius: 50%;
-    background: #2374e1;
+    background: var(--msgr-gold-500);
     flex-shrink: 0;
+    box-shadow: 0 0 0 2px var(--msgr-surface);
 }
 
-/* Conversation */
+/* Conversation panel */
 .msgr-conversation {
     flex: 1;
     min-width: 0;
     min-height: 0;
     display: flex;
     flex-direction: column;
-    background: #18191a;
+    background: var(--msgr-green-50);
 }
 
 .msgr-conv-head {
-    min-height: 52px;
+    min-height: 58px;
     flex-shrink: 0;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: max(0.35rem, env(safe-area-inset-top)) max(0.75rem, env(safe-area-inset-right)) 0.35rem max(0.35rem, env(safe-area-inset-left));
-    border-bottom: 1px solid #3a3b3c;
-    background: #242526;
+    padding: max(0.45rem, env(safe-area-inset-top)) max(0.85rem, env(safe-area-inset-right)) 0.45rem max(0.45rem, env(safe-area-inset-left));
+    border-bottom: 1px solid var(--msgr-border);
+    background: var(--msgr-surface);
+    box-shadow: 0 2px 8px rgba(6, 78, 59, 0.04);
 }
 
 .msgr-conv-head-main {
     display: flex;
     align-items: center;
-    gap: 0.65rem;
+    gap: 0.7rem;
     min-width: 0;
 }
 
 .msgr-conv-name {
-    font-weight: 700;
-    font-size: 1.05rem;
+    font-weight: 800;
+    font-size: 1rem;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    color: var(--msgr-green-900);
 }
 
 .msgr-conv-sub {
     font-size: 0.75rem;
+    color: var(--msgr-muted);
 }
 
 .msgr-messages {
@@ -342,18 +424,46 @@
     min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
-    padding: 0.75rem max(0.75rem, env(safe-area-inset-left)) 0.75rem max(0.75rem, env(safe-area-inset-right));
+    padding: 1rem max(0.85rem, env(safe-area-inset-left)) 0.75rem max(0.85rem, env(safe-area-inset-right));
     display: flex;
     flex-direction: column;
-    gap: 0.35rem;
+    gap: 0.45rem;
     -webkit-overflow-scrolling: touch;
+    background:
+        radial-gradient(600px 240px at 100% 0%, rgba(234, 179, 8, 0.06), transparent 60%),
+        radial-gradient(500px 200px at 0% 100%, rgba(6, 95, 70, 0.05), transparent 60%),
+        var(--msgr-green-50);
 }
 
 .msgr-empty-thread {
     margin: auto;
     text-align: center;
-    max-width: 280px;
-    padding: 2rem;
+    max-width: 300px;
+    padding: 2rem 1.25rem;
+    background: var(--msgr-surface);
+    border-radius: 16px;
+    border: 1px dashed var(--msgr-border);
+    box-shadow: 0 4px 16px rgba(6, 78, 59, 0.06);
+}
+
+.msgr-empty-icon-wrap {
+    width: 56px;
+    height: 56px;
+    margin: 0 auto 0.85rem;
+    border-radius: 50%;
+    background: linear-gradient(145deg, var(--msgr-green-100), #dcfce7);
+    color: var(--msgr-green-800);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.35rem;
+}
+
+.msgr-empty-title {
+    font-weight: 800;
+    font-size: 0.95rem;
+    color: var(--msgr-green-900);
+    margin-bottom: 0.35rem;
 }
 
 .msgr-empty-icon {
@@ -364,9 +474,15 @@
 
 .msgr-day-sep {
     text-align: center;
-    font-size: 0.75rem;
-    color: #8a8d91;
-    margin: 0.75rem 0;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--msgr-muted);
+    margin: 0.85rem 0;
+    padding: 0.2rem 0.65rem;
+    align-self: center;
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 999px;
+    border: 1px solid var(--msgr-border);
 }
 
 .msgr-row {
@@ -384,45 +500,57 @@
 
 .msgr-bubble {
     max-width: min(85%, 520px);
-    border-radius: 18px;
-    padding: 0.5rem 0.85rem 0.55rem;
-    font-size: 0.95rem;
-    line-height: 1.35;
+    border-radius: 16px;
+    padding: 0.55rem 0.9rem 0.6rem;
+    font-size: 0.92rem;
+    line-height: 1.4;
     word-break: break-word;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
 }
 
 .msgr-bubble.mine {
-    background: linear-gradient(180deg, #2374e1 0%, #1763cf 100%);
+    background: linear-gradient(135deg, var(--msgr-green-800) 0%, var(--msgr-green-700) 100%);
     color: #fff;
     border-bottom-right-radius: 6px;
 }
 
 .msgr-bubble.theirs {
-    background: #3e4042;
-    color: #e4e6eb;
+    background: var(--msgr-surface);
+    color: var(--msgr-text);
+    border: 1px solid var(--msgr-border);
     border-bottom-left-radius: 6px;
 }
 
 .msgr-bubble-meta {
-    font-size: 0.68rem;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
     opacity: 0.85;
     margin-bottom: 0.25rem;
+}
+
+.msgr-bubble.theirs .msgr-bubble-meta {
+    color: var(--msgr-green-700);
 }
 
 /* Composer */
 .msgr-composer-wrap {
     flex-shrink: 0;
-    padding: 0.5rem max(0.75rem, env(safe-area-inset-left)) max(0.75rem, env(safe-area-inset-bottom)) max(0.75rem, env(safe-area-inset-right));
-    background: #18191a;
+    padding: 0.65rem max(0.85rem, env(safe-area-inset-left)) max(0.85rem, env(safe-area-inset-bottom)) max(0.85rem, env(safe-area-inset-right));
+    background: var(--msgr-surface);
+    border-top: 1px solid var(--msgr-border);
 }
 
 .msgr-composer {
     display: flex;
     align-items: flex-end;
     gap: 0.5rem;
-    background: #3a3b3c;
-    border-radius: 24px;
-    padding: 0.35rem 0.35rem 0.35rem 0.5rem;
+    background: var(--msgr-surface-2);
+    border: 1px solid var(--msgr-border);
+    border-radius: 999px;
+    padding: 0.35rem 0.4rem 0.35rem 0.55rem;
+    box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.03);
 }
 
 .msgr-composer-icon {
@@ -431,7 +559,7 @@
     border: none;
     border-radius: 50%;
     background: transparent;
-    color: #8a8d91;
+    color: var(--msgr-muted);
     flex-shrink: 0;
     cursor: not-allowed;
 }
@@ -440,12 +568,13 @@
     flex: 1;
     border: none;
     background: transparent;
-    color: #e4e6eb;
+    color: var(--msgr-text);
     resize: none;
     max-height: 120px;
-    padding: 0.45rem 0.25rem;
-    font-size: 0.95rem;
+    padding: 0.5rem 0.25rem;
+    font-size: 0.92rem;
     line-height: 1.35;
+    font-family: inherit;
 }
 
 .msgr-input:focus {
@@ -453,97 +582,132 @@
 }
 
 .msgr-input::placeholder {
-    color: #8a8d91;
+    color: #94a3b8;
 }
 
 .msgr-send {
-    width: 40px;
-    height: 40px;
+    width: 42px;
+    height: 42px;
     border: none;
     border-radius: 50%;
-    background: #2374e1;
-    color: #fff;
+    background: linear-gradient(145deg, var(--msgr-gold-500), #ca8a04);
+    color: var(--msgr-green-900);
     flex-shrink: 0;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: background 0.15s;
+    transition: transform 0.15s, box-shadow 0.15s;
+    box-shadow: 0 4px 12px rgba(234, 179, 8, 0.35);
 }
 
 .msgr-send:hover:not(:disabled) {
-    background: #4599ff;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(234, 179, 8, 0.45);
 }
 
 .msgr-send:disabled {
-    opacity: 0.45;
+    opacity: 0.4;
     cursor: not-allowed;
+    box-shadow: none;
 }
 
-/* Right detail */
+/* Detail panel */
 .msgr-detail {
-    width: 340px;
+    width: 300px;
     flex-shrink: 0;
-    background: #242526;
-    border-left: 1px solid #3a3b3c;
+    background: var(--msgr-surface);
+    border-left: 1px solid var(--msgr-border);
     overflow-y: auto;
 }
 
 .msgr-detail-inner {
-    padding: 1.5rem 1.25rem;
+    padding: 1.35rem 1.15rem;
 }
 
 .msgr-detail-hero {
     text-align: center;
     padding-bottom: 1rem;
-    border-bottom: 1px solid #3a3b3c;
+    border-bottom: 1px solid var(--msgr-border);
 }
 
 .msgr-detail-name {
-    font-size: 1.25rem;
+    font-size: 1.15rem;
     font-weight: 800;
-    margin: 1rem 0 0.35rem;
+    margin: 0.85rem 0 0.3rem;
+    color: var(--msgr-green-900);
+}
+
+.msgr-detail-email {
+    color: var(--msgr-muted) !important;
+}
+
+.msgr-detail-role {
+    display: inline-block;
+    margin-top: 0.5rem;
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    background: var(--msgr-green-100);
+    color: var(--msgr-green-800);
 }
 
 .msgr-detail-actions {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 0.45rem;
     margin: 1rem 0;
 }
 
 .msgr-pill-btn {
     width: 100%;
-    border: none;
+    border: 1px solid var(--msgr-border);
     border-radius: 10px;
-    padding: 0.65rem 1rem;
-    background: #3a3b3c;
-    color: #b0b3b8;
+    padding: 0.6rem 1rem;
+    background: var(--msgr-surface-2);
+    color: var(--msgr-muted);
     font-weight: 600;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     cursor: not-allowed;
+    font-family: inherit;
 }
 
 .msgr-detail-section {
     margin-top: 1rem;
+    padding: 0.85rem;
+    background: var(--msgr-green-50);
+    border-radius: 12px;
+    border: 1px solid var(--msgr-border);
 }
 
 .msgr-detail-section-title {
-    font-weight: 700;
-    font-size: 0.85rem;
-    margin-bottom: 0.35rem;
+    font-weight: 800;
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--msgr-green-800);
+    margin-bottom: 0.4rem;
 }
 
 .msgr-detail.msgr-detail-collapsed {
     display: none;
 }
 
-/* Desktop: hide “back to list” in thread header */
 .msgr-back-mobile {
     display: none;
 }
 
-/* Large tablets / small laptops: detail as drawer */
+.msgr-list-empty {
+    padding: 1.5rem 1rem;
+    text-align: center;
+    color: var(--msgr-muted);
+    font-size: 0.85rem;
+}
+
+/* Responsive — preserve layout breakpoints */
 @media (max-width: 1199.98px) {
     .msgr-inbox {
         width: min(360px, 38vw);
@@ -554,10 +718,10 @@
         right: 0;
         top: 0;
         bottom: 0;
-        width: min(340px, 92vw);
+        width: min(300px, 92vw);
         max-width: 100%;
         z-index: 1050;
-        box-shadow: -8px 0 24px rgba(0, 0, 0, 0.45);
+        box-shadow: -8px 0 32px rgba(1, 50, 32, 0.18);
         padding-top: env(safe-area-inset-top);
     }
 
@@ -570,7 +734,6 @@
     }
 }
 
-/* Portrait tablets / large phones: slightly narrower inbox */
 @media (max-width: 991.98px) {
     .msgr-rail {
         width: 56px;
@@ -585,18 +748,8 @@
     .msgr-inbox {
         width: min(360px, 42vw);
     }
-
-    .msgr-inbox-head {
-        padding-left: max(0.75rem, env(safe-area-inset-left));
-        padding-right: max(0.75rem, env(safe-area-inset-right));
-    }
-
-    .msgr-inbox-title {
-        font-size: 1.35rem;
-    }
 }
 
-/* Phone: list OR conversation (Messenger mobile pattern) */
 @media (max-width: 899.98px) {
     .msgr-rail {
         width: 52px;
@@ -626,20 +779,8 @@
     .msgr-back-mobile {
         display: inline-flex;
     }
-
-    .msgr-avatar-sm {
-        width: 48px;
-        height: 48px;
-        font-size: 0.95rem;
-    }
-
-    .msgr-tab {
-        padding: 0.4rem 0.75rem;
-        font-size: 0.78rem;
-    }
 }
 
-/* Small phones: hide icon rail for more reading width */
 @media (max-width: 575.98px) {
     .msgr-rail {
         display: none;
@@ -650,30 +791,23 @@
     }
 
     .msgr-inbox-title {
-        font-size: 1.2rem;
+        font-size: 1.15rem;
     }
 
     .msgr-bubble {
         max-width: min(92%, 100%);
-        font-size: 0.9rem;
+        font-size: 0.88rem;
     }
 
     .msgr-send {
         width: 44px;
         height: 44px;
     }
-
-    .msgr-composer-icon {
-        width: 40px;
-        height: 40px;
-    }
 }
 
-/* Very narrow: tighten composer */
 @media (max-width: 359.98px) {
     .msgr-composer {
         border-radius: 18px;
-        padding: 0.25rem;
     }
 
     .msgr-chat-time {
@@ -681,15 +815,10 @@
     }
 }
 
-/* Landscape phone: keep thread usable */
 @media (max-height: 500px) and (orientation: landscape) {
     .msgr-inbox-head {
         padding-top: 0.35rem;
         padding-bottom: 0.35rem;
-    }
-
-    .msgr-inbox-title {
-        font-size: 1.1rem;
     }
 
     .msgr-tabs {
