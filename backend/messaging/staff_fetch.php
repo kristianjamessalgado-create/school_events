@@ -37,7 +37,7 @@ if (!eventify_staff_messages_ensure_table($conn)) {
 }
 
 $sql = "
-    SELECT m.id, m.sender_id, m.recipient_id, m.body, m.created_at, m.read_at, u.name AS sender_name
+    SELECT m.id, m.sender_id, m.recipient_id, m.body, m.attachment_path, m.created_at, m.read_at, u.name AS sender_name
     FROM staff_messages m
     JOIN users u ON u.id = m.sender_id
     WHERE (m.sender_id = ? AND m.recipient_id = ?)

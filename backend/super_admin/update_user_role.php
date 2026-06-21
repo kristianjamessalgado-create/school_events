@@ -7,6 +7,7 @@ include __DIR__ . '/../../config/db.php';
 include __DIR__ . '/../../config/config.php';
 include __DIR__ . '/../../config/csrf.php';
 include __DIR__ . '/../../backend/lib/activity_logger.php';
+require_once __DIR__ . '/../lib/multimedia_moderator.php';
 
 function eventify_redirect_superadmin_role(string $type, string $message): void
 {
@@ -71,6 +72,16 @@ if (!$stmtUpdate) {
 $stmtUpdate->bind_param("si", $newRole, $userId);
 if ($stmtUpdate->execute()) {
     $stmtUpdate->close();
+
+    if ($newRole !== 'multimedia') {
+        eventify_users_ensure_multimedia_moderator_column($conn);
+        $clr = $conn->prepare('UPDATE users SET is_multimedia_moderator = 0 WHERE id = ?');
+        if ($clr) {
+            $clr->bind_param('i', $userId);
+            $clr->execute();
+            $clr->close();
+        }
+    }
 
     // Log activity
     $actorId   = $_SESSION['user_id'] ?? null;

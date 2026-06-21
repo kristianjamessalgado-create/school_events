@@ -19,11 +19,15 @@ $rsvp_required = eventify_checkin_config_require_rsvp();
 $geo_radius_m = eventify_checkin_geo_radius_m();
 $focus_confirm_mobile = false;
 $needs_rsvp_first = false;
+$checkin_schedule_label = '';
+$student_checkin_home_url = BASE_URL . '/backend/auth/dashboard_student.php';
+$checkin_unavailable = null;
 
 if ($token === '') {
     $error = 'Invalid or missing check-in link. Please scan the event QR code again.';
 } else {
     // Load event by check-in token; ensure token exists (generate for old events)
+    $eventHasGeo = false;
     try {
         $geoColCheck = $conn->query("SHOW COLUMNS FROM events WHERE Field IN ('latitude','longitude')");
         if ($geoColCheck && $geoColCheck->num_rows >= 2) {
@@ -55,8 +59,21 @@ if ($token === '') {
         $events = [$event];
         eventify_events_attach_schedule_dates($conn, $events);
         $event = $events[0];
+        $displayDates = eventify_event_calendar_display_dates($event);
+        if (count($displayDates) > 1) {
+            $checkin_schedule_label = date('M j', strtotime($displayDates[0]))
+                . ' – ' . date('M j, Y', strtotime($displayDates[count($displayDates) - 1]));
+        } elseif (count($displayDates) === 1) {
+            $checkin_schedule_label = date('M j, Y', strtotime($displayDates[0]));
+        } elseif (!empty($event['date'])) {
+            $checkin_schedule_label = date('M j, Y', strtotime((string) $event['date']));
+        }
         if (!eventify_event_allows_checkin($event)) {
-            $error = 'Check-in is not available. This event day has ended or has not started yet.';
+            $checkin_unavailable = eventify_event_checkin_student_details($event);
+            $error = $checkin_unavailable['reason'];
+            if ($checkin_schedule_label === '' && $checkin_unavailable['schedule_label'] !== '') {
+                $checkin_schedule_label = $checkin_unavailable['schedule_label'];
+            }
         } else {
             $geo_required = eventify_event_checkin_geo_required($event);
             $rsvp_required = eventify_event_checkin_rsvp_required($event);
@@ -96,7 +113,8 @@ if (!$error && $event && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['
     if (!csrf_validate()) {
         $error = 'Invalid request. Please try again.';
     } elseif (!eventify_event_allows_checkin($event)) {
-        $error = 'Check-in is not available. This event day has ended or has not started yet.';
+        $checkin_unavailable = eventify_event_checkin_student_details($event);
+        $error = $checkin_unavailable['reason'];
     } else {
         $user_id = (int) $_SESSION['user_id'];
         $event_id = (int) $event['id'];
@@ -122,6 +140,19 @@ if (!$error && $event && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['
         } else {
             $error = $result['error'] ?? 'Could not record attendance. Please try again.';
         }
+    }
+}
+
+if (isset($_SESSION['user_id']) && ($_SESSION['role'] ?? '') === 'student') {
+    require_once __DIR__ . '/backend/lib/event_day_sessions.php';
+    try {
+        $student_checkin_home_url = eventify_student_activities_hub_home_url(
+            $conn,
+            (int) $_SESSION['user_id'],
+            null
+        );
+    } catch (Throwable $e) {
+        $student_checkin_home_url = BASE_URL . '/activities_hub.php';
     }
 }
 
@@ -213,6 +244,61 @@ $pageTitle = $event ? htmlspecialchars($event['title']) : 'Event Check-in';
             background: var(--school-forest-deep);
         }
 
+        .checkin-unavailable {
+            text-align: center;
+        }
+
+        .checkin-unavailable-icon {
+            width: 3rem;
+            height: 3rem;
+            margin: 0 auto 0.75rem;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(185, 28, 28, 0.1);
+            color: #b91c1c;
+            font-size: 1.35rem;
+        }
+
+        .checkin-unavailable h5 {
+            color: #991b1b;
+            font-weight: 800;
+            margin-bottom: 0.75rem;
+        }
+
+        .checkin-reason-box {
+            background: #fff5f5;
+            border: 1px solid #fecaca;
+            border-radius: 12px;
+            padding: 0.9rem 1rem;
+            color: #991b1b;
+            font-weight: 600;
+            line-height: 1.45;
+            text-align: left;
+        }
+
+        .checkin-context-list {
+            list-style: none;
+            padding: 0;
+            margin: 0.85rem 0 0;
+            text-align: left;
+        }
+
+        .checkin-context-list li {
+            display: flex;
+            gap: 0.55rem;
+            align-items: flex-start;
+            color: #4b5563;
+            font-size: 0.9rem;
+            margin-bottom: 0.45rem;
+        }
+
+        .checkin-context-list i {
+            color: var(--school-forest-card);
+            margin-top: 0.15rem;
+        }
+
         @media (max-width: 576px) {
             .checkin-card { max-width: 100%; border-radius: 14px; }
             .checkin-header { padding: 1rem; }
@@ -227,8 +313,43 @@ $pageTitle = $event ? htmlspecialchars($event['title']) : 'Event Check-in';
         </div>
         <div class="checkin-body">
             <?php if ($error): ?>
-                <p class="text-danger mb-0"><?= htmlspecialchars($error) ?></p>
-                <a href="<?= BASE_URL ?>" class="btn btn-outline-primary mt-3" target="_top">Go to home</a>
+                <?php
+                if ($checkin_unavailable === null && $event) {
+                    $checkin_unavailable = eventify_event_checkin_student_details($event);
+                    if ($checkin_schedule_label === '' && ($checkin_unavailable['schedule_label'] ?? '') !== '') {
+                        $checkin_schedule_label = $checkin_unavailable['schedule_label'];
+                    }
+                }
+                ?>
+                <div class="checkin-unavailable">
+                    <div class="checkin-unavailable-icon" aria-hidden="true">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <h5>Can't check in yet</h5>
+                    <?php if ($event && !empty($event['title'])): ?>
+                        <p class="mb-2"><strong><?= htmlspecialchars((string) $event['title']) ?></strong></p>
+                    <?php endif; ?>
+                    <div class="checkin-reason-box">
+                        <?= htmlspecialchars($error) ?>
+                    </div>
+                    <?php if ($checkin_unavailable): ?>
+                        <ul class="checkin-context-list">
+                            <?php if ($checkin_schedule_label !== ''): ?>
+                                <li><i class="fas fa-calendar-day"></i><span>Event schedule: <strong><?= htmlspecialchars($checkin_schedule_label) ?></strong></span></li>
+                            <?php endif; ?>
+                            <li><i class="fas fa-hourglass-half"></i><span>Right now: <strong><?= htmlspecialchars($checkin_unavailable['now_label']) ?> <?= htmlspecialchars($checkin_unavailable['timezone_short']) ?></strong> (<?= htmlspecialchars($checkin_unavailable['today_date_label']) ?>)</span></li>
+                            <?php if (($checkin_unavailable['today_window'] ?? '') !== ''): ?>
+                                <li><i class="fas fa-door-open"></i><span>Today's check-in window: <strong><?= htmlspecialchars($checkin_unavailable['today_window']) ?></strong></span></li>
+                            <?php endif; ?>
+                        </ul>
+                    <?php elseif ($checkin_schedule_label !== ''): ?>
+                        <p class="event-meta mt-2 mb-0"><i class="fas fa-calendar-day me-2"></i>Scheduled: <?= htmlspecialchars($checkin_schedule_label) ?></p>
+                    <?php endif; ?>
+                </div>
+                <div class="d-grid gap-2 mt-3">
+                    <a href="<?= htmlspecialchars($student_checkin_home_url) ?>" class="btn btn-confirm" target="_top">Activities hub</a>
+                    <a href="<?= BASE_URL ?>/backend/auth/dashboard_student.php" class="btn btn-outline-secondary btn-sm" target="_top">Dashboard</a>
+                </div>
             <?php elseif ($confirmed): ?>
                 <p class="text-success mb-2"><i class="fas fa-check-circle me-2"></i><strong>Attendance confirmed.</strong></p>
                 <p class="text-muted small mb-0">You have been marked present for this event.</p>

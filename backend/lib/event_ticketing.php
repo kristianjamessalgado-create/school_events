@@ -79,6 +79,24 @@ function eventify_event_uses_paid_ticketing(array $event): bool
     return eventify_event_registration_mode($event) === 'paid_ticket';
 }
 
+function eventify_event_has_sellable_ticket_types(mysqli $conn, int $eventId): bool
+{
+    if ($eventId < 1 || !eventify_ticketing_ensure_schema($conn)) {
+        return false;
+    }
+    $types = eventify_load_ticket_types_for_event($conn, $eventId, true);
+    return $types !== [];
+}
+
+/** Whole-event paid shop or hub activity tickets on a free-RSVP parent event. */
+function eventify_event_allows_ticket_shop(mysqli $conn, array $event): bool
+{
+    if (eventify_event_uses_paid_ticketing($event)) {
+        return true;
+    }
+    return eventify_event_has_sellable_ticket_types($conn, (int) ($event['id'] ?? 0));
+}
+
 function eventify_payment_mode(): string
 {
     if (defined('EVENTIFY_PAYMENT_MODE')) {
@@ -370,7 +388,7 @@ function eventify_load_ticket_sales_summary(mysqli $conn, int $eventId): array
 
     $tStmt = $conn->prepare(
         "SELECT COUNT(*) AS sold,
-                SUM(CASE WHEN status = 'used' THEN 1 ELSE 0 END) AS used_cnt
+                SUM(CASE WHEN t.status = 'used' THEN 1 ELSE 0 END) AS used_cnt
          FROM event_tickets t
          JOIN ticket_orders o ON o.id = t.order_id
          WHERE t.event_id = ? AND o.status = 'paid'"
@@ -443,7 +461,7 @@ function eventify_create_ticket_order(mysqli $conn, int $userId, int $eventId, a
     if (!$event || !eventify_event_is_live($event)) {
         return ['ok' => false, 'error' => 'This event is not available for ticket sales.'];
     }
-    if (!eventify_event_uses_paid_ticketing($event)) {
+    if (!eventify_event_allows_ticket_shop($conn, $event)) {
         return ['ok' => false, 'error' => 'This event does not use paid ticketing.'];
     }
 
@@ -647,7 +665,20 @@ function eventify_fulfill_ticket_order(
         $payStmt->execute();
         $payStmt->close();
 
-        eventify_ensure_registration_for_ticket_holder($conn, $userId, $eventId);
+        $evModeStmt = $conn->prepare('SELECT registration_mode FROM events WHERE id = ? LIMIT 1');
+        $regMode = 'rsvp';
+        if ($evModeStmt) {
+            $evModeStmt->bind_param('i', $eventId);
+            $evModeStmt->execute();
+            $evModeRow = $evModeStmt->get_result()->fetch_assoc();
+            $evModeStmt->close();
+            if ($evModeRow) {
+                $regMode = eventify_event_registration_mode($evModeRow);
+            }
+        }
+        if ($regMode === 'paid_ticket') {
+            eventify_ensure_registration_for_ticket_holder($conn, $userId, $eventId);
+        }
 
         $conn->commit();
 

@@ -78,7 +78,67 @@
         var recipientInput = document.getElementById('msgrRecipientId');
         var textareaEl = document.getElementById('msgrBody');
         var sendBtn = document.getElementById('msgrSendBtn');
+        var attachBtn = document.getElementById('msgrAttachBtn');
+        var attachInput = document.getElementById('msgrAttachmentInput');
+        var attachPreview = document.getElementById('msgrAttachPreview');
+        var attachPreviewImg = document.getElementById('msgrAttachPreviewImg');
+        var attachClear = document.getElementById('msgrAttachClear');
         var csrfInput = document.getElementById('msgrCsrf');
+
+        function toastError(msg) {
+            if (window.eventifyToast && window.eventifyToast.error) {
+                window.eventifyToast.error(msg);
+            } else {
+                window.alert(msg);
+            }
+        }
+
+        function toastSuccess(msg) {
+            if (window.eventifyToast && window.eventifyToast.success) {
+                window.eventifyToast.success(msg);
+            }
+        }
+
+        function clearAttachmentPreview() {
+            if (attachInput) attachInput.value = '';
+            if (attachPreview) attachPreview.hidden = true;
+            if (attachPreviewImg) attachPreviewImg.src = '';
+        }
+
+        function syncComposerControls() {
+            var enabled = !!selectedPeerId;
+            if (textareaEl) textareaEl.disabled = !enabled;
+            if (sendBtn) sendBtn.disabled = !enabled;
+            if (attachBtn) attachBtn.disabled = !enabled;
+        }
+
+        if (attachBtn && attachInput) {
+            attachBtn.addEventListener('click', function () {
+                if (!selectedPeerId) return;
+                attachInput.click();
+            });
+            attachInput.addEventListener('change', function () {
+                var file = attachInput.files && attachInput.files[0];
+                if (!file) {
+                    clearAttachmentPreview();
+                    return;
+                }
+                if (file.size > 5 * 1024 * 1024) {
+                    toastError('Image must be 5MB or smaller.');
+                    clearAttachmentPreview();
+                    return;
+                }
+                var reader = new FileReader();
+                reader.onload = function (ev) {
+                    if (attachPreviewImg) attachPreviewImg.src = ev.target.result;
+                    if (attachPreview) attachPreview.hidden = false;
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+        if (attachClear) {
+            attachClear.addEventListener('click', clearAttachmentPreview);
+        }
         var searchEl = document.getElementById('msgrSearch');
         var headAvatar = document.getElementById('msgrHeadAvatar');
         var headName = document.getElementById('msgrHeadName');
@@ -228,8 +288,7 @@
             selectedPeerId = id;
             selectedPeer = p;
             if (recipientInput) recipientInput.value = String(id);
-            if (textareaEl) textareaEl.disabled = false;
-            if (sendBtn) sendBtn.disabled = false;
+            syncComposerControls();
             updateHeaderDetail(p);
             renderPeerList();
             setSelectionClass();
@@ -284,6 +343,14 @@
                 body.textContent = m.body || '';
                 bubble.appendChild(meta);
                 bubble.appendChild(body);
+                if (m.attachment_path) {
+                    var img = document.createElement('img');
+                    img.className = 'msgr-bubble-attach';
+                    img.src = base + '/' + String(m.attachment_path).replace(/^\/+/, '');
+                    img.alt = 'Attachment';
+                    img.loading = 'lazy';
+                    bubble.appendChild(img);
+                }
                 row.appendChild(bubble);
                 threadEl.appendChild(row);
             });
@@ -347,11 +414,12 @@
                 e.preventDefault();
                 if (!selectedPeerId || !textareaEl) return;
                 var body = (textareaEl.value || '').trim();
-                if (!body) return;
-                var fd = new FormData();
-                fd.append('csrf_token', getCsrf());
-                fd.append('recipient_id', String(selectedPeerId));
-                fd.append('body', body);
+                var hasFile = attachInput && attachInput.files && attachInput.files.length > 0;
+                if (!body && !hasFile) return;
+                var fd = new FormData(formEl);
+                fd.set('csrf_token', getCsrf());
+                fd.set('recipient_id', String(selectedPeerId));
+                fd.set('body', body);
                 if (sendBtn) sendBtn.disabled = true;
                 fetch(base + '/backend/messaging/staff_send.php', {
                     method: 'POST',
@@ -360,18 +428,19 @@
                 })
                     .then(function (r) { return r.json(); })
                     .then(function (data) {
-                        if (sendBtn) sendBtn.disabled = false;
+                        syncComposerControls();
                         if (data && data.ok) {
                             textareaEl.value = '';
-                            bumpLocalPreview(body);
+                            clearAttachmentPreview();
+                            bumpLocalPreview(body || '[Image]');
                             loadThread();
                         } else {
-                            window.alert(data && data.error ? data.error : 'Send failed.');
+                            toastError(data && data.error ? data.error : 'Send failed.');
                         }
                     })
                     .catch(function () {
-                        if (sendBtn) sendBtn.disabled = false;
-                        window.alert('Send failed.');
+                        syncComposerControls();
+                        toastError('Send failed.');
                     });
             });
         }
@@ -400,21 +469,25 @@
             });
         }
 
-        if (detailBackdrop) {
-            detailBackdrop.addEventListener('click', function () {
-                if (!detailPanel || !detailToggle) return;
-                detailPanel.classList.add('msgr-detail-collapsed');
-                detailToggle.setAttribute('aria-expanded', 'false');
-                updateDetailBackdrop();
-            });
-        }
-
-        document.addEventListener('keydown', function (ev) {
-            if (ev.key !== 'Escape' || !detailBackdrop || !detailBackdrop.classList.contains('is-visible')) return;
+        function closeDetailPanel() {
             if (!detailPanel || !detailToggle) return;
             detailPanel.classList.add('msgr-detail-collapsed');
             detailToggle.setAttribute('aria-expanded', 'false');
             updateDetailBackdrop();
+        }
+
+        var detailClose = document.getElementById('msgrDetailClose');
+        if (detailClose) {
+            detailClose.addEventListener('click', closeDetailPanel);
+        }
+
+        if (detailBackdrop) {
+            detailBackdrop.addEventListener('click', closeDetailPanel);
+        }
+
+        document.addEventListener('keydown', function (ev) {
+            if (ev.key !== 'Escape' || !detailBackdrop || !detailBackdrop.classList.contains('is-visible')) return;
+            closeDetailPanel();
         });
 
         syncDetailPanelToViewport();
@@ -426,10 +499,10 @@
                 selectedPeer = null;
                 if (recipientInput) recipientInput.value = '';
                 if (textareaEl) {
-                    textareaEl.disabled = true;
                     textareaEl.value = '';
                 }
-                if (sendBtn) sendBtn.disabled = true;
+                clearAttachmentPreview();
+                syncComposerControls();
                 updateHeaderDetail(null);
                 renderPeerList();
                 renderMessages([]);

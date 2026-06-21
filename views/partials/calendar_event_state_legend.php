@@ -3,6 +3,7 @@
 $legendId = $legendId ?? 'calendarEventLegend';
 $legendClass = trim(($legendClass ?? 'eventify-calendar-legend'));
 $showMultiDayNote = !isset($showMultiDayNote) || $showMultiDayNote;
+$showSelectionClearNote = !empty($showSelectionClearNote);
 ?>
 <div class="<?= htmlspecialchars($legendClass) ?>" id="<?= htmlspecialchars($legendId) ?>" role="note" aria-label="Calendar color guide">
     <span class="eventify-calendar-legend__title">Color guide</span>
@@ -17,7 +18,7 @@ $showMultiDayNote = !isset($showMultiDayNote) || $showMultiDayNote;
         </li>
         <li>
             <span class="eventify-calendar-legend__swatch eventify-calendar-legend__swatch--upcoming" aria-hidden="true"></span>
-            <span class="eventify-calendar-legend__label"><strong>Gold</strong> — Upcoming (approved; that day has not started)</span>
+            <span class="eventify-calendar-legend__label"><strong>Gold</strong> — Upcoming (approved; scheduled on a future day)</span>
         </li>
         <li>
             <span class="eventify-calendar-legend__swatch eventify-calendar-legend__swatch--closed" aria-hidden="true"></span>
@@ -29,6 +30,9 @@ $showMultiDayNote = !isset($showMultiDayNote) || $showMultiDayNote;
         </li>
     </ul>
     <?php if ($showMultiDayNote): ?>
-    <p class="eventify-calendar-legend__note">Pending events stay orange on every day until admin approves. After approval, multi-day events may use green or gold per day.</p>
+    <p class="eventify-calendar-legend__note">Pending events stay orange on every day until admin approves. Active multi-day bars use gray for past days, <strong>green on today</strong>, and gold on future days.</p>
+    <?php endif; ?>
+    <?php if ($showSelectionClearNote): ?>
+    <p class="eventify-calendar-legend__note">Double-click a highlighted day on the calendar to clear the selection and return it to white.</p>
     <?php endif; ?>
 </div>

@@ -10,6 +10,7 @@ require_once __DIR__ . '/../../config/student_profile_fields.php';
 require_once __DIR__ . '/../lib/event_status_auto.php';
 require_once __DIR__ . '/../lib/event_calendar.php';
 require_once __DIR__ . '/../lib/event_ticketing.php';
+require_once __DIR__ . '/../lib/event_evaluation.php';
 
 eventify_ticketing_ensure_schema($conn);
 
@@ -19,7 +20,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'student') {
     exit();
 }
 
-eventify_auto_complete_past_events($conn);
+eventify_run_dashboard_maintenance($conn);
 eventify_events_department_ensure_varchar($conn);
 eventify_users_ensure_student_profile_fields($conn);
 
@@ -388,6 +389,8 @@ try {
 } catch (Throwable $e) {
     $activities_hub_events = [];
 }
+
+$event_evaluation_sections = eventify_evaluation_sections();
 
 // Include the view
 include __DIR__ . '/../../views/dashboard_student.php';

@@ -378,10 +378,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         } catch (Throwable $e) {
                             // ignore
                         }
-                        $success = "Event submitted successfully and is now pending approval from the administrator.";
-                        $redirect = BASE_URL . "/backend/auth/dashboardorganizer.php?msg=" . urlencode($success);
+                        $success = 'Event submitted successfully and is now pending approval. An admin will review it and send you an OTP — enter that code under My Events to publish the event on the calendar.';
+                        $redirectTo = trim((string) ($_POST['redirect_to'] ?? ''));
+                        if ($redirectTo === 'activities_hub') {
+                            $redirect = BASE_URL . '/activities_hub.php?msg=' . urlencode($success);
+                        } elseif ($redirectTo === 'event_activities' && $newEventId > 0) {
+                            $redirect = BASE_URL . '/event_activities.php?id=' . $newEventId . '&msg=' . urlencode($success);
+                        } else {
+                            $redirect = BASE_URL . '/backend/auth/dashboardorganizer.php?msg=' . urlencode($success);
+                        }
                         if (count($scheduleDatesToStore) >= 2) {
-                            $redirect .= "&prompt_activities=" . $newEventId;
+                            if ($redirectTo === 'activities_hub') {
+                                $redirect .= '&prompt_activities=' . $newEventId;
+                            } elseif ($redirectTo === 'event_activities' && $newEventId > 0) {
+                                $redirect .= '&prompt_activities=1';
+                            } else {
+                                $redirect .= '&prompt_activities=' . $newEventId;
+                            }
                         }
                         header("Location: " . $redirect);
                         exit();

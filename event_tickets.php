@@ -38,9 +38,16 @@ if (!$event || !eventify_event_is_live($event)) {
     header('Location: ' . BASE_URL . '/backend/auth/dashboard_student.php?error=' . urlencode('This event has ended. Ticket sales are closed.'));
     exit();
 }
-if (!eventify_event_uses_paid_ticketing($event)) {
-    header('Location: ' . BASE_URL . '/backend/auth/dashboard_student.php?msg=' . urlencode('This event uses free RSVP, not ticket sales.'));
+if (!eventify_event_allows_ticket_shop($conn, $event)) {
+    header('Location: ' . BASE_URL . '/backend/auth/dashboard_student.php?msg=' . urlencode('Ticket sales are not available for this event.'));
     exit();
+}
+
+$highlightTypeId = (int) ($_GET['type'] ?? 0);
+$fromActivityId = (int) ($_GET['activity'] ?? 0);
+$shopContextNote = '';
+if (!eventify_event_uses_paid_ticketing($event)) {
+    $shopContextNote = 'These tickets are for paid activities inside this event\'s hub (e.g. pageant). Free RSVP still applies to the main event and free activities.';
 }
 
 $types = eventify_load_ticket_types_for_event($conn, $eventId, true);
@@ -78,6 +85,9 @@ $conn->close();
     <?php endif; ?>
     <?php if ($error): ?>
         <div class="alert alert-danger"><?= htmlspecialchars($error) ?></div>
+    <?php endif; ?>
+    <?php if ($shopContextNote !== ''): ?>
+        <div class="alert alert-secondary small"><?= htmlspecialchars($shopContextNote) ?></div>
     <?php endif; ?>
 
     <?php if (!empty($myTickets)): ?>

@@ -9,8 +9,11 @@ include __DIR__ . '/../../config/csrf.php';
 require_once __DIR__ . '/../lib/event_status_auto.php';
 require_once __DIR__ . '/../lib/staff_messaging.php';
 require_once __DIR__ . '/../lib/event_feedback_schema.php';
+require_once __DIR__ . '/../lib/event_evaluation.php';
 require_once __DIR__ . '/../lib/event_calendar.php';
 require_once __DIR__ . '/../lib/event_day_sessions.php';
+require_once __DIR__ . '/../lib/event_organizer_assign.php';
+require_once __DIR__ . '/../../config/departments.php';
 
 // Only admin users can access this dashboard
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
@@ -18,7 +21,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
     exit();
 }
 
-eventify_auto_complete_past_events($conn);
+eventify_run_dashboard_maintenance($conn);
 
 $hasMustChangePasswordColumn = false;
 try {
@@ -180,7 +183,7 @@ eventify_events_attach_schedule_dates($conn, $events);
 $pendingCount = 0;
 $pendingEvents = [];
 $pendingSql = "
-    SELECT e.id, e.title, e.description, e.date, e.location, e.department, e.status,
+    SELECT e.id, e.organizer_id, e.title, e.description, e.date, e.location, e.department, e.status, e.created_at,
            u.name AS organizer_name, u.email AS organizer_email";
 if ($usersHasOtpContactColumns) {
     $pendingSql .= ", u.organizer_contact_email, u.organizer_phone, u.organizer_contact_method";
@@ -310,10 +313,10 @@ $admin_feedback_list = [];
 try {
     if (eventify_event_feedback_ensure_schema($conn)) {
         $fbStmt = $conn->query("
-            SELECT ef.rating, ef.comment, ef.created_at, ef.is_anonymous,
+            SELECT ef.rating, ef.comment, ef.created_at, ef.evaluation_json,
                    e.title AS event_title, e.id AS event_id,
                    org.name AS organizer_name,
-                   u.name AS student_name, u.user_id AS student_code
+                   u.department AS student_department
             FROM event_feedback ef
             JOIN events e ON e.id = ef.event_id
             JOIN users org ON org.id = e.organizer_id
@@ -329,6 +332,26 @@ try {
     }
 } catch (Throwable $e) {
     $admin_feedback_list = [];
+}
+
+$admin_evaluation_averages = [];
+try {
+    if (eventify_event_feedback_ensure_schema($conn)) {
+        $evStmt = $conn->query("
+            SELECT evaluation_json
+            FROM event_feedback
+            WHERE evaluation_json IS NOT NULL AND evaluation_json != ''
+        ");
+        $evalRows = [];
+        if ($evStmt) {
+            while ($row = $evStmt->fetch_assoc()) {
+                $evalRows[] = $row;
+            }
+        }
+        $admin_evaluation_averages = eventify_evaluation_aggregate_from_rows($evalRows);
+    }
+} catch (Throwable $e) {
+    $admin_evaluation_averages = [];
 }
 
 // Admin ↔ Organizer messaging (organizer list + unread count)
@@ -387,6 +410,75 @@ try {
     );
 } catch (Throwable $e) {
     $activities_hub_events = [];
+}
+
+$assignableOrganizers = eventify_fetch_assignable_organizers($conn);
+
+// Pending events waiting more than 24 hours (dashboard reminder widget)
+$stalePendingEvents = [];
+$stalePendingCount = 0;
+try {
+    $resStale = $conn->query("
+        SELECT e.id, e.title, e.created_at, u.name AS organizer_name
+        FROM events e
+        JOIN users u ON e.organizer_id = u.id
+        WHERE e.status = 'pending'
+          AND e.created_at <= DATE_SUB(NOW(), INTERVAL 24 HOUR)
+        ORDER BY e.created_at ASC
+        LIMIT 50
+    ");
+    if ($resStale) {
+        while ($row = $resStale->fetch_assoc()) {
+            $stalePendingEvents[] = $row;
+        }
+        $stalePendingCount = count($stalePendingEvents);
+    }
+} catch (Throwable $e) {
+    $stalePendingEvents = [];
+    $stalePendingCount = 0;
+}
+
+// Accounts awaiting Super Admin activation (read-only queue for admin)
+$pendingAccounts = [];
+$pendingAccountCount = 0;
+try {
+    $resAcc = $conn->query("
+        SELECT id, user_id, name, email, role, department, created_at
+        FROM users
+        WHERE status = 'inactive'
+        ORDER BY created_at DESC
+        LIMIT 100
+    ");
+    if ($resAcc) {
+        while ($row = $resAcc->fetch_assoc()) {
+            $pendingAccounts[] = $row;
+        }
+        $pendingAccountCount = count($pendingAccounts);
+    }
+} catch (Throwable $e) {
+    $pendingAccounts = [];
+    $pendingAccountCount = 0;
+}
+
+// RSVP and check-in counts for calendar event details
+$rsvpCountByEvent = [];
+$checkinCountByEvent = [];
+try {
+    $rc = $conn->query('SELECT event_id, COUNT(*) AS cnt FROM registrations GROUP BY event_id');
+    if ($rc) {
+        while ($row = $rc->fetch_assoc()) {
+            $rsvpCountByEvent[(int) ($row['event_id'] ?? 0)] = (int) ($row['cnt'] ?? 0);
+        }
+    }
+    $cc = $conn->query("SELECT event_id, COUNT(*) AS cnt FROM registrations WHERE status = 'present' AND time_in IS NOT NULL GROUP BY event_id");
+    if ($cc) {
+        while ($row = $cc->fetch_assoc()) {
+            $checkinCountByEvent[(int) ($row['event_id'] ?? 0)] = (int) ($row['cnt'] ?? 0);
+        }
+    }
+} catch (Throwable $e) {
+    $rsvpCountByEvent = [];
+    $checkinCountByEvent = [];
 }
 
 $conn->close();

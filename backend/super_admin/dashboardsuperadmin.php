@@ -9,6 +9,7 @@ include __DIR__ . '/../../config/csrf.php';
 require_once __DIR__ . '/../lib/event_status_auto.php';
 require_once __DIR__ . '/../lib/event_calendar.php';
 require_once __DIR__ . '/../lib/event_day_sessions.php';
+require_once __DIR__ . '/../lib/multimedia_moderator.php';
 
 // Only super_admin
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'super_admin') {
@@ -16,7 +17,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'super_admin') {
     exit();
 }
 
-eventify_auto_complete_past_events($conn);
+eventify_run_dashboard_maintenance($conn);
 
 $hasMustChangePasswordColumn = false;
 try {
@@ -69,8 +70,9 @@ if ($usersPage > $usersTotalPages) {
     $usersPage = $usersTotalPages;
 }
 $usersOffset = ($usersPage - 1) * $usersPerPage;
+eventify_users_ensure_multimedia_moderator_column($conn);
 $users = [];
-$stmt = $conn->prepare("SELECT id, name, email, role, status, failed_attempts FROM users ORDER BY id DESC LIMIT ? OFFSET ?");
+$stmt = $conn->prepare("SELECT id, name, email, role, status, failed_attempts, is_multimedia_moderator FROM users ORDER BY id DESC LIMIT ? OFFSET ?");
 $stmt->bind_param("ii", $usersPerPage, $usersOffset);
 $stmt->execute();
 $result = $stmt->get_result();

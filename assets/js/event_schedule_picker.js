@@ -5,6 +5,7 @@
     'use strict';
 
     var pickerState = {};
+    var escClickTimers = {};
 
     function pad2(n) {
         return n < 10 ? '0' + n : String(n);
@@ -184,11 +185,11 @@
 
         var hintText = '';
         if (mode === 'single') {
-            hintText = 'Click one day on the calendar for your event.';
+            hintText = 'Click one day on the calendar for your event. Double-click a selected day to clear it.';
         } else if (mode === 'range') {
-            hintText = 'Click the first day, then the last day. All days in between will be selected.';
+            hintText = 'Click the first day, then the last day. All days in between will be selected. Double-click any selected day to clear the range.';
         } else {
-            hintText = 'Click each day your event runs. Click again to remove a day.';
+            hintText = 'Click each day your event runs. Click or double-click a selected day to remove it.';
         }
         if (hint) {
             hint.textContent = hintText;
@@ -526,6 +527,29 @@
         applySelection(prefix, dates);
     }
 
+    function handleDayDoubleClick(prefix, ymd) {
+        var state = pickerState[prefix];
+        if (!state || ymd < state.minDate) {
+            return;
+        }
+
+        var dates = state.dates.slice();
+        if (dates.indexOf(ymd) === -1) {
+            return;
+        }
+
+        var mode = getMode(prefix);
+        state.rangeAnchor = null;
+
+        if (mode === 'specific') {
+            dates.splice(dates.indexOf(ymd), 1);
+            applySelection(prefix, dates);
+            return;
+        }
+
+        applySelection(prefix, []);
+    }
+
     function renderClickCalendar(prefix) {
         var state = pickerState[prefix];
         var container = document.getElementById(prefix + 'ScheduleClickCalendar');
@@ -615,7 +639,21 @@
 
         container.querySelectorAll('[data-esc-ymd]').forEach(function (btn) {
             btn.addEventListener('click', function () {
-                handleDayClick(prefix, btn.getAttribute('data-esc-ymd'));
+                var ymd = btn.getAttribute('data-esc-ymd');
+                var timerKey = prefix + ':' + ymd;
+                clearTimeout(escClickTimers[timerKey]);
+                escClickTimers[timerKey] = setTimeout(function () {
+                    delete escClickTimers[timerKey];
+                    handleDayClick(prefix, ymd);
+                }, 220);
+            });
+            btn.addEventListener('dblclick', function (e) {
+                e.preventDefault();
+                var ymd = btn.getAttribute('data-esc-ymd');
+                var timerKey = prefix + ':' + ymd;
+                clearTimeout(escClickTimers[timerKey]);
+                delete escClickTimers[timerKey];
+                handleDayDoubleClick(prefix, ymd);
             });
         });
     }

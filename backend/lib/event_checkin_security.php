@@ -22,6 +22,14 @@ function eventify_checkin_geo_radius_m(): float
     return 300.0;
 }
 
+function eventify_checkin_early_minutes(): int
+{
+    if (defined('EVENTIFY_CHECKIN_EARLY_MINUTES')) {
+        return max(0, (int) EVENTIFY_CHECKIN_EARLY_MINUTES);
+    }
+    return 15;
+}
+
 function eventify_haversine_distance_m(float $lat1, float $lon1, float $lat2, float $lon2): float
 {
     $earth = 6371000.0;
@@ -49,11 +57,11 @@ function eventify_checkin_coords_from_row(array $row): array
 /** @param array<string, mixed> $event */
 function eventify_event_checkin_geo_required(array $event): bool
 {
-    if (array_key_exists('checkin_require_geo', $event) && $event['checkin_require_geo'] !== null && $event['checkin_require_geo'] !== '') {
-        return (int) $event['checkin_require_geo'] === 1;
-    }
     if (!eventify_checkin_config_geo_when_pinned()) {
         return false;
+    }
+    if (array_key_exists('checkin_require_geo', $event) && $event['checkin_require_geo'] !== null && $event['checkin_require_geo'] !== '') {
+        return (int) $event['checkin_require_geo'] === 1;
     }
     $coords = eventify_checkin_coords_from_row($event);
     return $coords['lat'] !== null && $coords['lng'] !== null;
@@ -109,6 +117,54 @@ function eventify_student_has_event_registration(mysqli $conn, int $userId, int 
     $ok = (bool) $stmt->get_result()->fetch_assoc();
     $stmt->close();
     return $ok;
+}
+
+/**
+ * Whether a student may join hub activities (RSVP / check-in).
+ * RSVP mode: registrations row. Paid ticket: valid ticket (syncs registration). Open: no main signup needed.
+ *
+ * @param array<string, mixed>|null $event
+ */
+function eventify_student_has_main_event_access(mysqli $conn, int $userId, int $eventId, ?array $event = null): bool
+{
+    if ($userId < 1 || $eventId < 1) {
+        return false;
+    }
+    if ($event === null) {
+        $st = $conn->prepare('SELECT registration_mode FROM events WHERE id = ? LIMIT 1');
+        if (!$st) {
+            return false;
+        }
+        $st->bind_param('i', $eventId);
+        $st->execute();
+        $event = $st->get_result()->fetch_assoc();
+        $st->close();
+        if (!$event) {
+            return false;
+        }
+    }
+    require_once __DIR__ . '/event_ticketing.php';
+    $mode = eventify_event_registration_mode($event);
+    if ($mode === 'open') {
+        return true;
+    }
+    if (eventify_student_has_event_registration($conn, $userId, $eventId)) {
+        return true;
+    }
+    if ($mode === 'paid_ticket' && eventify_ticketing_ensure_schema($conn)) {
+        $t = $conn->prepare("SELECT id FROM event_tickets WHERE user_id = ? AND event_id = ? AND status = 'valid' LIMIT 1");
+        if ($t) {
+            $t->bind_param('ii', $userId, $eventId);
+            $t->execute();
+            $hasTicket = (bool) $t->get_result()->fetch_assoc();
+            $t->close();
+            if ($hasTicket) {
+                eventify_ensure_registration_for_ticket_holder($conn, $userId, $eventId);
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 /**
@@ -410,8 +466,13 @@ function eventify_process_activity_checkin(mysqli $conn, array $session, int $us
         return ['ok' => false, 'error' => 'Invalid activity.'];
     }
 
-    if (!eventify_student_has_event_registration($conn, $userId, $eventId)) {
-        return ['ok' => false, 'error' => 'Register for the main event before checking in to this activity.'];
+    if (!eventify_student_has_main_event_access($conn, $userId, $eventId)) {
+        return ['ok' => false, 'error' => 'Register for the main event (or buy a ticket) before checking in to this activity.'];
+    }
+
+    require_once __DIR__ . '/event_day_sessions.php';
+    if (eventify_session_requires_ticket($session) && !eventify_student_has_session_ticket($conn, $userId, $session)) {
+        return ['ok' => false, 'error' => 'Buy a ticket for this paid activity before checking in.'];
     }
 
     if (eventify_activity_checkin_require_session_rsvp() && !eventify_student_has_session_rsvp($conn, $userId, $sessionId)) {
@@ -542,4 +603,142 @@ function eventify_process_ticket_checkin(mysqli $conn, array $ticket, int $userI
         }
         return ['ok' => false, 'error' => $e->getMessage() !== 'Check-in failed.' ? $e->getMessage() : 'Check-in failed. Please try again.'];
     }
+}
+
+/**
+ * Count main-event and activity check-ins for a student.
+ *
+ * @return array{events: int, activities: int, total: int}
+ */
+function eventify_student_attendance_counts(mysqli $conn, int $userId): array
+{
+    if ($userId < 1) {
+        return ['events' => 0, 'activities' => 0, 'total' => 0];
+    }
+    $events = 0;
+    $activities = 0;
+    $st = $conn->prepare("SELECT COUNT(*) AS c FROM registrations WHERE user_id = ? AND status = 'present' AND time_in IS NOT NULL");
+    if ($st) {
+        $st->bind_param('i', $userId);
+        $st->execute();
+        $row = $st->get_result()->fetch_assoc();
+        $events = (int) ($row['c'] ?? 0);
+        $st->close();
+    }
+    $chk = $conn->query("SHOW TABLES LIKE 'event_day_session_attendance'");
+    if ($chk && $chk->num_rows > 0) {
+        $st = $conn->prepare('SELECT COUNT(*) AS c FROM event_day_session_attendance WHERE user_id = ?');
+        if ($st) {
+            $st->bind_param('i', $userId);
+            $st->execute();
+            $row = $st->get_result()->fetch_assoc();
+            $activities = (int) ($row['c'] ?? 0);
+            $st->close();
+        }
+    }
+    return [
+        'events' => $events,
+        'activities' => $activities,
+        'total' => $events + $activities,
+    ];
+}
+
+/**
+ * Load unified attendance history (main event QR + activity QR check-ins).
+ *
+ * @return array{items: list<array<string, mixed>>, counts: array{events: int, activities: int, total: int}}
+ */
+function eventify_load_student_attendance_history(mysqli $conn, int $userId, string $filter = 'all', int $limit = 150): array
+{
+    $counts = eventify_student_attendance_counts($conn, $userId);
+    if ($userId < 1) {
+        return ['items' => [], 'counts' => $counts];
+    }
+
+    $filter = strtolower(trim($filter));
+    if (!in_array($filter, ['all', 'events', 'activities'], true)) {
+        $filter = 'all';
+    }
+    $limit = max(1, min(500, $limit));
+
+    $items = [];
+
+    if ($filter === 'all' || $filter === 'events') {
+        $st = $conn->prepare(
+            "SELECT r.time_in AS checked_in_at, r.event_id,
+                    e.title AS event_title, e.date AS event_date, e.location AS event_location, e.status AS event_status
+             FROM registrations r
+             INNER JOIN events e ON e.id = r.event_id
+             WHERE r.user_id = ? AND r.status = 'present' AND r.time_in IS NOT NULL
+             ORDER BY r.time_in DESC
+             LIMIT ?"
+        );
+        if ($st) {
+            $st->bind_param('ii', $userId, $limit);
+            $st->execute();
+            $res = $st->get_result();
+            while ($row = $res->fetch_assoc()) {
+                $items[] = [
+                    'kind' => 'event',
+                    'title' => (string) ($row['event_title'] ?? 'Event'),
+                    'event_title' => (string) ($row['event_title'] ?? 'Event'),
+                    'event_id' => (int) ($row['event_id'] ?? 0),
+                    'session_id' => 0,
+                    'location' => (string) ($row['event_location'] ?? ''),
+                    'schedule_date' => substr((string) ($row['event_date'] ?? ''), 0, 10),
+                    'checked_in_at' => (string) ($row['checked_in_at'] ?? ''),
+                    'event_status' => (string) ($row['event_status'] ?? ''),
+                ];
+            }
+            $st->close();
+        }
+    }
+
+    if ($filter === 'all' || $filter === 'activities') {
+        if (!function_exists('eventify_event_day_sessions_ensure_enhanced')) {
+            require_once __DIR__ . '/event_day_sessions.php';
+        }
+        eventify_event_day_sessions_ensure_enhanced($conn);
+        $st = $conn->prepare(
+            'SELECT a.checked_in_at, s.id AS session_id, s.title AS activity_title,
+                    s.schedule_date, s.start_time, s.end_time, s.location AS activity_location,
+                    e.id AS event_id, e.title AS event_title, e.status AS event_status
+             FROM event_day_session_attendance a
+             INNER JOIN event_day_sessions s ON s.id = a.session_id
+             INNER JOIN events e ON e.id = s.event_id
+             WHERE a.user_id = ?
+             ORDER BY a.checked_in_at DESC
+             LIMIT ?'
+        );
+        if ($st) {
+            $st->bind_param('ii', $userId, $limit);
+            $st->execute();
+            $res = $st->get_result();
+            while ($row = $res->fetch_assoc()) {
+                $items[] = [
+                    'kind' => 'activity',
+                    'title' => (string) ($row['activity_title'] ?? 'Activity'),
+                    'event_title' => (string) ($row['event_title'] ?? ''),
+                    'event_id' => (int) ($row['event_id'] ?? 0),
+                    'session_id' => (int) ($row['session_id'] ?? 0),
+                    'location' => (string) ($row['activity_location'] ?? ''),
+                    'schedule_date' => substr((string) ($row['schedule_date'] ?? ''), 0, 10),
+                    'start_time' => (string) ($row['start_time'] ?? ''),
+                    'end_time' => (string) ($row['end_time'] ?? ''),
+                    'checked_in_at' => (string) ($row['checked_in_at'] ?? ''),
+                    'event_status' => (string) ($row['event_status'] ?? ''),
+                ];
+            }
+            $st->close();
+        }
+    }
+
+    usort($items, static function (array $a, array $b): int {
+        return strcmp((string) ($b['checked_in_at'] ?? ''), (string) ($a['checked_in_at'] ?? ''));
+    });
+    if ($filter === 'all') {
+        $items = array_slice($items, 0, $limit);
+    }
+
+    return ['items' => $items, 'counts' => $counts];
 }

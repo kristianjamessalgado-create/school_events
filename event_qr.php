@@ -20,7 +20,7 @@ require_once __DIR__ . '/backend/lib/nav_helpers.php';
 
 
 
-eventify_auto_complete_past_events($conn);
+eventify_run_dashboard_maintenance($conn);
 
 
 

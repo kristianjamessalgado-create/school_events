@@ -23,6 +23,7 @@ $admin_notifications = $admin_notifications ?? [];
 $admin_unread_count = isset($admin_unread_count) ? (int) $admin_unread_count : 0;
 $feedbackStats = $feedbackStats ?? ['total_feedback' => 0, 'avg_rating' => 0, 'rating_labels' => ['1★','2★','3★','4★','5★'], 'rating_counts' => [0,0,0,0,0]];
 $admin_feedback_list = $admin_feedback_list ?? [];
+$admin_evaluation_averages = $admin_evaluation_averages ?? [];
 $success       = $_GET['success'] ?? '';
 $error         = $_GET['error'] ?? '';
 $openModal     = strtolower((string)($_GET['open_modal'] ?? ''));
@@ -30,6 +31,15 @@ $staff_messaging_unread = isset($staff_messaging_unread) ? (int) $staff_messagin
 $otpTableReady = $otpTableReady ?? false;
 $usersHasOtpContactColumns = $usersHasOtpContactColumns ?? false;
 $messaging_organizers = $messaging_organizers ?? [];
+$assignableOrganizers = $assignableOrganizers ?? [];
+$stalePendingEvents = $stalePendingEvents ?? [];
+$stalePendingCount = isset($stalePendingCount) ? (int) $stalePendingCount : count($stalePendingEvents);
+$pendingAccounts = $pendingAccounts ?? [];
+$pendingAccountCount = isset($pendingAccountCount) ? (int) $pendingAccountCount : count($pendingAccounts);
+$rsvpCountByEvent = $rsvpCountByEvent ?? [];
+$checkinCountByEvent = $checkinCountByEvent ?? [];
+$adminDepartmentChoices = function_exists('eventify_allowed_departments') ? eventify_allowed_departments() : ['ALL'];
+$showPendingReminder = ((int) ($adminSettings['notify_pending_reminder'] ?? 1) === 1) && $stalePendingCount > 0;
 $adminSettings = $adminSettings ?? [
     'notify_email_new_event' => 1,
     'notify_pending_reminder' => 1,
@@ -53,18 +63,20 @@ $messengerHref = BASE_URL . '/backend/messaging/staff_messenger.php';
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Admin Dashboard - EVENTIFY</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="<?= BASE_URL; ?>/assets/css/eventify_modal.css?v=2">
     <link rel="stylesheet" href="<?= BASE_URL; ?>/assets/css/dashboard_student.css">
-    <link rel="stylesheet" href="<?= BASE_URL; ?>/assets/css/dashboard_admin.css">
-    <link rel="stylesheet" href="<?= BASE_URL; ?>/assets/css/calendar_legend.css">
-    <link rel="stylesheet" href="<?= BASE_URL; ?>/assets/css/notifications.css">
-    <link rel="stylesheet" href="<?= BASE_URL; ?>/assets/css/calendar_scroll_fix.css">
+    <link rel="stylesheet" href="<?= BASE_URL; ?>/assets/css/dashboard_admin.css?v=13">
+    <link rel="stylesheet" href="<?= BASE_URL; ?>/assets/css/calendar_legend.css?v=7">
+    <link rel="stylesheet" href="<?= BASE_URL; ?>/assets/css/dashboard_calendar_shell.css?v=6">
+    <link rel="stylesheet" href="<?= BASE_URL; ?>/assets/css/notifications.css?v=4">
+    <link rel="stylesheet" href="<?= BASE_URL; ?>/assets/css/calendar_scroll_fix.css?v=7">
 </head>
-<body class="admin-dashboard">
+<body class="admin-dashboard" data-eventify-keyboard-scroll data-eventify-sidebar="adminSidebar" data-eventify-calendar="calendar" data-eventify-main=".admin-dashboard .main-content">
 
 <nav class="adm-navbar">
     <div class="d-flex align-items-center">
@@ -85,7 +97,7 @@ $messengerHref = BASE_URL . '/backend/messaging/staff_messenger.php';
                 </span>
             <?php endif; ?>
         </a>
-        <button class="nav-btn position-relative me-2" type="button" title="Notifications" data-bs-toggle="modal" data-bs-target="#adminNotificationsModal">
+        <button class="nav-btn position-relative me-2" type="button" title="Notifications" data-bs-toggle="modal" data-bs-target="#adminNotificationsModal" data-eventify-notif-badge>
             <i class="fas fa-bell"></i>
             <?php if ($admin_unread_count > 0): ?>
                 <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.55rem;">
@@ -93,9 +105,13 @@ $messengerHref = BASE_URL . '/backend/messaging/staff_messenger.php';
                 </span>
             <?php endif; ?>
         </button>
+        <button type="button" class="nav-btn adm-logout-mobile me-2" title="Logout" aria-label="Logout" data-bs-toggle="modal" data-bs-target="#logoutModal">
+            <i class="fas fa-sign-out-alt"></i>
+        </button>
         <div class="dropdown">
-            <button class="adm-user-menu dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                <i class="fas fa-user-shield me-1"></i> <?= htmlspecialchars($admin_name) ?>
+            <button class="adm-user-menu dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="<?= htmlspecialchars($admin_name) ?>">
+                <i class="fas fa-user-shield adm-user-menu__icon"></i>
+                <span class="adm-user-menu__label"><?= htmlspecialchars($admin_name) ?></span>
             </button>
             <ul class="dropdown-menu dropdown-menu-end adm-dropdown-menu">
                 <li>
@@ -116,8 +132,9 @@ $messengerHref = BASE_URL . '/backend/messaging/staff_messenger.php';
 
 <div class="dashboard-layout">
     <div class="sidebar-backdrop" id="adminSidebarBackdrop" aria-hidden="true"></div>
-    <aside class="sidebar" id="adminSidebar">
+    <aside class="sidebar eventify-kb-scroll-zone" id="adminSidebar" tabindex="0" aria-label="Admin sidebar — use arrow keys to scroll">
         <button type="button" class="sidebar-close-mobile" id="adminSidebarClose" aria-label="Close menu"><i class="fas fa-times"></i></button>
+        <div class="sidebar-drawer-scroll">
         <div class="user-info-card">
             <div class="user-avatar-large"><?= strtoupper(substr($admin_name, 0, 1)) ?></div>
             <h3 class="user-name"><?= htmlspecialchars($admin_name) ?></h3>
@@ -139,6 +156,20 @@ $messengerHref = BASE_URL . '/backend/messaging/staff_messenger.php';
                 <span>Pending Events</span>
                 <?php if ($pendingCount > 0): ?>
                     <span class="admin-action-badge admin-action-badge--red" aria-label="<?= (int) $pendingCount ?> pending events"><?= $pendingCount > 99 ? '99+' : (int) $pendingCount ?></span>
+                <?php endif; ?>
+                <i class="fas fa-chevron-right ms-auto"></i>
+            </button>
+            <?php if ($showPendingReminder): ?>
+            <div class="adm-pending-reminder adm-pending-reminder--sidebar" role="status">
+                <i class="fas fa-clock" aria-hidden="true"></i>
+                <span><?= (int) $stalePendingCount ?> pending &gt;24h</span>
+            </div>
+            <?php endif; ?>
+            <button type="button" class="action-btn w-100 text-start border-0 bg-transparent" data-bs-toggle="modal" data-bs-target="#adminPendingAccountsModal">
+                <i class="fas fa-user-clock"></i>
+                <span>Pending Accounts</span>
+                <?php if ($pendingAccountCount > 0): ?>
+                    <span class="admin-action-badge admin-action-badge--gold" aria-label="<?= (int) $pendingAccountCount ?> accounts awaiting activation"><?= $pendingAccountCount > 99 ? '99+' : (int) $pendingAccountCount ?></span>
                 <?php endif; ?>
                 <i class="fas fa-chevron-right ms-auto"></i>
             </button>
@@ -188,14 +219,17 @@ $messengerHref = BASE_URL . '/backend/messaging/staff_messenger.php';
                 <span>Settings</span>
                 <i class="fas fa-chevron-right ms-auto"></i>
             </button>
-            <a href="#" class="action-btn logout-btn" data-bs-toggle="modal" data-bs-target="#logoutModal">
+        </div>
+        </div>
+        <div class="sidebar-drawer-footer">
+            <a href="#" class="action-btn logout-btn w-100 text-start border-0 bg-transparent text-decoration-none" data-bs-toggle="modal" data-bs-target="#logoutModal">
                 <i class="fas fa-sign-out-alt"></i>
                 <span>Logout</span>
             </a>
         </div>
     </aside>
 
-    <main class="main-content">
+    <main class="main-content eventify-kb-scroll-zone" tabindex="0" aria-label="Admin dashboard — use arrow keys to scroll">
         <?php if ($success): ?>
             <div class="alert alert-success alert-dismissible fade show m-3" role="alert">
                 <?= htmlspecialchars($success) ?>
@@ -208,14 +242,27 @@ $messengerHref = BASE_URL . '/backend/messaging/staff_messenger.php';
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
         <?php endif; ?>
-        <div class="calendar-controls admin-calendar-controls">
+        <?php if ($showPendingReminder): ?>
+            <div class="adm-pending-reminder adm-pending-reminder--banner mx-3 mt-3" role="status">
+                <div class="adm-pending-reminder__content">
+                    <i class="fas fa-hourglass-half" aria-hidden="true"></i>
+                    <div>
+                        <strong><?= (int) $stalePendingCount ?> event<?= $stalePendingCount === 1 ? '' : 's' ?> pending over 24 hours</strong>
+                        <span class="adm-pending-reminder__sub d-block">Review, correct details if needed, then send OTP to the organizer.</span>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#pendingEventsModal">
+                    Review pending
+                </button>
+            </div>
+        <?php endif; ?>
+        <div class="calendar-controls eventify-dashboard-cal-controls">
             <div class="controls-left">
                 <button class="control-nav" id="calPrev"><i class="fas fa-chevron-left"></i></button>
                 <h2 class="calendar-title" id="calendarTitle">Calendar</h2>
                 <button class="control-nav" id="calNext"><i class="fas fa-chevron-right"></i></button>
             </div>
             <div class="controls-right">
-                <span class="text-muted small me-2"><i class="fas fa-user-shield me-1"></i> <?= htmlspecialchars($admin_name) ?></span>
                 <button class="view-btn active" data-view="dayGridMonth">Month</button>
                 <button class="view-btn" data-view="timeGridWeek">Week</button>
                 <button class="view-btn" data-view="timeGridDay">Day</button>
@@ -224,10 +271,11 @@ $messengerHref = BASE_URL . '/backend/messaging/staff_messenger.php';
         </div>
         <?php
         $legendId = 'adminCalendarLegend';
-        $legendClass = 'eventify-calendar-legend admin-calendar-legend';
+        $legendClass = 'eventify-calendar-legend eventify-dashboard-cal-legend';
+        $showSelectionClearNote = true;
         include __DIR__ . '/../views/partials/calendar_event_state_legend.php';
         ?>
-        <div class="calendar-container">
+        <div class="calendar-container eventify-dashboard-cal-container">
             <div id="calendar"></div>
         </div>
     </main>
@@ -236,12 +284,15 @@ $messengerHref = BASE_URL . '/backend/messaging/staff_messenger.php';
 <!-- Analytics charts (Quick action) -->
 <div class="modal fade" id="adminAnalyticsModal" tabindex="-1" aria-labelledby="adminAnalyticsModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="adminAnalyticsModalLabel"><i class="fas fa-chart-pie me-2"></i>Analytics &amp; insights</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    <div class="modal-content efy-modal">
+      <div class="modal-header efy-modal__header">
+        <div>
+          <span class="efy-modal__eyebrow">Admin</span>
+          <h5 class="modal-title efy-modal__title" id="adminAnalyticsModalLabel"><i class="fas fa-chart-pie" aria-hidden="true"></i> Analytics &amp; insights</h5>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
-      <div class="modal-body">
+      <div class="modal-body efy-modal__body">
         <p class="small text-muted mb-3">System-wide overview of events and student feedback ratings.</p>
         <div class="adm-stats adm-stats--modal mb-3">
             <div class="adm-stat-card">
@@ -282,8 +333,8 @@ $messengerHref = BASE_URL . '/backend/messaging/staff_messenger.php';
             </div>
         </div>
       </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+      <div class="modal-footer efy-modal__footer">
+        <button type="button" class="btn efy-btn-muted btn-sm" data-bs-dismiss="modal">Close</button>
       </div>
     </div>
   </div>
@@ -292,15 +343,18 @@ $messengerHref = BASE_URL . '/backend/messaging/staff_messenger.php';
 <!-- Admin settings modal -->
 <div class="modal fade" id="adminSettingsModal" tabindex="-1" aria-labelledby="adminSettingsModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-    <div class="modal-content">
+    <div class="modal-content efy-modal">
       <form method="POST" action="<?= BASE_URL ?>/backend/admin/update_settings.php" id="adminSettingsForm">
         <?= csrf_field() ?>
         <input type="hidden" name="open_modal" value="settings">
-        <div class="modal-header">
-          <h5 class="modal-title" id="adminSettingsModalLabel"><i class="fas fa-cog me-2"></i>Admin Settings</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        <div class="modal-header efy-modal__header">
+          <div>
+            <span class="efy-modal__eyebrow">Admin</span>
+            <h5 class="modal-title efy-modal__title" id="adminSettingsModalLabel"><i class="fas fa-cog" aria-hidden="true"></i> Settings</h5>
+          </div>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
-        <div class="modal-body">
+        <div class="modal-body efy-modal__body">
           <div class="settings-section">
             <h6>Profile & Security</h6>
             <div class="row g-2">
@@ -346,6 +400,7 @@ $messengerHref = BASE_URL . '/backend/messaging/staff_messenger.php';
               <div class="col-md-6">
                 <label for="notification_retention_days" class="form-label small">Notification Retention (days)</label>
                 <input type="number" min="1" max="365" class="form-control" id="notification_retention_days" name="notification_retention_days" value="<?= (int)($adminSettings['notification_retention_days'] ?? 30) ?>">
+                <div class="form-text">In-app bell alerts older than this are removed automatically (default 30 days).</div>
               </div>
             </div>
           </div>
@@ -413,9 +468,9 @@ $messengerHref = BASE_URL . '/backend/messaging/staff_messenger.php';
             </div>
           </div>
         </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="button" class="btn btn-primary" id="adminSettingsUpdateBtn"><i class="fas fa-save me-1"></i>Update Settings</button>
+        <div class="modal-footer efy-modal__footer">
+          <button type="button" class="btn efy-btn-muted" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn efy-btn-primary" id="adminSettingsUpdateBtn"><i class="fas fa-save me-1"></i>Update settings</button>
         </div>
       </form>
     </div>
@@ -425,17 +480,22 @@ $messengerHref = BASE_URL . '/backend/messaging/staff_messenger.php';
 <!-- Confirm settings update modal -->
 <div class="modal fade" id="confirmAdminSettingsUpdateModal" tabindex="-1" aria-labelledby="confirmAdminSettingsUpdateLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="confirmAdminSettingsUpdateLabel"><i class="fas fa-question-circle me-2 text-primary"></i>Confirm Update</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    <div class="modal-content efy-modal efy-modal--compact">
+      <div class="modal-header efy-modal__header">
+        <div>
+          <h5 class="modal-title efy-modal__title efy-modal__title--sm" id="confirmAdminSettingsUpdateLabel">
+            <i class="fas fa-save" aria-hidden="true"></i>
+            Confirm update
+          </h5>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
-      <div class="modal-body">
-        Are you sure you want to update admin settings?
+      <div class="modal-body efy-modal__body efy-modal__body--compact">
+        <p class="efy-confirm-message mb-0">Are you sure you want to update admin settings?</p>
       </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No</button>
-        <button type="button" class="btn btn-primary" id="confirmAdminSettingsUpdateYes">Yes, Update</button>
+      <div class="modal-footer efy-modal__footer">
+        <button type="button" class="btn efy-btn-primary" id="confirmAdminSettingsUpdateYes">Yes, update</button>
+        <button type="button" class="btn efy-btn-muted" data-bs-dismiss="modal">No</button>
       </div>
     </div>
   </div>
@@ -484,140 +544,215 @@ $messengerHref = BASE_URL . '/backend/messaging/staff_messenger.php';
 <?php
     $notif_clear_modal_id = 'adminClearNotifsModal';
     include __DIR__ . '/../views/partials/notification_clear_confirm_modal.php';
+    include __DIR__ . '/../views/partials/notification_detail_modal.php';
 ?>
 
 <!-- Logout Confirmation Modal -->
 <?php include __DIR__ . '/../views/partials/activities_hub_pick_modal.php'; ?>
-
-<div class="modal fade" id="logoutModal" tabindex="-1" aria-labelledby="logoutModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="logoutModalLabel"><i class="fas fa-sign-out-alt me-2"></i>Confirm Logout</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <p class="mb-0">Are you sure you want to log out?</p>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <a href="<?= BASE_URL ?>/backend/auth/logout.php" class="btn btn-danger">Yes, Log out</a>
-      </div>
-    </div>
-  </div>
-</div>
+<?php include __DIR__ . '/../views/partials/logout_confirm_modal.php'; ?>
 
 <!-- Pending Events Modal -->
 <div class="modal fade" id="pendingEventsModal" tabindex="-1" aria-labelledby="pendingEventsModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="pendingEventsModalLabel"><i class="fas fa-inbox me-2"></i>Pending Event Approvals</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+    <div class="modal-content adm-pending-modal">
+      <div class="modal-header adm-pending-modal__header">
+        <div class="adm-pending-modal__head-text">
+          <h5 class="modal-title" id="pendingEventsModalLabel"><i class="fas fa-inbox me-2" aria-hidden="true"></i>Pending Event Approvals</h5>
+          <p class="adm-pending-modal__subtitle mb-0">
+            <?php if (empty($pendingEvents)): ?>
+              No events waiting for review
+            <?php else: ?>
+              <?= count($pendingEvents) ?> event<?= count($pendingEvents) === 1 ? '' : 's' ?> awaiting OTP and organizer verification
+            <?php endif; ?>
+          </p>
+        </div>
+        <?php if (!empty($pendingEvents)): ?>
+          <span class="adm-pending-modal__count" aria-label="<?= count($pendingEvents) ?> pending"><?= count($pendingEvents) ?></span>
+        <?php endif; ?>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
-      <div class="modal-body">
+      <div class="modal-body adm-pending-modal__body">
         <?php if (empty($otpTableReady) || empty($usersHasOtpContactColumns)): ?>
-          <div class="alert alert-warning py-2">
+          <div class="alert alert-warning adm-pending-alert py-2 mb-3">
+            <i class="fas fa-exclamation-triangle me-1"></i>
             OTP approval requires database migration: <code>school_events_event_approval_otp.sql</code>.
           </div>
         <?php endif; ?>
         <?php if (empty($pendingEvents)): ?>
-          <p class="text-muted mb-0">No events waiting for approval.</p>
+          <div class="adm-pending-empty">
+            <div class="adm-pending-empty__icon" aria-hidden="true"><i class="fas fa-check-circle"></i></div>
+            <h6 class="adm-pending-empty__title">All caught up</h6>
+            <p class="adm-pending-empty__text mb-0">No events are waiting for approval right now.</p>
+          </div>
         <?php else: ?>
-          <form method="POST" action="<?= BASE_URL ?>/backend/super_admin/update_event_status_bulk.php" class="mb-2" id="bulkEventStatusForm">
+          <form method="POST" action="<?= BASE_URL ?>/backend/super_admin/update_event_status_bulk.php" id="bulkEventStatusForm">
             <?= csrf_field() ?>
             <input type="hidden" name="reject_reason" id="bulkRejectReasonInput" value="">
-            <div class="d-flex flex-wrap gap-2 align-items-center mb-2">
-              <button type="button" class="btn btn-sm btn-outline-secondary" id="bulkSelectAllPending"><i class="fas fa-check-square me-1"></i>Select all</button>
-              <button type="button" class="btn btn-sm btn-success" disabled title="OTP is required per event"><i class="fas fa-check me-1"></i>Approve selected</button>
-              <button type="button" class="btn btn-sm btn-danger" id="bulkRejectBtn"><i class="fas fa-times me-1"></i>Reject selected</button>
-              <small class="text-muted">Bulk actions apply to selected pending events only.</small>
+            <div class="adm-pending-toolbar">
+              <label class="adm-pending-toolbar__select">
+                <input type="checkbox" id="pendingHeadCheck" aria-label="Select all pending events">
+                <span>Select all</span>
+              </label>
+              <div class="adm-pending-toolbar__actions">
+                <button type="button" class="adm-pending-btn adm-pending-btn--ghost" id="bulkSelectAllPending" title="Toggle selection">
+                  <i class="fas fa-check-double" aria-hidden="true"></i><span class="d-none d-sm-inline">Toggle</span>
+                </button>
+                <button type="button" class="adm-pending-btn adm-pending-btn--danger" id="bulkRejectBtn">
+                  <i class="fas fa-times" aria-hidden="true"></i><span>Reject selected</span>
+                </button>
+              </div>
+              <p class="adm-pending-toolbar__hint mb-0"><i class="fas fa-key me-1" aria-hidden="true"></i>Assign the correct organizer if needed, then send an OTP for them to verify and publish.</p>
             </div>
-          </form>
-          <div class="table-responsive">
-            <table class="table table-hover">
-              <thead>
-                <tr>
-                  <th><input type="checkbox" id="pendingHeadCheck"></th>
-                  <th>ID</th>
-                  <th>Event</th>
-                  <th>Date &amp; Location</th>
-                  <th>Organizer</th>
-                  <th>Dept</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                <?php foreach ($pendingEvents as $ev): ?>
-                  <tr>
-                    <td><input type="checkbox" class="pending-event-checkbox" form="bulkEventStatusForm" name="event_ids[]" value="<?= (int)$ev['id'] ?>"></td>
-                    <td class="text-muted">#<?= (int)$ev['id'] ?></td>
-                    <td>
-                      <strong><?= htmlspecialchars($ev['title'] ?? 'Untitled') ?></strong>
-                      <?php if (!empty($ev['description'])): ?>
-                        <div class="text-muted small"><?= htmlspecialchars(mb_strimwidth($ev['description'], 0, 100, '...')) ?></div>
+            <div class="adm-pending-list" id="admPendingList">
+              <?php foreach ($pendingEvents as $ev): ?>
+                <?php
+                  $evId = (int) ($ev['id'] ?? 0);
+                  $evTitle = (string) ($ev['title'] ?? 'Untitled');
+                  $evDesc = trim((string) ($ev['description'] ?? ''));
+                  $evDateRaw = trim((string) ($ev['date'] ?? ''));
+                  $evDateLabel = $evDateRaw;
+                  if ($evDateRaw !== '') {
+                      $ts = strtotime($evDateRaw);
+                      $evDateLabel = $ts ? date('M j, Y', $ts) : $evDateRaw;
+                  }
+                  $evLocation = trim((string) ($ev['location'] ?? ''));
+                  $evLocationShort = $evLocation !== '' ? mb_strimwidth($evLocation, 0, 72, '…') : '—';
+                  $deptLabel = ($ev['department'] ?? 'ALL') === 'ALL' ? 'All' : (string) ($ev['department'] ?? 'All');
+                  $evCreatedAt = trim((string) ($ev['created_at'] ?? ''));
+                  $isStalePending = false;
+                  if ($evCreatedAt !== '') {
+                      $createdTs = strtotime($evCreatedAt);
+                      $isStalePending = $createdTs && $createdTs <= (time() - 86400);
+                  }
+                  $deptStored = (string) ($ev['department'] ?? 'ALL');
+                  $orgEmail = trim((string)($ev['organizer_contact_email'] ?? ''));
+                  if ($orgEmail === '') { $orgEmail = trim((string)($ev['organizer_email'] ?? '')); }
+                  $orgPhone = trim((string)($ev['organizer_phone'] ?? ''));
+                  $prefMethod = (string)($ev['organizer_contact_method'] ?? 'email');
+                  $canSendOtp = !empty($otpTableReady) && !empty($usersHasOtpContactColumns) && (($prefMethod === 'phone' && $orgPhone !== '') || $orgEmail !== '');
+                  $otpMethod = ($prefMethod === 'phone' && $orgPhone !== '') ? 'phone' : 'email';
+                  if ($otpMethod === 'phone') {
+                      $digits = preg_replace('/\D+/', '', $orgPhone);
+                      $maskedTarget = strlen($digits) >= 4
+                          ? str_repeat('*', max(0, strlen($digits) - 4)) . substr($digits, -4)
+                          : '***';
+                  } else {
+                      $parts = explode('@', (string)$orgEmail, 2);
+                      if (count($parts) === 2) {
+                          $local = $parts[0];
+                          $domain = $parts[1];
+                          $maskedLocal = strlen($local) <= 2
+                              ? substr($local, 0, 1) . '*'
+                              : substr($local, 0, 2) . str_repeat('*', max(1, strlen($local) - 2));
+                          $maskedTarget = $maskedLocal . '@' . $domain;
+                      } else {
+                          $maskedTarget = '***';
+                      }
+                  }
+                  $otpConfirmMsg = "Send OTP to the organizer's {$otpMethod}: {$maskedTarget}?";
+                  $evOrganizerId = (int) ($ev['organizer_id'] ?? 0);
+                ?>
+                <article class="adm-pending-card" data-pending-card>
+                  <label class="adm-pending-card__check">
+                    <input type="checkbox" class="pending-event-checkbox" name="event_ids[]" value="<?= $evId ?>" aria-label="Select <?= htmlspecialchars($evTitle) ?>">
+                  </label>
+                  <div class="adm-pending-card__body">
+                    <div class="adm-pending-card__top">
+                      <span class="adm-pending-card__id">#<?= $evId ?></span>
+                      <span class="adm-pending-card__badge adm-pending-card__badge--pending">Pending</span>
+                      <?php if ($isStalePending): ?>
+                        <span class="adm-pending-card__badge adm-pending-card__badge--stale" title="Waiting more than 24 hours">&gt;24h</span>
                       <?php endif; ?>
-                    </td>
-                    <td>
-                      <div class="small"><?= htmlspecialchars($ev['date'] ?? '') ?></div>
-                      <div class="small text-muted"><?= htmlspecialchars($ev['location'] ?? '') ?></div>
-                    </td>
-                    <td class="small"><?= htmlspecialchars($ev['organizer_name'] ?? '') ?></td>
-                    <td><span class="badge adm-badge-dept"><?= htmlspecialchars(($ev['department'] ?? 'ALL') === 'ALL' ? 'All' : $ev['department']) ?></span></td>
-                    <td>
-                      <div class="adm-actions">
-                        <a href="<?= BASE_URL ?>/event_qr.php?id=<?= (int)$ev['id'] ?>" class="btn btn-sm btn-outline-secondary" target="_blank" rel="noopener" title="Show QR for event check-in"><i class="fas fa-qrcode me-1"></i>QR</a>
-                        <a href="<?= BASE_URL ?>/event_attendance.php?id=<?= (int)$ev['id'] ?>" class="btn btn-sm btn-outline-info" target="_blank" rel="noopener" title="View who attended"><i class="fas fa-clipboard-check me-1"></i>Attendance</a>
-                        <?php
-                          $orgEmail = trim((string)($ev['organizer_contact_email'] ?? ''));
-                          if ($orgEmail === '') { $orgEmail = trim((string)($ev['organizer_email'] ?? '')); }
-                          $orgPhone = trim((string)($ev['organizer_phone'] ?? ''));
-                          $prefMethod = (string)($ev['organizer_contact_method'] ?? 'email');
-                          $canSendOtp = !empty($otpTableReady) && !empty($usersHasOtpContactColumns) && (($prefMethod === 'phone' && $orgPhone !== '') || $orgEmail !== '');
-                          $otpMethod = ($prefMethod === 'phone' && $orgPhone !== '') ? 'phone' : 'email';
-                          if ($otpMethod === 'phone') {
-                              $digits = preg_replace('/\D+/', '', $orgPhone);
-                              $maskedTarget = strlen($digits) >= 4
-                                  ? str_repeat('*', max(0, strlen($digits) - 4)) . substr($digits, -4)
-                                  : '***';
-                          } else {
-                              $parts = explode('@', (string)$orgEmail, 2);
-                              if (count($parts) === 2) {
-                                  $local = $parts[0];
-                                  $domain = $parts[1];
-                                  $maskedLocal = strlen($local) <= 2
-                                      ? substr($local, 0, 1) . '*'
-                                      : substr($local, 0, 2) . str_repeat('*', max(1, strlen($local) - 2));
-                                  $maskedTarget = $maskedLocal . '@' . $domain;
-                              } else {
-                                  $maskedTarget = '***';
-                              }
-                          }
-                          $otpConfirmMsg = "Are you sure you want to request OTP to the organizer's {$otpMethod}: {$maskedTarget}?";
-                        ?>
-                        <form method="POST" action="<?= BASE_URL ?>/backend/super_admin/update_event_status.php" class="d-inline js-confirm-otp-request" data-confirm-message="<?= htmlspecialchars($otpConfirmMsg, ENT_QUOTES, 'UTF-8') ?>">
-                          <?= csrf_field() ?>
-                          <input type="hidden" name="event_id" value="<?= (int)$ev['id'] ?>">
-                          <input type="hidden" name="action" value="send_otp">
-                          <input type="hidden" name="return_to" value="dashboard">
-                          <input type="hidden" name="open_modal" value="pending">
-                          <button type="submit" class="btn btn-sm btn-outline-primary" <?= $canSendOtp ? '' : 'disabled' ?>><i class="fas fa-paper-plane me-1"></i>Request OTP</button>
-                        </form>
-                        <button type="button" class="adm-btn-reject" data-bs-toggle="modal" data-bs-target="#rejectEventModal" data-event-id="<?= (int)$ev['id'] ?>" data-return-to="dashboard" data-open-modal="pending" data-event-title="<?= htmlspecialchars($ev['title'] ?? '') ?>">
-                          <i class="fas fa-times me-1"></i>Reject
+                      <span class="adm-pending-card__badge adm-pending-card__badge--dept"><?= htmlspecialchars($deptLabel) ?></span>
+                    </div>
+                    <h6 class="adm-pending-card__title"><?= htmlspecialchars($evTitle) ?></h6>
+                    <?php if ($evDesc !== ''): ?>
+                      <p class="adm-pending-card__desc"><?= htmlspecialchars(mb_strimwidth($evDesc, 0, 140, '…')) ?></p>
+                    <?php endif; ?>
+                    <ul class="adm-pending-card__meta">
+                      <li><i class="fas fa-calendar-day" aria-hidden="true"></i><span><?= htmlspecialchars($evDateLabel) ?></span></li>
+                      <li title="<?= htmlspecialchars($evLocation) ?>"><i class="fas fa-map-marker-alt" aria-hidden="true"></i><span><?= htmlspecialchars($evLocationShort) ?></span></li>
+                      <li><i class="fas fa-user" aria-hidden="true"></i><span><?= htmlspecialchars($ev['organizer_name'] ?? '—') ?></span></li>
+                    </ul>
+                  </div>
+                  <div class="adm-pending-card__actions">
+                    <?php if (!empty($assignableOrganizers)): ?>
+                    <form
+                      method="POST"
+                      action="<?= BASE_URL ?>/backend/admin/assign_event_organizer.php"
+                      class="adm-pending-assign-form js-assign-organizer-form"
+                      data-event-title="<?= htmlspecialchars($evTitle, ENT_QUOTES, 'UTF-8') ?>"
+                    >
+                      <?= csrf_field() ?>
+                      <input type="hidden" name="event_id" value="<?= $evId ?>">
+                      <input type="hidden" name="return_to" value="dashboard">
+                      <input type="hidden" name="open_modal" value="pending">
+                      <label class="adm-pending-assign-form__label" for="assignOrg<?= $evId ?>">Assign organizer</label>
+                      <div class="adm-pending-assign-form__row">
+                        <select name="organizer_id" id="assignOrg<?= $evId ?>" class="form-select form-select-sm adm-pending-assign-form__select" required aria-label="Assign organizer for <?= htmlspecialchars($evTitle) ?>">
+                          <?php foreach ($assignableOrganizers as $orgOpt): ?>
+                            <option value="<?= (int) ($orgOpt['id'] ?? 0) ?>" <?= $evOrganizerId === (int) ($orgOpt['id'] ?? 0) ? 'selected' : '' ?>>
+                              <?= htmlspecialchars((string) ($orgOpt['name'] ?? 'Organizer')) ?>
+                            </option>
+                          <?php endforeach; ?>
+                        </select>
+                        <button type="submit" class="adm-pending-btn adm-pending-btn--ghost adm-pending-btn--compact" title="Save organizer assignment">
+                          <i class="fas fa-user-check" aria-hidden="true"></i><span>Assign</span>
                         </button>
                       </div>
-                    </td>
-                  </tr>
-                <?php endforeach; ?>
-              </tbody>
-            </table>
-          </div>
+                      <p class="adm-pending-assign-form__hint mb-0">Clears any old OTP — send a new one after reassigning.</p>
+                    </form>
+                    <?php endif; ?>
+                    <div class="adm-pending-card__otp-form">
+                      <button
+                        type="button"
+                        class="adm-pending-btn adm-pending-btn--primary adm-pending-btn--block js-confirm-otp-request"
+                        data-otp-action="<?= BASE_URL ?>/backend/super_admin/update_event_status.php"
+                        data-event-id="<?= $evId ?>"
+                        data-return-to="dashboard"
+                        data-open-modal="pending"
+                        data-confirm-message="<?= htmlspecialchars($otpConfirmMsg, ENT_QUOTES, 'UTF-8') ?>"
+                        <?= $canSendOtp ? '' : 'disabled title="Organizer contact missing"' ?>
+                      >
+                        <i class="fas fa-paper-plane" aria-hidden="true"></i><span>Request OTP</span>
+                      </button>
+                    </div>
+                    <div class="adm-pending-card__quick">
+                      <button
+                        type="button"
+                        class="adm-pending-icon-btn js-edit-pending-event"
+                        title="Edit event details"
+                        data-bs-toggle="modal"
+                        data-bs-target="#adminEditPendingEventModal"
+                        data-event-id="<?= $evId ?>"
+                        data-event-title="<?= htmlspecialchars($evTitle, ENT_QUOTES, 'UTF-8') ?>"
+                        data-event-description="<?= htmlspecialchars($evDesc, ENT_QUOTES, 'UTF-8') ?>"
+                        data-event-date="<?= htmlspecialchars($evDateRaw, ENT_QUOTES, 'UTF-8') ?>"
+                        data-event-location="<?= htmlspecialchars($evLocation, ENT_QUOTES, 'UTF-8') ?>"
+                        data-event-department="<?= htmlspecialchars($deptStored, ENT_QUOTES, 'UTF-8') ?>"
+                      >
+                        <i class="fas fa-pen" aria-hidden="true"></i><span class="visually-hidden">Edit</span>
+                      </button>
+                      <a href="<?= BASE_URL ?>/event_qr.php?id=<?= $evId ?>" class="adm-pending-icon-btn" target="_blank" rel="noopener" title="Show QR for check-in">
+                        <i class="fas fa-qrcode" aria-hidden="true"></i><span class="visually-hidden">QR</span>
+                      </a>
+                      <a href="<?= BASE_URL ?>/event_attendance.php?id=<?= $evId ?>" class="adm-pending-icon-btn" target="_blank" rel="noopener" title="View attendance">
+                        <i class="fas fa-clipboard-check" aria-hidden="true"></i><span class="visually-hidden">Attendance</span>
+                      </a>
+                      <button type="button" class="adm-pending-icon-btn adm-pending-icon-btn--danger" data-bs-toggle="modal" data-bs-target="#rejectEventModal" data-event-id="<?= $evId ?>" data-return-to="dashboard" data-open-modal="pending" data-event-title="<?= htmlspecialchars($evTitle) ?>" title="Reject event">
+                        <i class="fas fa-times" aria-hidden="true"></i><span class="visually-hidden">Reject</span>
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              <?php endforeach; ?>
+            </div>
+          </form>
         <?php endif; ?>
       </div>
-      <div class="modal-footer">
+      <div class="modal-footer adm-pending-modal__footer">
         <a href="<?= BASE_URL ?>/backend/super_admin/manage_events.php" class="btn btn-outline-primary btn-sm"><i class="fas fa-external-link-alt me-1"></i> Open full list</a>
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
       </div>
     </div>
   </div>
@@ -626,17 +761,22 @@ $messengerHref = BASE_URL . '/backend/messaging/staff_messenger.php';
 <!-- OTP request confirmation modal -->
 <div class="modal fade" id="otpRequestConfirmModal" tabindex="-1" aria-labelledby="otpRequestConfirmModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="otpRequestConfirmModalLabel"><i class="fas fa-shield-alt me-2 text-primary"></i>Confirm OTP Request</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    <div class="modal-content efy-modal efy-modal--compact">
+      <div class="modal-header efy-modal__header">
+        <div>
+          <h5 class="modal-title efy-modal__title efy-modal__title--sm" id="otpRequestConfirmModalLabel">
+            <i class="fas fa-shield-alt" aria-hidden="true"></i>
+            Confirm OTP request
+          </h5>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
-      <div class="modal-body">
-        <p id="otpRequestConfirmText" class="mb-0">Are you sure you want to request OTP?</p>
+      <div class="modal-body efy-modal__body efy-modal__body--compact">
+        <p id="otpRequestConfirmText" class="efy-confirm-message mb-0">Are you sure you want to request OTP?</p>
       </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-primary" id="otpRequestConfirmBtn"><i class="fas fa-paper-plane me-1"></i>Yes, request OTP</button>
+      <div class="modal-footer efy-modal__footer">
+        <button type="button" class="btn efy-btn-primary" id="otpRequestConfirmBtn"><i class="fas fa-paper-plane me-1"></i>Yes, request OTP</button>
+        <button type="button" class="btn efy-btn-muted" data-bs-dismiss="modal">Cancel</button>
       </div>
     </div>
   </div>
@@ -645,12 +785,15 @@ $messengerHref = BASE_URL . '/backend/messaging/staff_messenger.php';
 <!-- Audit log modal -->
 <div class="modal fade" id="auditLogModal" tabindex="-1" aria-labelledby="auditLogModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="auditLogModalLabel"><i class="fas fa-clipboard-list me-2"></i>Audit log</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    <div class="modal-content efy-modal">
+      <div class="modal-header efy-modal__header">
+        <div>
+          <span class="efy-modal__eyebrow">Admin</span>
+          <h5 class="modal-title efy-modal__title" id="auditLogModalLabel"><i class="fas fa-clipboard-list" aria-hidden="true"></i> Audit log</h5>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
-      <div class="modal-body pt-0">
+      <div class="modal-body efy-modal__body pt-2">
         <p class="text-muted small mb-2">Latest <?= count($auditLogs) ?> entries (newest first). Use search to filter this list.</p>
         <div class="mb-3">
           <label for="auditLogSearch" class="form-label small mb-1">Search</label>
@@ -712,17 +855,18 @@ $messengerHref = BASE_URL . '/backend/messaging/staff_messenger.php';
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
-        <p class="text-muted small mb-3">From students who attended (QR check-in). Names appear only when the student chose to share them.</p>
+        <p class="text-muted small mb-3">From students who attended (QR check-in). Each evaluation uses 10 questions rated 1–5 (5 about the event, 5 about EVENTIFY). Students stay <strong>anonymous</strong>; only their <strong>department</strong> is shown.</p>
+        <?php
+        $evaluation_averages = $admin_evaluation_averages;
+        include __DIR__ . '/../views/partials/evaluation_averages.php';
+        ?>
         <?php if (!empty($admin_feedback_list)): ?>
           <ul class="list-unstyled mb-0 small" style="max-height: min(60vh, 420px); overflow-y: auto;">
             <?php foreach ($admin_feedback_list as $fc): ?>
               <?php
-                $anon = !isset($fc['is_anonymous']) || (int) $fc['is_anonymous'] === 1;
-                $who = $anon ? 'Anonymous' : trim((string)($fc['student_name'] ?? ''));
-                if (!$anon && $who === '') {
-                    $who = 'Student';
-                }
-                $code = $anon ? '' : trim((string)($fc['student_code'] ?? ''));
+                $respondentLabel = function_exists('eventify_feedback_respondent_label')
+                    ? eventify_feedback_respondent_label($fc['student_department'] ?? null)
+                    : 'Anonymous';
               ?>
               <li class="border rounded p-2 mb-2 bg-light">
                 <div class="d-flex flex-wrap justify-content-between gap-2 mb-1">
@@ -732,11 +876,7 @@ $messengerHref = BASE_URL . '/backend/messaging/staff_messenger.php';
                 <div class="text-muted small mb-1">
                   <?= date('M j, Y g:i A', strtotime($fc['created_at'] ?? 'now')) ?>
                   · Organizer: <?= htmlspecialchars((string)($fc['organizer_name'] ?? '—')) ?>
-                  <?php if ($anon): ?>
-                    · <span class="badge bg-secondary">Anonymous</span>
-                  <?php else: ?>
-                    · <span class="badge bg-success"><?= htmlspecialchars($who) ?><?= $code !== '' ? ' · ' . htmlspecialchars($code) : '' ?></span>
-                  <?php endif; ?>
+                  · <span class="badge bg-secondary"><?= htmlspecialchars($respondentLabel) ?></span>
                 </div>
                 <?php if (trim((string)($fc['comment'] ?? '')) !== ''): ?>
                   <div><?= nl2br(htmlspecialchars((string)($fc['comment'] ?? ''))) ?></div>
@@ -760,25 +900,30 @@ $messengerHref = BASE_URL . '/backend/messaging/staff_messenger.php';
 <!-- Reject event modal (with optional reason) -->
 <div class="modal fade" id="rejectEventModal" tabindex="-1" aria-labelledby="rejectEventModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
+    <div class="modal-content efy-modal efy-modal--compact">
       <form method="POST" action="<?= BASE_URL ?>/backend/super_admin/update_event_status.php" id="rejectEventForm">
         <?= csrf_field() ?>
         <input type="hidden" name="event_id" id="rejectEventId" value="">
         <input type="hidden" name="action" value="reject">
         <input type="hidden" name="return_to" id="rejectReturnTo" value="dashboard">
         <input type="hidden" name="open_modal" id="rejectOpenModal" value="pending">
-        <div class="modal-header">
-          <h5 class="modal-title" id="rejectEventModalLabel"><i class="fas fa-times-circle me-2 text-danger"></i>Reject event</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <div class="modal-header efy-modal__header">
+          <div>
+            <h5 class="modal-title efy-modal__title efy-modal__title--sm" id="rejectEventModalLabel">
+              <i class="fas fa-times-circle" aria-hidden="true"></i>
+              Reject event
+            </h5>
+          </div>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
-        <div class="modal-body">
-          <p class="mb-2" id="rejectEventTitleText">Optionally give a reason so the organizer knows what to fix.</p>
-          <label for="rejectReasonInput" class="form-label small text-muted">Reason (optional)</label>
-          <textarea class="form-control" id="rejectReasonInput" name="reject_reason" rows="3" placeholder="e.g. Please add a clearer description or change the date."></textarea>
+        <div class="modal-body efy-modal__body efy-modal__body--compact">
+          <p class="efy-confirm-message mb-2" id="rejectEventTitleText">Optionally give a reason so the organizer knows what to fix.</p>
+          <label for="rejectReasonInput" class="efy-form-label">Reason (optional)</label>
+          <textarea class="form-control efy-form-control" id="rejectReasonInput" name="reject_reason" rows="3" placeholder="e.g. Please add a clearer description or change the date."></textarea>
         </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-danger"><i class="fas fa-times me-1"></i>Reject event</button>
+        <div class="modal-footer efy-modal__footer">
+          <button type="button" class="btn efy-btn-muted" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn efy-btn-danger"><i class="fas fa-times me-1"></i>Reject event</button>
         </div>
       </form>
     </div>
@@ -848,6 +993,124 @@ $messengerHref = BASE_URL . '/backend/messaging/staff_messenger.php';
   </div>
 </div>
 
+<!-- Pending accounts (read-only — Super Admin activates) -->
+<div class="modal fade" id="adminPendingAccountsModal" tabindex="-1" aria-labelledby="adminPendingAccountsModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content efy-modal">
+      <div class="modal-header efy-modal__header">
+        <div>
+          <span class="efy-modal__eyebrow">Admin</span>
+          <h5 class="modal-title efy-modal__title" id="adminPendingAccountsModalLabel"><i class="fas fa-user-clock" aria-hidden="true"></i> Pending account activations</h5>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body efy-modal__body">
+        <p class="text-muted small mb-3">Email-verified registrations waiting for <strong>Super Admin</strong> activation. You can view the queue here; only Super Admin can activate accounts.</p>
+        <?php if (!empty($pendingAccounts)): ?>
+          <div class="table-responsive border rounded">
+            <table class="table table-sm table-hover align-middle mb-0">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Role</th>
+                  <th>Department</th>
+                  <th>Registered</th>
+                </tr>
+              </thead>
+              <tbody>
+                <?php foreach ($pendingAccounts as $acc): ?>
+                  <?php
+                    $accDept = trim((string) ($acc['department'] ?? ''));
+                    $accDeptLabel = $accDept === ''
+                        ? '—'
+                        : (function_exists('eventify_format_department_label')
+                            ? eventify_format_department_label($accDept)
+                            : $accDept);
+                    $accCreated = trim((string) ($acc['created_at'] ?? ''));
+                    $accCreatedLabel = $accCreated !== '' && ($ts = strtotime($accCreated)) ? date('M j, Y g:i A', $ts) : '—';
+                  ?>
+                  <tr>
+                    <td><?= htmlspecialchars((string) ($acc['name'] ?? '—')) ?></td>
+                    <td class="small"><?= htmlspecialchars((string) ($acc['email'] ?? '—')) ?></td>
+                    <td><span class="badge bg-secondary"><?= htmlspecialchars(ucfirst((string) ($acc['role'] ?? 'user'))) ?></span></td>
+                    <td class="small"><?= htmlspecialchars($accDeptLabel) ?></td>
+                    <td class="text-nowrap small text-muted"><?= htmlspecialchars($accCreatedLabel) ?></td>
+                  </tr>
+                <?php endforeach; ?>
+              </tbody>
+            </table>
+          </div>
+        <?php else: ?>
+          <p class="mb-0 text-muted">No accounts waiting for activation.</p>
+        <?php endif; ?>
+      </div>
+      <div class="modal-footer efy-modal__footer">
+        <button type="button" class="btn efy-btn-muted btn-sm" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Admin edit pending event -->
+<div class="modal fade" id="adminEditPendingEventModal" tabindex="-1" aria-labelledby="adminEditPendingEventModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+    <div class="modal-content efy-modal">
+      <form method="POST" action="<?= BASE_URL ?>/backend/admin/edit_pending_event.php" id="adminEditPendingEventForm">
+        <?= csrf_field() ?>
+        <input type="hidden" name="event_id" id="adminEditPendingEventId" value="">
+        <input type="hidden" name="open_modal" value="pending">
+        <div class="modal-header efy-modal__header">
+          <div>
+            <span class="efy-modal__eyebrow">Admin correction</span>
+            <h5 class="modal-title efy-modal__title efy-modal__title--sm" id="adminEditPendingEventModalLabel"><i class="fas fa-pen" aria-hidden="true"></i> Edit pending event</h5>
+          </div>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body efy-modal__body efy-modal__body--compact">
+          <p class="text-muted small mb-3">Fix typos or dates before sending OTP. The organizer is notified of changes.</p>
+          <div class="mb-3">
+            <label for="adminEditPendingTitle" class="efy-form-label">Title</label>
+            <input type="text" class="form-control efy-form-control" id="adminEditPendingTitle" name="title" maxlength="150" required>
+          </div>
+          <div class="mb-3">
+            <label for="adminEditPendingDate" class="efy-form-label">Date</label>
+            <input type="date" class="form-control efy-form-control" id="adminEditPendingDate" name="date" required>
+          </div>
+          <div class="mb-3">
+            <label for="adminEditPendingLocation" class="efy-form-label">Location</label>
+            <input type="text" class="form-control efy-form-control" id="adminEditPendingLocation" name="location" maxlength="100" required>
+          </div>
+          <div class="mb-3">
+            <label class="efy-form-label d-block">Target department(s)</label>
+            <div class="adm-edit-dept-grid" id="adminEditPendingDeptGrid">
+              <?php foreach ($adminDepartmentChoices as $deptOpt): ?>
+                <?php if ($deptOpt === 'ALL') continue; ?>
+                <label class="adm-edit-dept-option">
+                  <input type="checkbox" name="department[]" value="<?= htmlspecialchars($deptOpt, ENT_QUOTES, 'UTF-8') ?>" class="admin-edit-dept-cb">
+                  <span><?= htmlspecialchars(function_exists('eventify_format_department_label') ? eventify_format_department_label($deptOpt) : $deptOpt) ?></span>
+                </label>
+              <?php endforeach; ?>
+              <label class="adm-edit-dept-option adm-edit-dept-option--all">
+                <input type="checkbox" name="department[]" value="ALL" class="admin-edit-dept-cb admin-edit-dept-cb--all">
+                <span>All departments</span>
+              </label>
+            </div>
+          </div>
+          <div class="mb-0">
+            <label for="adminEditPendingDescription" class="efy-form-label">Description</label>
+            <textarea class="form-control efy-form-control" id="adminEditPendingDescription" name="description" rows="4"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer efy-modal__footer">
+          <button type="button" class="btn efy-btn-muted" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn efy-btn-primary"><i class="fas fa-save me-1"></i>Save changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 <!-- Event Details Modal -->
 <div class="modal fade" id="eventDetailsModal" tabindex="-1" aria-labelledby="eventDetailsLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
@@ -858,11 +1121,27 @@ $messengerHref = BASE_URL . '/backend/messaging/staff_messenger.php';
       </div>
       <div class="modal-body">
         <h5 id="eventTitle" class="mb-2"></h5>
-        <p class="mb-1"><strong>Date:</strong> <span id="eventDate"></span></p>
+        <div class="efy-detail-row mb-2">
+          <strong class="d-block mb-1">Schedule</strong>
+          <div id="eventDate"></div>
+        </div>
         <p class="mb-1"><strong>Location:</strong> <span id="eventLocation"></span></p>
         <p class="mb-1"><strong>Status:</strong> <span id="eventStatus" class="badge bg-success"></span></p>
         <p class="mb-1"><strong>Target Department:</strong> <span id="eventDepartment"></span></p>
         <p class="mb-1"><strong>Organizer:</strong> <span id="eventOrganizer"></span></p>
+        <div id="eventAttendanceSummaryWrap" class="adm-event-attendance-summary mb-2" style="display:none;">
+          <strong class="d-block mb-1">Attendance</strong>
+          <div class="adm-event-attendance-summary__grid">
+            <div class="adm-event-attendance-summary__item">
+              <span class="adm-event-attendance-summary__value" id="eventRsvpCount">0</span>
+              <span class="adm-event-attendance-summary__label">RSVPs</span>
+            </div>
+            <div class="adm-event-attendance-summary__item">
+              <span class="adm-event-attendance-summary__value" id="eventCheckinCount">0</span>
+              <span class="adm-event-attendance-summary__label">Checked in</span>
+            </div>
+          </div>
+        </div>
         <p class="mt-3 mb-1"><strong>Description:</strong></p>
         <p id="eventDescription" class="mb-2 text-muted"></p>
         <p class="mb-0"><small><strong>Created at:</strong> <span id="eventCreatedAt"></span></small></p>
@@ -892,7 +1171,8 @@ window.__adminOpenModal = <?= json_encode($openModal) ?>;
 window.__adminSettings = <?= json_encode($adminSettings ?? []) ?>;
 window.__adminCsrfToken = <?= json_encode(function_exists('csrf_token') ? csrf_token() : '') ?>;
 window.csrfToken = window.__adminCsrfToken;
-window.eventsData = <?= json_encode(eventify_events_to_fullcalendar_list($events, function ($e) {
+window.eventsData = <?= json_encode(eventify_events_to_fullcalendar_list($events, function ($e) use ($rsvpCountByEvent, $checkinCountByEvent) {
+    $eid = (int) ($e['id'] ?? 0);
     return [
         'description'         => $e['description'] ?? '',
         'location'            => $e['location'] ?? '',
@@ -908,15 +1188,19 @@ window.eventsData = <?= json_encode(eventify_events_to_fullcalendar_list($events
             : (string) ($e['department'] ?? 'ALL'),
         'organizer'           => $e['organizer_name'] ?? 'Organizer',
         'event_is_live'       => function_exists('eventify_event_is_live') ? eventify_event_is_live($e) : (($e['status'] ?? '') === 'active'),
+        'rsvp_count'          => (int) ($rsvpCountByEvent[$eid] ?? 0),
+        'checkin_count'       => (int) ($checkinCountByEvent[$eid] ?? 0),
     ];
 }), JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP); ?>;
 </script>
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script src="<?= BASE_URL ?>/assets/js/logout_confirm.js"></script>
-<script src="<?= BASE_URL ?>/assets/js/eventify_calendar_colors.js"></script>
-<script src="<?= BASE_URL ?>/assets/js/dashboardorganizer.js"></script>
-<script src="<?= BASE_URL ?>/assets/js/eventify_notifications.js?v=1"></script>
-<script src="<?= BASE_URL ?>/assets/js/dashboard_admin.js"></script>
+<script src="<?= BASE_URL ?>/assets/js/eventify_calendar_colors.js?v=10"></script>
+<script src="<?= BASE_URL ?>/assets/js/eventify_schedule_display.js?v=1"></script>
+<script src="<?= BASE_URL ?>/assets/js/dashboardorganizer.js?v=19"></script>
+<script src="<?= BASE_URL ?>/assets/js/eventify_notifications.js?v=6"></script>
+<script src="<?= BASE_URL ?>/assets/js/eventify_dashboard_keyboard_scroll.js"></script>
+<script src="<?= BASE_URL ?>/assets/js/dashboard_admin.js?v=7"></script>
 </body>
 </html>

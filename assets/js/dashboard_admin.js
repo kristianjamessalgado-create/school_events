@@ -3,8 +3,21 @@ document.addEventListener('DOMContentLoaded', function () {
     var sidebarClose = document.getElementById('adminSidebarClose');
     var sidebarBackdrop = document.getElementById('adminSidebarBackdrop');
     var adminSidebar = document.getElementById('adminSidebar');
+    var mainContent = document.querySelector('body.admin-dashboard .main-content');
+    var savedMainScroll = 0;
     var isMobileView = function () { return window.matchMedia('(max-width: 768px)').matches; };
-    var closeMobileSidebar = function () { document.body.classList.remove('admin-sidebar-open'); };
+    var openMobileSidebar = function () {
+        if (mainContent) {
+            savedMainScroll = mainContent.scrollTop;
+        }
+        document.body.classList.add('admin-sidebar-open');
+    };
+    var closeMobileSidebar = function () {
+        document.body.classList.remove('admin-sidebar-open');
+        if (mainContent) {
+            mainContent.scrollTop = savedMainScroll;
+        }
+    };
     var getCalendarInstance = function () {
         if (window.eventifyCalendar && typeof window.eventifyCalendar.updateSize === 'function') {
             return window.eventifyCalendar;
@@ -24,7 +37,11 @@ document.addEventListener('DOMContentLoaded', function () {
     if (sidebarToggle) {
         sidebarToggle.addEventListener('click', function () {
             if (isMobileView()) {
-                document.body.classList.toggle('admin-sidebar-open');
+                if (document.body.classList.contains('admin-sidebar-open')) {
+                    closeMobileSidebar();
+                } else {
+                    openMobileSidebar();
+                }
                 return;
             }
             var collapsed = document.body.classList.toggle('admin-sidebar-collapsed');
@@ -80,33 +97,91 @@ document.addEventListener('DOMContentLoaded', function () {
     var otpReqMsgEl = document.getElementById('otpRequestConfirmText');
     var otpReqConfirmBtn = document.getElementById('otpRequestConfirmBtn');
     var otpReqModal = otpReqModalEl ? bootstrap.Modal.getOrCreateInstance(otpReqModalEl) : null;
-    var otpPendingForm = null;
+    var otpPendingPayload = null;
 
-    document.querySelectorAll('form.js-confirm-otp-request').forEach(function (f) {
-        f.addEventListener('submit', function (e) {
-            e.preventDefault();
-            otpPendingForm = f;
+    function eventifyGetCsrfToken() {
+        var fromBulk = document.querySelector('#bulkEventStatusForm input[name="csrf_token"]');
+        if (fromBulk && fromBulk.value) {
+            return fromBulk.value;
+        }
+        var any = document.querySelector('input[name="csrf_token"]');
+        return any && any.value ? any.value : '';
+    }
+
+    function eventifySubmitOtpRequest(payload) {
+        if (!payload || !payload.action || !payload.eventId) {
+            return;
+        }
+        var form = document.createElement('form');
+        form.method = 'POST';
+        form.action = payload.action;
+        form.style.display = 'none';
+        var fields = {
+            csrf_token: eventifyGetCsrfToken(),
+            event_id: String(payload.eventId),
+            action: 'send_otp',
+            return_to: payload.returnTo || 'dashboard',
+            open_modal: payload.openModal || 'pending'
+        };
+        Object.keys(fields).forEach(function (name) {
+            var input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = name;
+            input.value = fields[name];
+            form.appendChild(input);
+        });
+        document.body.appendChild(form);
+        form.submit();
+    }
+
+    document.querySelectorAll('.js-confirm-otp-request').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            if (btn.disabled) {
+                return;
+            }
+            otpPendingPayload = {
+                action: btn.getAttribute('data-otp-action') || '',
+                eventId: btn.getAttribute('data-event-id') || '',
+                returnTo: btn.getAttribute('data-return-to') || 'dashboard',
+                openModal: btn.getAttribute('data-open-modal') || 'pending'
+            };
             if (otpReqMsgEl) {
-                otpReqMsgEl.textContent = f.getAttribute('data-confirm-message') || 'Are you sure you want to request OTP?';
+                otpReqMsgEl.textContent = btn.getAttribute('data-confirm-message') || 'Are you sure you want to request OTP?';
             }
             if (otpReqModal) {
                 otpReqModal.show();
+            } else {
+                eventifySubmitOtpRequest(otpPendingPayload);
+                otpPendingPayload = null;
             }
         });
     });
     if (otpReqConfirmBtn) {
         otpReqConfirmBtn.addEventListener('click', function () {
-            if (!otpPendingForm) return;
+            if (!otpPendingPayload) return;
             if (otpReqModal) otpReqModal.hide();
-            otpPendingForm.submit();
-            otpPendingForm = null;
+            eventifySubmitOtpRequest(otpPendingPayload);
+            otpPendingPayload = null;
         });
     }
     if (otpReqModalEl) {
         otpReqModalEl.addEventListener('hidden.bs.modal', function () {
-            otpPendingForm = null;
+            otpPendingPayload = null;
         });
     }
+
+    document.querySelectorAll('.js-assign-organizer-form').forEach(function (form) {
+        form.addEventListener('submit', function (e) {
+            var sel = form.querySelector('select[name="organizer_id"]');
+            if (!sel) return;
+            var eventTitle = form.getAttribute('data-event-title') || 'this event';
+            var orgName = sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].text.trim() : 'organizer';
+            var msg = 'Assign "' + eventTitle + '" to ' + orgName + '?\n\nAny pending OTP for this event will be cleared. Send a new OTP after assigning.';
+            if (!window.confirm(msg)) {
+                e.preventDefault();
+            }
+        });
+    });
 
     var adminChartInstances = [];
 
@@ -288,10 +363,20 @@ document.addEventListener('DOMContentLoaded', function () {
     function getPendingChecks() {
         return Array.prototype.slice.call(document.querySelectorAll('.pending-event-checkbox'));
     }
+    function syncPendingCardSelection() {
+        document.querySelectorAll('[data-pending-card]').forEach(function (card) {
+            var cb = card.querySelector('.pending-event-checkbox');
+            card.classList.toggle('is-selected', !!(cb && cb.checked));
+        });
+    }
     function setAllPendingChecks(v) {
         getPendingChecks().forEach(function (c) { c.checked = !!v; });
         if (headCheck) headCheck.checked = !!v;
+        syncPendingCardSelection();
     }
+    getPendingChecks().forEach(function (cb) {
+        cb.addEventListener('change', syncPendingCardSelection);
+    });
     if (headCheck) {
         headCheck.addEventListener('change', function () { setAllPendingChecks(headCheck.checked); });
     }
@@ -336,6 +421,11 @@ document.addEventListener('DOMContentLoaded', function () {
         var nm = document.getElementById('adminNotificationsModal');
         if (nm && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
             bootstrap.Modal.getOrCreateInstance(nm).show();
+        }
+    } else if (openModal === 'accounts') {
+        var am = document.getElementById('adminPendingAccountsModal');
+        if (am && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+            bootstrap.Modal.getOrCreateInstance(am).show();
         }
     } else if (openModal === 'charts' || openModal === 'analytics') {
         var am = document.getElementById('adminAnalyticsModal');
@@ -382,5 +472,117 @@ document.addEventListener('DOMContentLoaded', function () {
     if (legend && Number(settings.calendar_legend_visible || 0) !== 1) {
         legend.style.display = 'none';
     }
+
+    function adminParseStoredDepartments(stored) {
+        var raw = String(stored || 'ALL').trim();
+        if (raw === '' || raw === 'ALL') {
+            return ['ALL'];
+        }
+        if (raw.charAt(0) === '[') {
+            try {
+                var arr = JSON.parse(raw);
+                if (Array.isArray(arr) && arr.length) {
+                    return arr.map(function (x) { return String(x).trim(); }).filter(Boolean);
+                }
+            } catch (e) { /* ignore */ }
+        }
+        return [raw];
+    }
+
+    function adminSetEditPendingDepartments(stored) {
+        var selected = adminParseStoredDepartments(stored);
+        var useAll = selected.indexOf('ALL') !== -1;
+        document.querySelectorAll('.admin-edit-dept-cb').forEach(function (cb) {
+            if (cb.classList.contains('admin-edit-dept-cb--all')) {
+                cb.checked = useAll;
+            } else {
+                cb.checked = !useAll && selected.indexOf(cb.value) !== -1;
+            }
+        });
+    }
+
+    var editPendingModal = document.getElementById('adminEditPendingEventModal');
+    if (editPendingModal) {
+        editPendingModal.addEventListener('show.bs.modal', function (e) {
+            var btn = e.relatedTarget;
+            if (!btn || !btn.classList.contains('js-edit-pending-event')) {
+                return;
+            }
+            var idInput = document.getElementById('adminEditPendingEventId');
+            var titleInput = document.getElementById('adminEditPendingTitle');
+            var dateInput = document.getElementById('adminEditPendingDate');
+            var locInput = document.getElementById('adminEditPendingLocation');
+            var descInput = document.getElementById('adminEditPendingDescription');
+            if (idInput) idInput.value = btn.getAttribute('data-event-id') || '';
+            if (titleInput) titleInput.value = btn.getAttribute('data-event-title') || '';
+            if (dateInput) dateInput.value = btn.getAttribute('data-event-date') || '';
+            if (locInput) locInput.value = btn.getAttribute('data-event-location') || '';
+            if (descInput) descInput.value = btn.getAttribute('data-event-description') || '';
+            adminSetEditPendingDepartments(btn.getAttribute('data-event-department') || 'ALL');
+        });
+
+        var allDeptCb = editPendingModal.querySelector('.admin-edit-dept-cb--all');
+        if (allDeptCb) {
+            allDeptCb.addEventListener('change', function () {
+                if (!allDeptCb.checked) {
+                    return;
+                }
+                editPendingModal.querySelectorAll('.admin-edit-dept-cb:not(.admin-edit-dept-cb--all)').forEach(function (cb) {
+                    cb.checked = false;
+                });
+            });
+        }
+        editPendingModal.querySelectorAll('.admin-edit-dept-cb:not(.admin-edit-dept-cb--all)').forEach(function (cb) {
+            cb.addEventListener('change', function () {
+                if (!cb.checked) {
+                    return;
+                }
+                if (allDeptCb) {
+                    allDeptCb.checked = false;
+                }
+            });
+        });
+    }
+
+    document.addEventListener('eventify:notif-open-pending', function () {
+        var listModal = document.getElementById('adminNotificationsModal');
+        if (listModal && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+            var listInst = bootstrap.Modal.getInstance(listModal);
+            if (listInst) {
+                listInst.hide();
+            }
+        }
+        var pm = document.getElementById('pendingEventsModal');
+        if (pm && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+            setTimeout(function () {
+                bootstrap.Modal.getOrCreateInstance(pm).show();
+            }, 200);
+        }
+    });
+
+    document.addEventListener('eventify:notif-open-accounts', function () {
+        var listModal = document.getElementById('adminNotificationsModal');
+        if (listModal && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+            var listInst = bootstrap.Modal.getInstance(listModal);
+            if (listInst) {
+                listInst.hide();
+            }
+        }
+        var am = document.getElementById('adminPendingAccountsModal');
+        if (am && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+            setTimeout(function () {
+                bootstrap.Modal.getOrCreateInstance(am).show();
+            }, 200);
+        }
+    });
+
+    document.addEventListener('eventify:notif-view-event', function (e) {
+        var detail = (e && e.detail) || {};
+        if (detail.eventId && typeof window.eventifyOpenEventDetailsById === 'function') {
+            setTimeout(function () {
+                window.eventifyOpenEventDetailsById(String(detail.eventId));
+            }, 200);
+        }
+    });
 
 });

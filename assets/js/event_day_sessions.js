@@ -12,8 +12,102 @@
         return global.csrfToken || '';
     }
 
-    function parseClickedScheduleDate(event) {
+    function resolveEventScheduleDates(event) {
+        var props = (event && event.extendedProps) ? event.extendedProps : {};
+        var dates = [];
+        if (Array.isArray(props.schedule_dates)) {
+            dates = props.schedule_dates.slice();
+        } else if (Array.isArray(props.segment_dates)) {
+            dates = props.segment_dates.slice();
+        }
+        dates = dates.map(function (d) {
+            return String(d).slice(0, 10);
+        }).filter(Boolean);
+        dates.sort();
+        if (dates.length) {
+            return dates;
+        }
+        var fallback = props.schedule_date_ymd || props.event_date_ymd || '';
+        fallback = String(fallback).slice(0, 10);
+        return fallback ? [fallback] : [];
+    }
+
+    function isYmdInEventSchedule(ymd, props, validDates) {
+        if (!ymd) {
+            return false;
+        }
+        if (validDates && validDates.indexOf(ymd) >= 0) {
+            return true;
+        }
+        if (Array.isArray(props.segment_dates) && props.segment_dates.some(function (d) {
+            return String(d).slice(0, 10) === ymd;
+        })) {
+            return true;
+        }
+        if (Array.isArray(props.schedule_dates) && props.schedule_dates.some(function (d) {
+            return String(d).slice(0, 10) === ymd;
+        })) {
+            return true;
+        }
+        return false;
+    }
+
+    /** Which day column the user clicked on a connected multi-day calendar bar. */
+    function resolveClickYmdFromPointer(event, jsEvent) {
+        if (!jsEvent || !event) {
+            return null;
+        }
         var props = event.extendedProps || {};
+        var validDates = [];
+        if (Array.isArray(props.segment_dates) && props.segment_dates.length >= 2) {
+            validDates = props.segment_dates.map(function (d) {
+                return String(d).slice(0, 10);
+            });
+        } else if (Array.isArray(props.schedule_dates) && props.schedule_dates.length >= 2) {
+            validDates = props.schedule_dates.map(function (d) {
+                return String(d).slice(0, 10);
+            });
+        }
+        if (validDates.length < 2) {
+            return null;
+        }
+        var clickX = jsEvent.clientX;
+        var days = document.querySelectorAll('.fc-daygrid-day[data-date]');
+        for (var i = 0; i < days.length; i++) {
+            var cell = days[i];
+            var ymd = String(cell.getAttribute('data-date') || '').slice(0, 10);
+            if (validDates.indexOf(ymd) < 0) {
+                continue;
+            }
+            var rect = cell.getBoundingClientRect();
+            if (clickX >= rect.left && clickX < rect.right) {
+                return ymd;
+            }
+        }
+        return null;
+    }
+
+    function parseClickedScheduleDate(event, clickContext) {
+        var props = event.extendedProps || {};
+        var validDates = resolveEventScheduleDates(event);
+        var clickedYmd = null;
+
+        if (clickContext) {
+            if (clickContext.jsEvent && props.calendar_range_multiday) {
+                clickedYmd = resolveClickYmdFromPointer(event, clickContext.jsEvent);
+            }
+            if (!clickedYmd && typeof global.eventifyGetSegmentYmdFromEl === 'function') {
+                if (clickContext.clickEl) {
+                    clickedYmd = global.eventifyGetSegmentYmdFromEl(clickContext.clickEl);
+                }
+                if (!clickedYmd && clickContext.jsEvent && clickContext.jsEvent.target) {
+                    clickedYmd = global.eventifyGetSegmentYmdFromEl(clickContext.jsEvent.target);
+                }
+            }
+        }
+        if (clickedYmd && isYmdInEventSchedule(clickedYmd, props, validDates)) {
+            return clickedYmd;
+        }
         if (props.schedule_date_ymd) {
             return String(props.schedule_date_ymd).slice(0, 10);
         }
@@ -315,9 +409,14 @@
         state.sessions = data.sessions;
         refreshDetailsPanel();
         var prev = document.getElementById('studentDaySessionsPreview');
-        if (prev) {
-            prev.innerHTML = renderSessionsList(data.sessions, { canEdit: false, canRsvp: true });
-            bindRsvpActions(prev);
+        var block = document.getElementById('studentDaySessionsBlock');
+        if (prev && block) {
+            var eventId = block.getAttribute('data-event-id');
+            var scheduleDate = block.getAttribute('data-schedule-date');
+            if (eventId && scheduleDate) {
+                getStudentSessionsCache()[studentSessionsCacheKey(eventId, scheduleDate)] = data.sessions;
+            }
+            renderStudentSessionsPreview(prev, data.sessions);
         }
     }
 
@@ -334,27 +433,88 @@
         return null;
     }
 
+    function renderEahDetailStickyRsvpHtml(session) {
+        if (!session || String(session.status || 'scheduled').toLowerCase() === 'cancelled') {
+            return '';
+        }
+        var sid = parseInt(session.id, 10);
+        if (session.user_checked_in) {
+            var timeMeta = session.checked_in_at
+                ? '<span class="eah-attendance-status__meta"><i class="fas fa-clock" aria-hidden="true"></i> ' +
+                    escapeHtml(String(session.checked_in_at)) + '</span>'
+                : '<span class="eah-attendance-status__meta">Attendance recorded for this activity</span>';
+            return '<div class="eah-attendance-status eah-attendance-status--checked-in" role="status">' +
+                '<div class="eah-attendance-status__icon" aria-hidden="true"><i class="fas fa-check"></i></div>' +
+                '<div class="eah-attendance-status__body">' +
+                '<span class="eah-attendance-status__label">You\'re checked in</span>' +
+                timeMeta +
+                '</div></div>';
+        }
+        if (session.user_rsvped) {
+            var sticky = '<div class="eah-attendance-status eah-attendance-status--rsvp" role="status">' +
+                '<div class="eah-attendance-status__icon" aria-hidden="true"><i class="fas fa-bookmark"></i></div>' +
+                '<div class="eah-attendance-status__body">' +
+                '<span class="eah-attendance-status__label">' +
+                (session.allows_cancel_rsvp !== false ? 'RSVP confirmed' : 'RSVP saved') +
+                '</span>' +
+                '<span class="eah-attendance-status__meta">' +
+                (session.allows_cancel_rsvp !== false
+                    ? 'Show your QR at the venue to check in'
+                    : 'This activity has ended') +
+                '</span></div></div>';
+            if (session.allows_cancel_rsvp !== false) {
+                sticky += '<button type="button" class="eah-btn eah-btn-outline eah-btn-block js-eah-cancel-rsvp" data-session-id="' + sid + '">' +
+                    '<i class="fas fa-times"></i> Cancel RSVP</button>';
+            }
+            return sticky;
+        }
+        if (session.allows_rsvp === false) {
+            return '<div class="eah-detail-sticky__muted"><i class="fas fa-clock me-1"></i> RSVP closed — activity ended or not open yet</div>';
+        }
+        return '<button type="button" class="eah-btn eah-btn-primary eah-btn-block js-eah-rsvp" data-session-id="' + sid + '">' +
+            '<i class="fas fa-user-plus"></i> RSVP for this activity</button>';
+    }
+
+    function syncDetailStickyMode(session) {
+        var sticky = document.querySelector('.eah-detail-sticky');
+        if (!sticky) {
+            return;
+        }
+        var statusOnly = !!(session && (
+            session.user_checked_in ||
+            (session.user_rsvped && session.allows_cancel_rsvp === false)
+        ));
+        sticky.classList.toggle('eah-detail-sticky--status-only', statusOnly);
+    }
+
     function renderEahRsvpButtonHtml(session) {
         if (!session || String(session.status || 'scheduled').toLowerCase() === 'cancelled') {
             return '';
         }
         var sid = parseInt(session.id, 10);
+        if (session.user_checked_in) {
+            return '<span class="eah-badge eah-badge-attended"><i class="fas fa-clipboard-check"></i> Checked in</span>';
+        }
         if (session.user_rsvped) {
-            return '<button type="button" class="eah-btn eah-btn-outline js-eah-cancel-rsvp" data-session-id="' + sid + '">' +
-                '<i class="fas fa-times"></i> Cancel RSVP</button>';
+            return '<span class="eah-badge eah-badge-rsvp"><i class="fas fa-check-circle"></i> Confirmed RSVP</span>';
         }
         if (session.allows_rsvp === false) {
             return '<span class="eah-btn eah-btn-outline text-muted" style="pointer-events:none;opacity:.85">' +
                 '<i class="fas fa-clock"></i> RSVP closed</span>';
         }
         return '<button type="button" class="eah-btn eah-btn-primary js-eah-rsvp" data-session-id="' + sid + '">' +
-            '<i class="fas fa-check"></i> RSVP for this activity</button>';
+            '<i class="fas fa-user-plus"></i> RSVP for this activity</button>';
     }
 
     function applyActivityHubRsvpUi(sessionId, sessions) {
         var session = findSessionById(sessions, sessionId);
         if (!session) {
             return;
+        }
+        var detailActions = document.getElementById('eahDetailRsvpActions');
+        if (detailActions) {
+            detailActions.innerHTML = renderEahDetailStickyRsvpHtml(session);
+            syncDetailStickyMode(session);
         }
         var actions = document.querySelector('.eah-actions');
         if (actions) {
@@ -482,70 +642,83 @@
         if (status === 'scheduled') {
             return '';
         }
-        var cls = status === 'cancelled' ? 'bg-danger' : 'bg-warning text-dark';
+        var cls = status === 'cancelled' ? 'eds-status-badge eds-status-badge--cancelled' : 'eds-status-badge eds-status-badge--delayed';
         var label = status.charAt(0).toUpperCase() + status.slice(1);
-        return ' <span class="badge ' + cls + ' ms-1">' + escapeHtml(label) + '</span>';
+        return ' <span class="' + cls + '">' + escapeHtml(label) + '</span>';
     }
 
     function renderSessionsList(sessions, options) {
         options = options || {};
-        var canEdit = !!options.canEdit;
+        var canEditSchedule = !!options.canEditSchedule;
+        var showOrganizerTools = !!options.showOrganizerTools;
         var canRsvp = !!options.canRsvp;
         if (!sessions || !sessions.length) {
-            return '<p class="text-muted small mb-0">No activities added for this day yet.' +
-                (canEdit ? ' Use <strong>Add activity</strong> below.' : '') + '</p>';
+            return '<p class="eds-empty-day mb-0">No activities added for this day yet.' +
+                (canEditSchedule ? ' Use <strong>Add activity</strong> below.' : '') + '</p>';
         }
-        var html = '<ul class="list-group list-group-flush event-day-sessions-list">';
+        var html = '<ul class="eds-session-list">';
         sessions.forEach(function (s) {
             var timeStr = formatTimeRange(s.start_time, s.end_time);
             var status = String(s.status || 'scheduled').toLowerCase();
-            html += '<li class="list-group-item px-0 py-2' + (status === 'cancelled' ? ' opacity-75' : '') + '">' +
-                '<div class="d-flex justify-content-between align-items-start gap-2">' +
-                '<div class="min-w-0">' +
-                '<div class="fw-semibold">' + escapeHtml(s.title) + statusBadge(status) + '</div>';
+            html += '<li class="eds-session-card' + (status === 'cancelled' ? ' is-cancelled' : '') + '">' +
+                '<div class="eds-session-card__main">' +
+                '<div class="eds-session-card__title-row">' +
+                '<span class="eds-session-card__title">' + escapeHtml(s.title) + '</span>' +
+                statusBadge(status) +
+                ((s.requires_ticket || s.access_mode === 'ticket_required') ? ' <span class="eds-session-card__ticket">Ticket</span>' : '') +
+                '</div>';
             if (s.category) {
-                html += '<div class="small text-muted">' + escapeHtml(s.category) + '</div>';
+                html += '<div class="eds-session-card__meta">' + escapeHtml(s.category) + '</div>';
             }
-            html += (timeStr ? '<div class="small text-muted">' + escapeHtml(timeStr) + '</div>' : '') +
-                '<div class="small"><i class="fas fa-map-marker-alt me-1 text-secondary"></i>' + escapeHtml(s.location) + '</div>';
+            html += (timeStr ? '<div class="eds-session-card__meta"><i class="fas fa-clock" aria-hidden="true"></i> ' + escapeHtml(timeStr) + '</div>' : '') +
+                '<div class="eds-session-card__meta"><i class="fas fa-map-marker-alt" aria-hidden="true"></i> ' + escapeHtml(s.location) + '</div>';
             if (s.notes) {
-                html += '<div class="small mt-1 text-muted">' + escapeHtml(s.notes) + '</div>';
+                html += '<div class="eds-session-card__notes">' + escapeHtml(s.notes) + '</div>';
             }
             if (s.contact_name || s.contact_phone) {
-                html += '<div class="small text-muted"><i class="fas fa-address-card me-1"></i>' +
+                html += '<div class="eds-session-card__meta"><i class="fas fa-address-card" aria-hidden="true"></i> ' +
                     escapeHtml([s.contact_name, s.contact_phone].filter(Boolean).join(' · ')) + '</div>';
             }
             if (s.max_capacity) {
                 var spots = (s.rsvp_count != null ? s.rsvp_count : 0) + ' / ' + s.max_capacity + ' RSVP\'d';
-                html += '<div class="small text-muted">' + escapeHtml(spots) + '</div>';
+                html += '<div class="eds-session-card__meta">' + escapeHtml(spots) + '</div>';
             } else if (s.rsvp_count != null && s.rsvp_count > 0) {
-                html += '<div class="small text-muted">' + escapeHtml(String(s.rsvp_count)) + ' RSVP\'d</div>';
+                html += '<div class="eds-session-card__meta">' + escapeHtml(String(s.rsvp_count)) + ' RSVP\'d</div>';
             }
             if (s.latitude != null && s.longitude != null) {
-                html += '<div class="small mt-1"><a href="https://www.openstreetmap.org/?mlat=' +
+                html += '<div class="eds-session-card__map-link"><a href="https://www.openstreetmap.org/?mlat=' +
                     encodeURIComponent(s.latitude) + '&mlon=' + encodeURIComponent(s.longitude) +
                     '#map=17/' + encodeURIComponent(s.latitude) + '/' + encodeURIComponent(s.longitude) +
                     '" target="_blank" rel="noopener">View on map</a></div>';
             }
             html += '</div>';
-            if (canEdit) {
-                html += '<div class="btn-group btn-group-sm flex-shrink-0 flex-column">' +
-                    '<div class="btn-group btn-group-sm">' +
-                    '<button type="button" class="btn btn-outline-secondary js-eds-edit" data-session-id="' + s.id + '" title="Edit"><i class="fas fa-pen"></i></button>' +
-                    '<button type="button" class="btn btn-outline-danger js-eds-delete" data-session-id="' + s.id + '" title="Delete"><i class="fas fa-trash"></i></button>' +
-                    '</div>' +
-                    '<a class="btn btn-outline-info btn-sm mt-1" href="' + baseUrl() + '/activity_qr.php?id=' + encodeURIComponent(s.id) + '" target="_blank" rel="noopener" title="Activity QR"><i class="fas fa-qrcode"></i></a>' +
-                    '</div>';
+            if (canEditSchedule || showOrganizerTools) {
+                html += '<div class="eds-session-card__actions">';
+                if (canEditSchedule) {
+                    html += '<button type="button" class="eds-icon-btn js-eds-edit" data-session-id="' + s.id + '" title="Edit"><i class="fas fa-pen"></i></button>' +
+                        '<button type="button" class="eds-icon-btn eds-icon-btn--danger js-eds-delete" data-session-id="' + s.id + '" title="Delete"><i class="fas fa-trash"></i></button>';
+                }
+                if (showOrganizerTools) {
+                    html += '<a class="eds-icon-btn" href="' + baseUrl() + '/activity_attendance.php?id=' + encodeURIComponent(s.id) + '" target="_blank" rel="noopener" title="View attendance"><i class="fas fa-clipboard-check"></i></a>' +
+                        '<a class="eds-icon-btn eds-icon-btn--qr" href="' + baseUrl() + '/activity_qr.php?id=' + encodeURIComponent(s.id) + '" target="_blank" rel="noopener" title="Activity QR"><i class="fas fa-qrcode"></i></a>';
+                }
+                html += '</div>';
             } else if (canRsvp && status !== 'cancelled') {
-                if (s.user_rsvped) {
-                    html += '<button type="button" class="btn btn-sm btn-outline-secondary flex-shrink-0 js-eds-cancel-rsvp" data-session-id="' + s.id + '">Cancel RSVP</button>';
+                if (s.user_checked_in) {
+                    html += '<span class="eds-session-card__ended"><i class="fas fa-clipboard-check"></i> Checked in</span>';
+                } else if (s.user_rsvped) {
+                    if (s.allows_cancel_rsvp !== false) {
+                        html += '<button type="button" class="btn btn-sm eds-btn-outline flex-shrink-0 js-eds-cancel-rsvp" data-session-id="' + s.id + '">Cancel RSVP</button>';
+                    } else {
+                        html += '<span class="eds-session-card__ended">RSVP\'d</span>';
+                    }
                 } else if (s.allows_rsvp === false) {
-                    html += '<span class="small text-muted flex-shrink-0">Ended</span>';
+                    html += '<span class="eds-session-card__ended">Ended</span>';
                 } else {
-                    html += '<button type="button" class="btn btn-sm btn-primary flex-shrink-0 js-eds-rsvp" data-session-id="' + s.id + '">RSVP</button>';
+                    html += '<button type="button" class="btn btn-sm eds-btn-primary flex-shrink-0 js-eds-rsvp" data-session-id="' + s.id + '">RSVP</button>';
                 }
             }
-            html += '</div></li>';
+            html += '</li>';
         });
         html += '</ul>';
         return html;
@@ -554,9 +727,131 @@
     var state = {
         eventId: 0,
         scheduleDate: '',
+        scheduleDates: [],
         sessions: [],
-        editingId: null
+        ticketTypes: [],
+        editingId: null,
+        scheduleEditable: true,
+        scheduleLockMessage: ''
     };
+
+    function applyScheduleEditableFromResponse(data) {
+        if (!data || typeof data.schedule_editable === 'undefined') {
+            return;
+        }
+        state.scheduleEditable = !!data.schedule_editable;
+        state.scheduleLockMessage = data.schedule_lock_message || '';
+        if (typeof data.schedule_editable === 'boolean' && global.currentRole === 'organizer') {
+            global.__eahScheduleEditable = data.schedule_editable;
+        }
+        syncScheduleLockUi();
+    }
+
+    function syncScheduleLockUi() {
+        var notice = document.getElementById('edsScheduleLockNotice');
+        var formPanel = document.querySelector('#eventDaySessionsModal .eds-form-panel');
+        var editable = state.scheduleEditable !== false;
+        if (notice) {
+            if (!editable && state.scheduleLockMessage) {
+                notice.textContent = state.scheduleLockMessage;
+                notice.style.display = '';
+            } else {
+                notice.textContent = '';
+                notice.style.display = 'none';
+            }
+        }
+        if (formPanel) {
+            formPanel.style.display = editable ? '' : 'none';
+        }
+    }
+
+    function syncScheduleDatePicker() {
+        var wrap = document.getElementById('edsScheduleDateWrap');
+        var sel = document.getElementById('edsScheduleDate');
+        if (!wrap || !sel) {
+            return;
+        }
+        var dates = state.scheduleDates || [];
+        if (dates.length <= 1) {
+            wrap.style.display = 'none';
+            sel.innerHTML = '';
+            return;
+        }
+        wrap.style.display = '';
+        var current = state.scheduleDate || dates[0];
+        sel.innerHTML = dates.map(function (ymd) {
+            return '<option value="' + escapeHtml(ymd) + '">' + escapeHtml(formatYmdLong(ymd)) + '</option>';
+        }).join('');
+        sel.value = dates.indexOf(current) >= 0 ? current : dates[0];
+        sel.disabled = !!state.editingId;
+    }
+
+    function setScheduleDate(ymd, reload) {
+        ymd = String(ymd || '').slice(0, 10);
+        if (!ymd) {
+            return;
+        }
+        state.scheduleDate = ymd;
+        var els = getManageEls();
+        if (els.dateLabel) {
+            els.dateLabel.textContent = formatYmdLong(ymd);
+        }
+        if (els.printBtn && state.eventId) {
+            els.printBtn.href = baseUrl() + '/activity_schedule.php?event_id=' +
+                encodeURIComponent(state.eventId) + '&date=' + encodeURIComponent(ymd);
+            els.printBtn.style.display = 'inline-block';
+        }
+        var dayLbl = document.getElementById('eventDaySessionsDayLabel');
+        if (dayLbl) {
+            dayLbl.textContent = formatYmdLong(ymd);
+        }
+        syncScheduleDatePicker();
+        if (reload && state.eventId) {
+            fetchSessions(state.eventId, ymd).then(function (data) {
+                if (data && data.ok) {
+                    state.sessions = data.sessions || [];
+                    applyTicketTypesFromResponse(data);
+                    applyScheduleEditableFromResponse(data);
+                }
+                refreshManageList();
+                refreshDetailsPanel();
+            });
+        }
+    }
+
+    function syncTicketTypeOptions(types, selectedId) {
+        var sel = document.getElementById('edsTicketTypeId');
+        if (!sel) {
+            return;
+        }
+        sel.innerHTML = '<option value="">— Select ticket type —</option>';
+        (types || []).forEach(function (t) {
+            var opt = document.createElement('option');
+            opt.value = String(t.id);
+            var price = t.price != null ? parseFloat(t.price) : 0;
+            opt.textContent = (t.name || 'Ticket') + (price > 0 ? ' — ₱' + price.toFixed(2) : '');
+            sel.appendChild(opt);
+        });
+        if (selectedId) {
+            sel.value = String(selectedId);
+        }
+    }
+
+    function updateAccessModeUi() {
+        var modeEl = document.getElementById('edsAccessMode');
+        var wrap = document.getElementById('edsTicketTypeWrap');
+        if (!modeEl || !wrap) {
+            return;
+        }
+        wrap.style.display = modeEl.value === 'ticket_required' ? '' : 'none';
+    }
+
+    function applyTicketTypesFromResponse(data) {
+        if (data && data.ticket_types) {
+            state.ticketTypes = data.ticket_types;
+            syncTicketTypeOptions(state.ticketTypes);
+        }
+    }
 
     var locationPickerInstance = null;
 
@@ -631,6 +926,8 @@
             contactPhone: document.getElementById('edsContactPhone'),
             notes: document.getElementById('edsNotes'),
             sortOrder: document.getElementById('edsSortOrder'),
+            accessMode: document.getElementById('edsAccessMode'),
+            ticketTypeId: document.getElementById('edsTicketTypeId'),
             printBtn: document.getElementById('edsPrintScheduleBtn'),
             hubBtn: document.getElementById('edsActivitiesHubBtn'),
             cancelEdit: document.getElementById('edsCancelEditBtn')
@@ -659,6 +956,13 @@
         if (els.sortOrder) {
             els.sortOrder.value = '0';
         }
+        if (els.accessMode) {
+            els.accessMode.value = 'free';
+        }
+        if (els.ticketTypeId) {
+            els.ticketTypeId.value = '';
+        }
+        updateAccessModeUi();
     }
 
     function resetForm() {
@@ -704,6 +1008,7 @@
         if (locationPickerInstance && locationPickerInstance.setCoords) {
             locationPickerInstance.setCoords(11.244, 125.004, false);
         }
+        syncScheduleDatePicker();
     }
 
     function fillForm(session) {
@@ -754,19 +1059,29 @@
         if (els.sortOrder) {
             els.sortOrder.value = session.sort_order != null ? String(session.sort_order) : '0';
         }
+        if (els.accessMode) {
+            els.accessMode.value = session.access_mode === 'ticket_required' ? 'ticket_required' : 'free';
+        }
+        syncTicketTypeOptions(state.ticketTypes, session.ticket_type_id || '');
+        updateAccessModeUi();
         if (els.cancelEdit) {
             els.cancelEdit.style.display = 'inline-block';
         }
         applySessionCoordsToMap(session);
+        syncScheduleDatePicker();
     }
 
     function refreshManageList() {
         var els = getManageEls();
         if (els.list) {
-            els.list.innerHTML = renderSessionsList(state.sessions, { canEdit: true });
+            els.list.innerHTML = renderSessionsList(state.sessions, {
+                canEditSchedule: state.scheduleEditable !== false,
+                showOrganizerTools: true
+            });
             bindManageListActions();
         }
         refreshDetailsPanel();
+        syncScheduleLockUi();
     }
 
     function refreshDetailsPanel() {
@@ -951,23 +1266,119 @@
         if (!els.modal || !state.eventId || !state.scheduleDate) {
             return;
         }
-        if (els.dateLabel) {
-            els.dateLabel.textContent = formatYmdLong(state.scheduleDate);
-        }
-        if (els.printBtn && state.eventId && state.scheduleDate) {
-            els.printBtn.href = baseUrl() + '/activity_schedule.php?event_id=' +
-                encodeURIComponent(state.eventId) + '&date=' + encodeURIComponent(state.scheduleDate);
-            els.printBtn.style.display = 'inline-block';
-        }
+        setScheduleDate(state.scheduleDate, false);
+        syncScheduleDatePicker();
         if (els.hubBtn && state.eventId) {
             els.hubBtn.href = baseUrl() + '/event_activities.php?id=' + encodeURIComponent(state.eventId);
             els.hubBtn.style.display = 'inline-block';
         }
         resetForm();
-        refreshManageList();
+        fetchSessions(state.eventId, state.scheduleDate).then(function (data) {
+            if (data && data.ok) {
+                state.sessions = data.sessions || [];
+                applyTicketTypesFromResponse(data);
+                applyScheduleEditableFromResponse(data);
+            } else if (data && data.error) {
+                state.scheduleEditable = false;
+                state.scheduleLockMessage = data.error;
+            }
+            refreshManageList();
+        });
         if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
             bootstrap.Modal.getOrCreateInstance(els.modal).show();
         }
+    }
+
+    function submitActivityForm(els) {
+        if (state.scheduleEditable === false) {
+            showEdsMessageModal(state.scheduleLockMessage || 'This schedule is read-only.', {
+                title: 'Schedule locked',
+                icon: 'fa-lock'
+            });
+            return;
+        }
+        var body = new FormData();
+        body.append('action', 'save');
+        body.append('event_id', String(state.eventId));
+        body.append('schedule_date', state.scheduleDate);
+        body.append('title', els.title ? els.title.value : '');
+        body.append('location', els.location ? els.location.value : '');
+        if (els.latitude && els.longitude) {
+            body.append('latitude', els.latitude.value);
+            body.append('longitude', els.longitude.value);
+        }
+        body.append('start_time', els.startTime ? els.startTime.value : '');
+        body.append('end_time', els.endTime ? els.endTime.value : '');
+        if (els.category) {
+            body.append('category', els.category.value);
+        }
+        if (els.status) {
+            body.append('status', els.status.value);
+        }
+        if (els.maxCapacity) {
+            body.append('max_capacity', els.maxCapacity.value);
+        }
+        if (els.contactName) {
+            body.append('contact_name', els.contactName.value);
+        }
+        if (els.contactPhone) {
+            body.append('contact_phone', els.contactPhone.value);
+        }
+        if (els.notes) {
+            body.append('notes', els.notes.value);
+        }
+        if (els.sortOrder) {
+            body.append('sort_order', els.sortOrder.value || '0');
+        }
+        if (els.accessMode) {
+            body.append('access_mode', els.accessMode.value || 'free');
+        }
+        if (els.ticketTypeId && els.accessMode && els.accessMode.value === 'ticket_required') {
+            body.append('ticket_type_id', els.ticketTypeId.value || '');
+        }
+        if (state.editingId) {
+            body.append('session_id', String(state.editingId));
+        }
+        body.append('csrf_token', csrfToken());
+        fetch(baseUrl() + '/backend/auth/event_day_sessions_api.php', {
+            method: 'POST',
+            body: body,
+            credentials: 'same-origin'
+        })
+            .then(function (r) {
+                return r.text().then(function (text) {
+                    try {
+                        return JSON.parse(text);
+                    } catch (err) {
+                        throw new Error(text && text.indexOf('<') >= 0
+                            ? 'Server error while saving. Check PHP error log.'
+                            : (text || 'Invalid server response.'));
+                    }
+                });
+            })
+            .then(function (data) {
+                if (!data.ok) {
+                    showEdsMessageModal(data.error || 'Could not save.', {
+                        title: 'Save activity',
+                        icon: 'fa-exclamation-circle'
+                    });
+                    return;
+                }
+                state.sessions = data.sessions || [];
+                applyTicketTypesFromResponse(data);
+                resetForm();
+                refreshManageList();
+                if (global.EVENTIFY_RELOAD_HUB_ON_SESSION_SAVE) {
+                    window.location.reload();
+                    return;
+                }
+            })
+            .catch(function (err) {
+                showEdsMessageModal(err && err.message ? err.message : 'Could not save activity.', {
+                    title: 'Save activity',
+                    icon: 'fa-exclamation-circle'
+                });
+            });
     }
 
     function initForm() {
@@ -985,6 +1396,13 @@
         }
         els.form.addEventListener('submit', function (e) {
             e.preventDefault();
+            if (state.scheduleEditable === false) {
+                showEdsMessageModal(state.scheduleLockMessage || 'This schedule is read-only.', {
+                    title: 'Schedule locked',
+                    icon: 'fa-lock'
+                });
+                return;
+            }
             if (global.EVENTIFY_SESSIONS_HAVE_GEO && els.latitude && els.longitude) {
                 var lat = parseFloat(els.latitude.value);
                 var lng = parseFloat(els.longitude.value);
@@ -996,80 +1414,41 @@
                     return;
                 }
             }
-            var body = new FormData();
-            body.append('action', 'save');
-            body.append('event_id', String(state.eventId));
-            body.append('schedule_date', state.scheduleDate);
-            body.append('title', els.title ? els.title.value : '');
-            body.append('location', els.location ? els.location.value : '');
-            if (els.latitude && els.longitude) {
-                body.append('latitude', els.latitude.value);
-                body.append('longitude', els.longitude.value);
-            }
-            body.append('start_time', els.startTime ? els.startTime.value : '');
-            body.append('end_time', els.endTime ? els.endTime.value : '');
-            if (els.category) {
-                body.append('category', els.category.value);
-            }
-            if (els.status) {
-                body.append('status', els.status.value);
-            }
-            if (els.maxCapacity) {
-                body.append('max_capacity', els.maxCapacity.value);
-            }
-            if (els.contactName) {
-                body.append('contact_name', els.contactName.value);
-            }
-            if (els.contactPhone) {
-                body.append('contact_phone', els.contactPhone.value);
-            }
-            if (els.notes) {
-                body.append('notes', els.notes.value);
-            }
-            if (els.sortOrder) {
-                body.append('sort_order', els.sortOrder.value || '0');
-            }
-            if (state.editingId) {
-                body.append('session_id', String(state.editingId));
-            }
-            body.append('csrf_token', csrfToken());
-            fetch(baseUrl() + '/backend/auth/event_day_sessions_api.php', {
-                method: 'POST',
-                body: body,
-                credentials: 'same-origin'
-            })
-                .then(function (r) {
-                    return r.text().then(function (text) {
-                        try {
-                            return JSON.parse(text);
-                        } catch (err) {
-                            throw new Error(text && text.indexOf('<') >= 0
-                                ? 'Server error while saving. Check PHP error log.'
-                                : (text || 'Invalid server response.'));
-                        }
-                    });
-                })
-                .then(function (data) {
-                    if (!data.ok) {
-                        showEdsMessageModal(data.error || 'Could not save.', {
-                            title: 'Save activity',
-                            icon: 'fa-exclamation-circle'
-                        });
-                        return;
-                    }
-                    state.sessions = data.sessions || [];
-                    resetForm();
-                    refreshManageList();
-                })
-                .catch(function (err) {
-                    showEdsMessageModal(err && err.message ? err.message : 'Could not save activity.', {
-                        title: 'Save activity',
-                        icon: 'fa-exclamation-circle'
-                    });
-                });
+            var isEdit = !!state.editingId;
+            var activityName = els.title ? String(els.title.value || '').trim() : '';
+            var confirmMessage = isEdit
+                ? 'Are you sure you want to save your changes to this activity?'
+                : (activityName
+                    ? 'Are you sure you want to submit "' + activityName + '"?'
+                    : 'Are you sure you want to submit this activity?');
+            showEdsConfirmModal({
+                title: isEdit ? 'Save changes' : 'Submit activity',
+                message: confirmMessage,
+                confirmLabel: isEdit ? 'Yes, save' : 'Yes, submit',
+                confirmClass: 'btn-primary',
+                icon: 'fa-save'
+            }).then(function (ok) {
+                if (!ok) {
+                    return;
+                }
+                submitActivityForm(els);
+            });
         });
+        if (els.accessMode) {
+            els.accessMode.addEventListener('change', updateAccessModeUi);
+        }
         if (els.cancelEdit) {
             els.cancelEdit.addEventListener('click', resetForm);
+        }
+        var scheduleDateSel = document.getElementById('edsScheduleDate');
+        if (scheduleDateSel) {
+            scheduleDateSel.addEventListener('change', function () {
+                if (state.editingId) {
+                    scheduleDateSel.value = state.scheduleDate;
+                    return;
+                }
+                setScheduleDate(scheduleDateSel.value, true);
+            });
         }
         var manageBtn = document.getElementById('eventDaySessionsManageBtn');
         if (manageBtn) {
@@ -1077,9 +1456,40 @@
         }
     }
 
-    function loadForCalendarEvent(event, canEdit) {
+    function openManageForHub(eventId, scheduleDate) {
+        state.eventId = parseInt(eventId, 10) || 0;
+        state.scheduleDate = String(scheduleDate || '').slice(0, 10);
+        var hubDates = global.__eahEventScheduleDates;
+        if (Array.isArray(hubDates) && hubDates.length) {
+            state.scheduleDates = hubDates.map(function (d) {
+                return String(d).slice(0, 10);
+            }).filter(Boolean);
+        } else if (state.scheduleDate) {
+            state.scheduleDates = [state.scheduleDate];
+        } else {
+            state.scheduleDates = [];
+        }
+        if (!state.eventId || !state.scheduleDate) {
+            showEdsMessageModal('Choose an event day before adding an activity.', {
+                title: 'Day required',
+                icon: 'fa-calendar-day'
+            });
+            return;
+        }
+        if (global.__eahScheduleEditable === false && !global.__eahHasEditableScheduleDay) {
+            showEdsMessageModal(global.__eahScheduleLockMessage || 'This schedule is read-only.', {
+                title: 'Schedule locked',
+                icon: 'fa-lock'
+            });
+            return;
+        }
+        openManageModal();
+    }
+
+    function loadForCalendarEvent(event, canEdit, clickContext) {
         state.eventId = parseEventId(event);
-        state.scheduleDate = parseClickedScheduleDate(event);
+        state.scheduleDates = resolveEventScheduleDates(event);
+        state.scheduleDate = parseClickedScheduleDate(event, clickContext);
         state.sessions = [];
         if (!state.eventId || !state.scheduleDate) {
             refreshDetailsPanel();
@@ -1088,51 +1498,115 @@
         return fetchSessions(state.eventId, state.scheduleDate).then(function (data) {
             if (data.ok) {
                 state.sessions = data.sessions || [];
+                applyTicketTypesFromResponse(data);
+                applyScheduleEditableFromResponse(data);
             }
             refreshDetailsPanel();
         });
     }
 
-    function appendStudentSessionsBlock(bodyEl, eventLike) {
+    function studentSessionsCacheKey(eventId, scheduleDate) {
+        return String(eventId) + ':' + String(scheduleDate || '');
+    }
+
+    function getStudentSessionsCache() {
+        if (!global.__eventifyStudentSessionsCache) {
+            global.__eventifyStudentSessionsCache = {};
+        }
+        return global.__eventifyStudentSessionsCache;
+    }
+
+    function renderStudentSessionsPreview(previewEl, sessions) {
+        if (!previewEl) {
+            return;
+        }
+        previewEl.innerHTML = renderSessionsList(sessions || [], { canEdit: false, canRsvp: true });
+        bindRsvpActions(previewEl);
+    }
+
+    function appendStudentSessionsBlock(bodyEl, eventLike, clickContext) {
         if (!bodyEl) {
             return Promise.resolve();
         }
         var eventId = parseEventId(eventLike);
-        var scheduleDate = parseClickedScheduleDate(eventLike);
+        var scheduleDate = parseClickedScheduleDate(eventLike, clickContext);
         if (!eventId || !scheduleDate) {
             return Promise.resolve();
         }
-        var existing = document.getElementById('studentDaySessionsBlock');
-        if (!existing) {
+
+        var cacheKey = studentSessionsCacheKey(eventId, scheduleDate);
+        var cache = getStudentSessionsCache();
+        var block = document.getElementById('studentDaySessionsBlock');
+        if (!block) {
             bodyEl.insertAdjacentHTML(
                 'beforeend',
-                '<div class="event-day-sessions-panel mt-3" id="studentDaySessionsBlock">' +
-                '<strong class="small text-uppercase text-muted">Activities on this day</strong>' +
+                '<div class="event-day-sessions-panel mt-3" id="studentDaySessionsBlock"' +
+                ' data-event-id="' + escapeHtml(String(eventId)) + '"' +
+                ' data-schedule-date="' + escapeHtml(scheduleDate) + '">' +
+                '<strong class="small text-uppercase text-muted d-block mb-1">Activities on this day</strong>' +
                 '<div class="small fw-semibold mb-2" id="studentDaySessionsDateLabel">' + escapeHtml(formatYmdLong(scheduleDate)) + '</div>' +
-                '<div id="studentDaySessionsPreview"><span class="text-muted small">Loading…</span></div></div>'
+                '<div id="studentDaySessionsPreview" class="student-day-sessions-preview" aria-live="polite">' +
+                '<span class="text-muted small">Loading…</span></div></div>'
             );
+            block = document.getElementById('studentDaySessionsBlock');
         } else {
+            block.setAttribute('data-event-id', String(eventId));
+            block.setAttribute('data-schedule-date', scheduleDate);
             var dateLbl = document.getElementById('studentDaySessionsDateLabel');
             if (dateLbl) {
                 dateLbl.textContent = formatYmdLong(scheduleDate);
             }
-            var prevExisting = document.getElementById('studentDaySessionsPreview');
-            if (prevExisting) {
-                prevExisting.innerHTML = '<span class="text-muted small">Loading…</span>';
-            }
         }
-        return fetchSessions(eventId, scheduleDate).then(function (data) {
+
+        var preview = document.getElementById('studentDaySessionsPreview');
+        if (!preview) {
+            return Promise.resolve();
+        }
+
+        if (cache[cacheKey]) {
+            renderStudentSessionsPreview(preview, cache[cacheKey]);
+            return Promise.resolve();
+        }
+
+        if (!global.__eventifyStudentSessionsInflight) {
+            global.__eventifyStudentSessionsInflight = {};
+        }
+        if (global.__eventifyStudentSessionsInflight[cacheKey]) {
+            return global.__eventifyStudentSessionsInflight[cacheKey];
+        }
+
+        var hadContent = preview.querySelector('.eds-empty-day, .eds-session-list');
+        if (!hadContent) {
+            preview.innerHTML = '<span class="text-muted small">Loading…</span>';
+        }
+
+        var request = fetchSessions(eventId, scheduleDate).then(function (data) {
+            delete global.__eventifyStudentSessionsInflight[cacheKey];
             var prev = document.getElementById('studentDaySessionsPreview');
-            if (!prev) {
+            var activeBlock = document.getElementById('studentDaySessionsBlock');
+            if (!prev || !activeBlock) {
+                return;
+            }
+            if (activeBlock.getAttribute('data-event-id') !== String(eventId) ||
+                activeBlock.getAttribute('data-schedule-date') !== scheduleDate) {
                 return;
             }
             if (data.ok) {
-                prev.innerHTML = renderSessionsList(data.sessions || [], { canEdit: false, canRsvp: true });
-                bindRsvpActions(prev);
+                cache[cacheKey] = data.sessions || [];
+                renderStudentSessionsPreview(prev, cache[cacheKey]);
             } else {
                 prev.innerHTML = '<p class="text-muted small mb-0">Could not load activities.</p>';
             }
+        }).catch(function () {
+            delete global.__eventifyStudentSessionsInflight[cacheKey];
+            var prev = document.getElementById('studentDaySessionsPreview');
+            if (prev) {
+                prev.innerHTML = '<p class="text-muted small mb-0">Could not load activities.</p>';
+            }
         });
+
+        global.__eventifyStudentSessionsInflight[cacheKey] = request;
+        return request;
     }
 
     document.addEventListener('DOMContentLoaded', initForm);
@@ -1140,7 +1614,9 @@
 
     global.eventifyLoadDaySessionsForEvent = loadForCalendarEvent;
     global.eventifyOpenDaySessionsManager = openManageModal;
+    global.eventifyOpenDaySessionsManage = openManageForHub;
     global.eventifyAppendStudentDaySessions = appendStudentSessionsBlock;
+    global.eventifyResolveStudentDaySessionsDate = parseClickedScheduleDate;
     global.showEdsMessageModal = showEdsMessageModal;
     global.showEdsRsvpError = showEdsRsvpError;
     global.showEdsConfirmModal = showEdsConfirmModal;

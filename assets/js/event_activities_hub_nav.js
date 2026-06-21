@@ -45,6 +45,14 @@
         });
     }
 
+    document.querySelectorAll('[data-eah-close-nav]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            if (typeof window.eahCloseNavDrawer === 'function') {
+                window.eahCloseNavDrawer();
+            }
+        });
+    });
+
     document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape' && drawer.classList.contains('is-open')) {
             setOpen(false);

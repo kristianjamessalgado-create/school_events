@@ -1,6 +1,19 @@
 /* ===============================
    UI POLISH LAYER
 ================================ */
+.multimedia-dashboard {
+    --eventify-kb-focus: #f9ed00;
+}
+
+.eventify-kb-scroll-zone:focus {
+    outline: none;
+}
+
+.eventify-kb-scroll-zone:focus-visible {
+    outline: 2px solid var(--eventify-kb-focus, #f9ed00);
+    outline-offset: -2px;
+}
+
 .top-navbar {
     box-shadow: 0 2px 10px rgba(15, 23, 42, 0.08);
 }
@@ -77,7 +90,9 @@ body {
 }
 
 .navbar-right {
-    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
     z-index: 2;
 }
 
@@ -109,6 +124,15 @@ body {
 .nav-btn:hover {
     background: rgba(249, 237, 0, 0.16);
     color: var(--mm-gold);
+}
+
+.top-navbar .nav-btn.eventify-notif-btn {
+    position: relative;
+    overflow: visible;
+}
+
+.top-navbar .nav-btn.eventify-notif-btn.dropdown-toggle::after {
+    display: none;
 }
 
 .brand-logo {
@@ -200,6 +224,10 @@ body {
     padding: 1.5rem 1rem;
     box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
     border-radius: 16px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    max-height: calc(100vh - 72px);
 }
 
 .sidebar-title {
@@ -1424,6 +1452,27 @@ body {
     color: var(--mm-gold);
 }
 
+/* Single-event hub link uses text-reset — override Bootstrap inherit so it matches other quick actions */
+.sidebar a.action-btn,
+.sidebar a.action-btn:link,
+.sidebar a.action-btn:visited,
+.sidebar a.action-btn.text-reset,
+.sidebar a.action-btn.text-reset:visited {
+    color: #ffffff !important;
+    text-decoration: none;
+}
+
+.sidebar a.action-btn:hover,
+.sidebar a.action-btn:focus,
+.sidebar a.action-btn.text-reset:hover,
+.sidebar a.action-btn.text-reset:focus {
+    color: var(--mm-gold) !important;
+}
+
+.sidebar a.action-btn .badge {
+    vertical-align: middle;
+}
+
 button.action-btn {
     background: rgba(255, 255, 255, 0.08);
     border: 1px solid var(--mm-border-gold);
@@ -1687,4 +1736,115 @@ button.action-btn:focus-visible {
     .action-btn:not(.logout-btn)::after {
         animation: none;
     }
+}
+
+.mm-pending-label {
+    pointer-events: none;
+    opacity: 0.85;
+}
+
+.mm-approval-list__thumb {
+    display: block;
+    width: 4.5rem;
+    height: 4.5rem;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #f3f4f6;
+    border: 1px solid rgba(1, 50, 32, 0.1);
+}
+
+.mm-approval-list__thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+#photoApprovalsModal .list-group-item {
+    border-color: rgba(1, 50, 32, 0.1);
+}
+
+#photoApprovalsModal .list-group-item + .list-group-item {
+    border-top-width: 1px;
+}
+
+.mm-activity-log-wrap {
+    overflow-x: auto;
+}
+
+.mm-activity-log-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.84rem;
+}
+
+.mm-activity-log-table thead tr {
+    background: rgba(1, 50, 32, 0.06);
+}
+
+.mm-activity-log-table th {
+    text-align: left;
+    padding: 0.65rem 0.75rem;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #64748b;
+    border-bottom: 1px solid rgba(1, 50, 32, 0.12);
+    white-space: nowrap;
+}
+
+.mm-activity-log-table td {
+    padding: 0.7rem 0.75rem;
+    vertical-align: top;
+    border-bottom: 1px solid rgba(1, 50, 32, 0.08);
+}
+
+.mm-activity-log-table tbody tr:hover {
+    background: rgba(230, 197, 74, 0.08);
+}
+
+.mm-activity-log-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.mm-activity-log-badge {
+    display: inline-block;
+    padding: 0.18rem 0.45rem;
+    border-radius: 999px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    border: 1px solid rgba(100, 116, 139, 0.25);
+    background: #f8fafc;
+    color: #334155;
+    white-space: nowrap;
+}
+
+.mm-activity-log-badge--upload {
+    background: rgba(59, 130, 246, 0.12);
+    border-color: rgba(59, 130, 246, 0.25);
+    color: #1d4ed8;
+}
+
+.mm-activity-log-badge--approve {
+    background: rgba(22, 163, 74, 0.12);
+    border-color: rgba(22, 163, 74, 0.25);
+    color: #15803d;
+}
+
+.mm-activity-log-badge--reject {
+    background: rgba(239, 68, 68, 0.12);
+    border-color: rgba(239, 68, 68, 0.25);
+    color: #b91c1c;
+}
+
+.mm-activity-log-empty {
+    text-align: center;
+    padding: 2rem 1rem;
+    color: #64748b;
+}
+
+.mm-activity-log-empty i {
+    font-size: 1.75rem;
+    margin-bottom: 0.65rem;
+    color: #94a3b8;
 }

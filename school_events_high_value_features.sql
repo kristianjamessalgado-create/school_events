@@ -21,6 +21,9 @@ CREATE TABLE IF NOT EXISTS `event_feedback` (
   CONSTRAINT `event_feedback_user_fk` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+ALTER TABLE `event_feedback`
+  ADD COLUMN `evaluation_json` JSON NULL DEFAULT NULL AFTER `comment`;
+
 -- Multimedia publishing workflow (draft/published photos)
 ALTER TABLE `event_photos`
   ADD COLUMN `status` ENUM('draft','published','rejected') NOT NULL DEFAULT 'draft' AFTER `file_path`,

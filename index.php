@@ -1,5 +1,5 @@
 <?php
-session_start();
+require_once __DIR__ . '/config/session.php';
 if (!defined('BASE_URL')) define('BASE_URL','/school_events');
 
 $checkin_token = trim($_GET['t'] ?? '');
@@ -9,6 +9,22 @@ $auth_modal = trim((string)($_GET['auth_modal'] ?? ''));
 $auth_error = trim((string)($_GET['auth_error'] ?? ''));
 $auth_success = trim((string)($_GET['auth_success'] ?? ''));
 $auth_redirect = trim((string)($_GET['redirect'] ?? ''));
+$verify_purpose = (($_GET['verify_purpose'] ?? $_GET['purpose'] ?? 'register') === 'reactivate') ? 'reactivate' : 'register';
+$verify_email = strtolower(trim((string)($_GET['verify_email'] ?? $_GET['email'] ?? '')));
+if ($auth_modal === 'verify' && $verify_email !== '') {
+    require_once __DIR__ . '/backend/lib/account_email_otp.php';
+    $verifyFlash = eventify_consume_verify_otp_flash($verify_purpose, $verify_email);
+    if ($verifyFlash['success'] !== '') {
+        $auth_success = $verifyFlash['success'];
+        $auth_error = '';
+    } elseif ($verifyFlash['error'] !== '') {
+        $auth_error = $verifyFlash['error'];
+        $auth_success = '';
+    } else {
+        // Do not keep stale success text from an old bookmarked/refreshed URL.
+        $auth_success = '';
+    }
+}
 $studentCourseOptions = [];
 $studentYearLevelOptions = [];
 try {
@@ -261,10 +277,11 @@ $landing_past_n = count($publicPastList);
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>EVENTIFY</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-<link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/index.css">
+<link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/index.css?v=4">
+<link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/calendar_legend.css">
 <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
 </head>
 <body>
@@ -477,6 +494,8 @@ $landing_past_n = count($publicPastList);
       window.AUTH_MODAL = <?= json_encode($auth_modal) ?>;
       window.AUTH_ERROR = <?= json_encode($auth_error) ?>;
       window.AUTH_SUCCESS = <?= json_encode($auth_success) ?>;
+      window.VERIFY_PURPOSE = <?= json_encode($verify_purpose) ?>;
+      window.VERIFY_EMAIL = <?= json_encode($verify_email) ?>;
     </script>
 </section>
 
@@ -501,7 +520,7 @@ $landing_past_n = count($publicPastList);
     </div>
 </section>
 
-<!-- Auth Modals (desktop only; on mobile we redirect to full pages) -->
+<!-- Auth Modals on landing page (login, register, verify OTP) -->
 <div id="loginModal" class="modal auth-modal">
     <div class="modal-content auth-modal-content">
         <span class="close" onclick="closeLoginModal()" aria-label="Close">&times;</span>
@@ -522,7 +541,7 @@ $landing_past_n = count($publicPastList);
                 <?php endif; ?>
                 <div class="auth-input-wrap">
                     <label class="auth-label" for="loginModalEmail">Email</label>
-                    <input type="email" name="email" id="loginModalEmail" class="auth-input" placeholder="you@example.com" required>
+                    <input type="email" name="email" id="loginModalEmail" class="auth-input" placeholder="you@example.com" required autocomplete="username email">
                 </div>
                 <div class="auth-input-wrap auth-password-wrap">
                     <label class="auth-label" for="loginModalPassword">Password</label>
@@ -538,7 +557,7 @@ $landing_past_n = count($publicPastList);
         </div>
         <div class="login-modal-action-row">
             <button type="button" class="login-modal-action-btn secondary" onclick="openRegisterModal()">Register</button>
-            <button type="button" class="login-modal-action-btn ghost" onclick="openVerifyModal()">Verify Reactivation OTP</button>
+            <button type="button" class="login-modal-action-btn ghost" onclick="openVerifyModal({ purpose: 'reactivate' })">Verify Reactivation OTP</button>
         </div>
     </div>
 </div>
@@ -556,13 +575,20 @@ $landing_past_n = count($publicPastList);
             <form id="registerModalForm" action="<?= BASE_URL ?>/backend/auth/auth.php" method="POST" class="auth-form-wrap">
                 <?= csrf_field() ?>
                 <input type="hidden" name="action" value="register">
-                <div class="auth-input-wrap">
-                    <label class="auth-label" for="registerModalName">Username</label>
-                    <input type="text" name="name" id="registerModalName" class="auth-input" placeholder="Your name" required>
+                <div class="auth-name-row">
+                    <div class="auth-input-wrap">
+                        <label class="auth-label" for="registerModalFirstName">First name</label>
+                        <input type="text" name="first_name" id="registerModalFirstName" class="auth-input" placeholder="First name" required maxlength="50" autocomplete="given-name">
+                    </div>
+                    <div class="auth-input-wrap">
+                        <label class="auth-label" for="registerModalLastName">Last name</label>
+                        <input type="text" name="last_name" id="registerModalLastName" class="auth-input" placeholder="Last name" required maxlength="50" autocomplete="family-name">
+                    </div>
                 </div>
                 <div class="auth-input-wrap">
                     <label class="auth-label" for="registerModalEmail">Email</label>
-                    <input type="email" name="email" id="registerModalEmail" class="auth-input" placeholder="you@example.com" required>
+                    <input type="email" name="email" id="registerModalEmail" class="auth-input" placeholder="you@example.com" required autocomplete="email">
+                    <p class="auth-field-hint">Use this email to sign in — it is your username.</p>
                 </div>
                 <div class="auth-input-wrap auth-password-wrap">
                     <label class="auth-label" for="registerModalPassword">Password</label>
@@ -646,10 +672,8 @@ $landing_past_n = count($publicPastList);
                     </label>
                 </div>
                 <button type="submit" class="login-modal-action-btn primary auth-submit-btn">Register</button>
+                <button type="button" class="login-modal-action-btn secondary auth-back-login-btn" onclick="openLoginModal()">Back to Login</button>
             </form>
-        </div>
-        <div class="login-modal-action-row">
-            <button type="button" class="login-modal-action-btn primary" onclick="openLoginModal()">Back to Login</button>
         </div>
     </div>
 </div>
@@ -690,25 +714,45 @@ $landing_past_n = count($publicPastList);
     <div class="modal-content auth-modal-content">
         <span class="close" onclick="closeVerifyModal()" aria-label="Close">&times;</span>
         <div class="auth-form-box">
-            <h3 class="auth-title">Verify Reactivation OTP</h3>
-            <p class="auth-subtitle">Enter the code sent to your registered email.</p>
-            <div class="auth-inline-message" id="verifyModalMessage" style="display:none;"></div>
+            <h3 class="auth-title" id="verifyModalTitle"><?= $verify_purpose === 'reactivate' ? 'Verify reactivation OTP' : 'Verify your email' ?></h3>
+            <?php
+            $verifyTopAlertType = '';
+            $verifyTopAlertText = '';
+            if ($auth_modal === 'verify' && $auth_success !== '') {
+                $verifyTopAlertType = 'success';
+                $verifyTopAlertText = $auth_success;
+            } elseif ($auth_modal === 'verify' && $auth_error !== '') {
+                $verifyTopAlertType = 'error';
+                $verifyTopAlertText = $auth_error;
+            }
+            ?>
+            <div id="verifyModalTopAlert" class="auth-inline-message auth-verify-top-alert<?= $verifyTopAlertType !== '' ? ' ' . $verifyTopAlertType : '' ?>" role="alert"<?= $verifyTopAlertText === '' ? ' style="display:none;"' : '' ?>><?= $verifyTopAlertText !== '' ? htmlspecialchars($verifyTopAlertText) : '' ?></div>
+            <p class="auth-subtitle" id="verifyModalSubtitle"><?= $verify_purpose === 'reactivate'
+                ? 'Enter the code sent to your registered email.'
+                : 'Enter the 6-digit code we sent to your email. After verification, super admin will approve your account.' ?></p>
+            <p class="auth-field-hint auth-verify-hint">Did not get the email? Check <strong>Spam/Junk</strong>. School inboxes may take 1–2 minutes.</p>
             <form id="verifyModalForm" action="<?= BASE_URL ?>/backend/auth/verify_account_otp.php" method="POST" class="auth-form-wrap">
                 <?= csrf_field() ?>
-                <input type="hidden" name="purpose" value="reactivate">
+                <input type="hidden" name="purpose" id="verifyModalPurpose" value="<?= htmlspecialchars($verify_purpose) ?>">
                 <div class="auth-input-wrap">
-                    <label class="auth-label" for="verifyModalEmail">Registered Email</label>
-                    <input type="email" name="email" id="verifyModalEmail" class="auth-input" placeholder="Registered Email" required>
+                    <label class="auth-label" for="verifyModalEmail">Email</label>
+                    <input type="email" name="email" id="verifyModalEmail" class="auth-input" placeholder="you@example.com" required value="<?= htmlspecialchars($verify_email) ?>" autocomplete="email"<?= ($verify_purpose === 'register' && $verify_email !== '') ? ' readonly' : '' ?>>
                 </div>
                 <div class="auth-input-wrap">
                     <label class="auth-label" for="verifyOtpCode">6-digit OTP</label>
-                    <input type="text" name="otp_code" id="verifyOtpCode" class="auth-input" placeholder="Enter code" required maxlength="6" pattern="\d{6}">
+                    <input type="text" name="otp_code" id="verifyOtpCode" class="auth-input" placeholder="Enter 6-digit code" required maxlength="6" pattern="\d{6}" inputmode="numeric" autocomplete="one-time-code">
                 </div>
-                <button type="submit" class="login-modal-action-btn primary auth-submit-btn">Verify OTP</button>
+                <button type="submit" class="login-modal-action-btn primary auth-submit-btn">Verify</button>
+            </form>
+            <form id="verifyResendOtpForm" action="<?= BASE_URL ?>/backend/auth/resend_account_otp.php" method="POST" class="auth-verify-resend-form mt-2">
+                <?= csrf_field() ?>
+                <input type="hidden" name="purpose" id="verifyResendPurpose" value="<?= htmlspecialchars($verify_purpose) ?>">
+                <input type="hidden" name="email" id="verifyResendEmail" value="<?= htmlspecialchars($verify_email) ?>">
+                <button type="submit" class="login-modal-action-btn ghost auth-verify-resend-btn">Resend OTP</button>
             </form>
         </div>
         <div class="login-modal-action-row">
-            <button type="button" class="login-modal-action-btn primary" onclick="openLoginModal()">Back to Login</button>
+            <button type="button" class="login-modal-action-btn secondary" onclick="openLoginModal()">Back to login</button>
         </div>
     </div>
 </div>
@@ -851,6 +895,7 @@ $landing_past_n = count($publicPastList);
 
 <!-- JS -->
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
-<script src="<?= BASE_URL ?>/assets/js/index.js"></script>
+<script src="<?= BASE_URL ?>/assets/js/eventify_calendar_colors.js"></script>
+<script src="<?= BASE_URL ?>/assets/js/index.js?v=5"></script>
 </body>
 </html>

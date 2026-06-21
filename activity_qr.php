@@ -7,6 +7,7 @@ include __DIR__ . '/config/db.php';
 include __DIR__ . '/config/config.php';
 require_once __DIR__ . '/backend/lib/event_day_sessions.php';
 require_once __DIR__ . '/backend/lib/event_calendar.php';
+require_once __DIR__ . '/backend/lib/event_checkin_security.php';
 
 $allowed_roles = ['super_admin', 'admin', 'organizer'];
 if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'] ?? '', $allowed_roles, true)) {
@@ -90,9 +91,15 @@ $timeStr = eventify_format_session_time_range($session['start_time'] ?? null, $s
                 <?php endif; ?>
             </div>
             <img src="<?= htmlspecialchars($qr_image_url) ?>" alt="QR Code" width="300" height="300">
-            <p class="small text-muted mb-1">Students scan to check in for this activity.</p>
+            <p class="small text-muted mb-1">Students scan this QR to check in for this activity.</p>
+            <?php if (!eventify_checkin_config_geo_when_pinned()): ?>
+                <p class="small text-info mb-1"><i class="fas fa-info-circle me-1"></i> Distance check is off for testing — QR check-in still works.</p>
+            <?php endif; ?>
             <p class="checkin-url mb-0"><?= htmlspecialchars($landing_url) ?></p>
-            <div class="mt-3">
+            <div class="mt-3 d-flex flex-wrap gap-2">
+                <a href="<?= BASE_URL ?>/activity_attendance.php?id=<?= (int) $session_id ?>" class="btn btn-outline-info btn-sm">
+                    <i class="fas fa-clipboard-check me-1"></i>View attendance
+                </a>
                 <?php
                 $back_url = BASE_URL . '/backend/auth/dashboardorganizer.php';
                 if ($role === 'admin') {

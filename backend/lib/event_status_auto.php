@@ -1,6 +1,13 @@
 <?php
 
 require_once __DIR__ . '/event_calendar.php';
+require_once __DIR__ . '/notification_retention.php';
+
+function eventify_run_dashboard_maintenance(mysqli $conn): void
+{
+    eventify_auto_complete_past_events($conn);
+    eventify_purge_old_notifications($conn);
+}
 
 /**
  * Status used when an event is finished (auto or organizer "mark as ended").

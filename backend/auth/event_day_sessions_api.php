@@ -20,6 +20,8 @@ require_once __DIR__ . '/../lib/event_day_sessions.php';
 
 require_once __DIR__ . '/../lib/event_calendar.php';
 
+require_once __DIR__ . '/../lib/event_ticketing.php';
+
 
 
 if (!isset($_SESSION['user_id'])) {
@@ -106,7 +108,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
     $sessions = eventify_load_event_day_sessions($conn, $eventId, $scheduleDate !== '' ? $scheduleDate : null, $viewerId);
 
-    echo json_encode(['ok' => true, 'sessions' => $sessions]);
+    $payload = ['ok' => true, 'sessions' => $sessions];
+    if ($canEdit) {
+        eventify_ticketing_ensure_schema($conn);
+        $payload['ticket_types'] = eventify_load_ticket_types_for_event($conn, $eventId, false);
+        $editCheck = eventify_organizer_can_edit_event_schedule(
+            $conn,
+            $eventId,
+            $scheduleDate !== '' ? $scheduleDate : null
+        );
+        $payload['schedule_editable'] = $editCheck['ok'];
+        $payload['schedule_lock_message'] = $editCheck['error'];
+    }
+    echo json_encode($payload);
 
     exit;
 
@@ -272,6 +286,12 @@ if ($action === 'delete') {
 
     $sessionId = (int) ($_POST['session_id'] ?? 0);
 
+    $scheduleLock = eventify_organizer_can_edit_event_schedule_by_session($conn, $sessionId, $eventId);
+    if (!$scheduleLock['ok']) {
+        echo json_encode(['ok' => false, 'error' => $scheduleLock['error']]);
+        exit;
+    }
+
     $result = eventify_delete_event_day_session($conn, $sessionId, $eventId);
 
     echo json_encode($result);
@@ -285,6 +305,12 @@ if ($action === 'delete') {
 if ($action === 'save') {
 
     $sessionId = (int) ($_POST['session_id'] ?? 0);
+
+    $scheduleLock = eventify_organizer_can_edit_event_schedule($conn, $eventId, $scheduleDate);
+    if (!$scheduleLock['ok']) {
+        echo json_encode(['ok' => false, 'error' => $scheduleLock['error']]);
+        exit;
+    }
 
     $data = [
 
@@ -313,6 +339,10 @@ if ($action === 'save') {
         'contact_phone' => $_POST['contact_phone'] ?? '',
 
         'sort_order' => (int) ($_POST['sort_order'] ?? 0),
+
+        'access_mode' => $_POST['access_mode'] ?? 'free',
+
+        'ticket_type_id' => $_POST['ticket_type_id'] ?? '',
 
     ];
 

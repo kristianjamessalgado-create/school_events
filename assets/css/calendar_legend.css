@@ -139,3 +139,146 @@
     text-transform: uppercase;
     letter-spacing: 0.04em;
 }
+
+/* Connected multi-day bars (FullCalendar block span) */
+#calendar .fc-daygrid-block-event .fc-daygrid-event.eventify-fc-range-event,
+#student-calendar .fc-daygrid-block-event .fc-daygrid-event.eventify-fc-range-event,
+#saCalendar .fc-daygrid-block-event .fc-daygrid-event.eventify-fc-range-event,
+#publicCalendar .fc-daygrid-block-event .fc-daygrid-event.eventify-fc-range-event {
+    border-radius: 0 !important;
+    min-height: 1.35rem;
+    font-weight: 600;
+    box-shadow: none;
+}
+
+#calendar .fc-daygrid-block-event .fc-daygrid-event.eventify-fc-range-event.fc-event-start,
+#student-calendar .fc-daygrid-block-event .fc-daygrid-event.eventify-fc-range-event.fc-event-start,
+#saCalendar .fc-daygrid-block-event .fc-daygrid-event.eventify-fc-range-event.fc-event-start,
+#publicCalendar .fc-daygrid-block-event .fc-daygrid-event.eventify-fc-range-event.fc-event-start {
+    border-top-left-radius: 6px !important;
+    border-bottom-left-radius: 6px !important;
+    margin-left: 3px;
+}
+
+#calendar .fc-daygrid-block-event .fc-daygrid-event.eventify-fc-range-event.fc-event-end,
+#student-calendar .fc-daygrid-block-event .fc-daygrid-event.eventify-fc-range-event.fc-event-end,
+#saCalendar .fc-daygrid-block-event .fc-daygrid-event.eventify-fc-range-event.fc-event-end,
+#publicCalendar .fc-daygrid-block-event .fc-daygrid-event.eventify-fc-range-event.fc-event-end {
+    border-top-right-radius: 6px !important;
+    border-bottom-right-radius: 6px !important;
+    margin-right: 3px;
+}
+
+#calendar .fc-daygrid-block-event .fc-daygrid-event.eventify-fc-range-event.fc-event-start.fc-event-end,
+#student-calendar .fc-daygrid-block-event .fc-daygrid-event.eventify-fc-range-event.fc-event-start.fc-event-end,
+#saCalendar .fc-daygrid-block-event .fc-daygrid-event.eventify-fc-range-event.fc-event-start.fc-event-end,
+#publicCalendar .fc-daygrid-block-event .fc-daygrid-event.eventify-fc-range-event.fc-event-start.fc-event-end {
+    border-radius: 6px !important;
+    margin-left: 3px;
+    margin-right: 3px;
+}
+
+/* Per-day colors on one connected bar (gradient); do not override with solid state rules */
+#calendar .fc-event[data-eventify-range-gradient="1"],
+#student-calendar .fc-event[data-eventify-range-gradient="1"],
+#saCalendar .fc-event[data-eventify-range-gradient="1"],
+#publicCalendar .fc-event[data-eventify-range-gradient="1"] {
+    background-color: transparent !important;
+    border-color: transparent !important;
+    color: #ffffff !important;
+}
+
+/* Lifecycle colors — match legend; override department / theme defaults */
+#calendar .fc-event[data-event-state="pending"],
+#student-calendar .fc-event[data-event-state="pending"],
+#saCalendar .fc-event[data-event-state="pending"],
+#publicCalendar .fc-event[data-event-state="pending"] {
+    background-color: #d97706 !important;
+    border-color: #d97706 !important;
+    color: #ffffff !important;
+}
+
+#calendar .fc-event[data-event-state="active"],
+#student-calendar .fc-event[data-event-state="active"],
+#saCalendar .fc-event[data-event-state="active"],
+#publicCalendar .fc-event[data-event-state="active"] {
+    background-color: #16a34a !important;
+    border-color: #16a34a !important;
+    color: #ffffff !important;
+}
+
+#calendar .fc-event[data-event-state="upcoming"],
+#student-calendar .fc-event[data-event-state="upcoming"],
+#saCalendar .fc-event[data-event-state="upcoming"],
+#publicCalendar .fc-event[data-event-state="upcoming"] {
+    background-color: #f59e0b !important;
+    border-color: #f59e0b !important;
+    color: #ffffff !important;
+}
+
+#calendar .fc-event[data-event-state="closed"],
+#student-calendar .fc-event[data-event-state="closed"],
+#saCalendar .fc-event[data-event-state="closed"],
+#publicCalendar .fc-event[data-event-state="closed"] {
+    background-color: #6b7280 !important;
+    border-color: #6b7280 !important;
+    color: #ffffff !important;
+}
+
+#calendar .fc-event[data-event-state="rejected"],
+#student-calendar .fc-event[data-event-state="rejected"],
+#saCalendar .fc-event[data-event-state="rejected"],
+#publicCalendar .fc-event[data-event-state="rejected"] {
+    background-color: #dc2626 !important;
+    border-color: #dc2626 !important;
+    color: #ffffff !important;
+}
+
+/* Multi-day bars: reinforce per-segment colors using FullCalendar segment classes */
+#calendar .fc-daygrid-event.fc-event-today[data-event-state="active"],
+#student-calendar .fc-daygrid-event.fc-event-today[data-event-state="active"],
+#saCalendar .fc-daygrid-event.fc-event-today[data-event-state="active"],
+#publicCalendar .fc-daygrid-event.fc-event-today[data-event-state="active"],
+#calendar .fc-event.eventify-fc-range-event.fc-event-today[data-event-state="active"],
+#student-calendar .fc-event.eventify-fc-range-event.fc-event-today[data-event-state="active"],
+#saCalendar .fc-event.eventify-fc-range-event.fc-event-today[data-event-state="active"],
+#publicCalendar .fc-event.eventify-fc-range-event.fc-event-today[data-event-state="active"] {
+    background-color: #16a34a !important;
+    border-color: #16a34a !important;
+    color: #ffffff !important;
+}
+
+#calendar .fc-event.eventify-fc-range-event.fc-event-future[data-event-state="upcoming"],
+#student-calendar .fc-event.eventify-fc-range-event.fc-event-future[data-event-state="upcoming"],
+#saCalendar .fc-event.eventify-fc-range-event.fc-event-future[data-event-state="upcoming"],
+#publicCalendar .fc-event.eventify-fc-range-event.fc-event-future[data-event-state="upcoming"] {
+    background-color: #f59e0b !important;
+    border-color: #f59e0b !important;
+    color: #ffffff !important;
+}
+
+#calendar .fc-event.eventify-fc-range-event.fc-event-past[data-event-state="closed"],
+#student-calendar .fc-event.eventify-fc-range-event.fc-event-past[data-event-state="closed"],
+#saCalendar .fc-event.eventify-fc-range-event.fc-event-past[data-event-state="closed"],
+#publicCalendar .fc-event.eventify-fc-range-event.fc-event-past[data-event-state="closed"] {
+    background-color: #6b7280 !important;
+    border-color: #6b7280 !important;
+    color: #ffffff !important;
+}
+
+/* Single-day events stack in their own row; connected multi-day bars keep FC layout */
+#calendar .fc-daygrid-event-harness-abs:not(:has(.fc-daygrid-block-event)),
+#student-calendar .fc-daygrid-event-harness-abs:not(:has(.fc-daygrid-block-event)),
+#saCalendar .fc-daygrid-event-harness-abs:not(:has(.fc-daygrid-block-event)),
+#publicCalendar .fc-daygrid-event-harness-abs:not(:has(.fc-daygrid-block-event)),
+#calendar .fc-daygrid-event-harness:not(:has(.fc-daygrid-block-event)),
+#student-calendar .fc-daygrid-event-harness:not(:has(.fc-daygrid-block-event)),
+#saCalendar .fc-daygrid-event-harness:not(:has(.fc-daygrid-block-event)),
+#publicCalendar .fc-daygrid-event-harness:not(:has(.fc-daygrid-block-event)) {
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    right: auto !important;
+    width: auto !important;
+    margin: 0 2px 2px !important;
+}

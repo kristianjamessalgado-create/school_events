@@ -36,7 +36,7 @@ $footer_class = $notif_context === 'dropdown'
             <?php endif; ?>
             <?php if ($notif_show_clear): ?>
                 <?php if ($notif_clear_modal_id !== ''): ?>
-                    <button type="button" class="eventify-notif-footer-btn eventify-notif-footer-btn--clear" data-bs-toggle="modal" data-bs-target="#<?= htmlspecialchars($notif_clear_modal_id) ?>">
+                    <button type="button" class="eventify-notif-footer-btn eventify-notif-footer-btn--clear js-eventify-open-clear-notifs" data-bs-toggle="modal" data-bs-target="#<?= htmlspecialchars($notif_clear_modal_id) ?>">
                         <i class="fas fa-trash-alt" aria-hidden="true"></i>
                         <span>Clear all</span>
                     </button>

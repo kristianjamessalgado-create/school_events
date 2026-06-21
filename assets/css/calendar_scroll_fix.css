@@ -1,8 +1,9 @@
 /**
- * FullCalendar scroll fixes — keep events visible while preventing sticky-header glitches.
+ * FullCalendar scroll fixes — organizer, admin, and student dashboards.
  */
 
-.calendar-container {
+.calendar-container,
+.eventify-dashboard-cal-container {
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -21,72 +22,85 @@
     min-height: 380px;
 }
 
-/* Student: bounded calendar area; grid scrolls inside FullCalendar */
-.main-content .calendar-container {
+/* Student dashboard only — bounded calendar height */
+body:not(.admin-dashboard):not(.organizer-dashboard) .main-content .calendar-container {
     flex: 0 0 auto;
     height: clamp(420px, calc(100dvh - var(--student-navbar-height, 64px) - 240px), 720px);
     min-height: 420px;
 }
 
 @media (max-width: 768px) {
-    .main-content .calendar-container {
+    body:not(.admin-dashboard):not(.organizer-dashboard) .main-content .calendar-container {
         height: clamp(360px, 55vh, 580px);
         min-height: 360px;
     }
+
+    body.admin-dashboard .eventify-dashboard-cal-container .fc-scroller,
+    body.organizer-dashboard .eventify-dashboard-cal-container .fc-scroller {
+        overscroll-behavior-y: auto;
+    }
 }
 
-.calendar-container .fc-scroller {
+.calendar-container .fc-scroller,
+.eventify-dashboard-cal-container .fc-scroller {
     overflow-y: auto !important;
     overflow-x: hidden !important;
     overscroll-behavior: contain;
 }
 
-/* Prevent weekday header from sticking incorrectly when the page scrolls */
-.calendar-container .fc-scrollgrid-section-sticky > *,
-.calendar-container .fc-col-header {
+/* Organizer + admin: scroll on the harness scroller only */
+body.organizer-dashboard .eventify-dashboard-cal-container .fc-scroller,
+body.admin-dashboard .eventify-dashboard-cal-container .fc-scroller {
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    overscroll-behavior: contain;
+}
+
+body.organizer-dashboard .eventify-dashboard-cal-container .fc-scroller-liquid-absolute,
+body.admin-dashboard .eventify-dashboard-cal-container .fc-scroller-liquid-absolute {
+    overflow: hidden !important;
+}
+
+/* Prevent weekday header from sticking incorrectly when the page scrolls (student dashboard only) */
+body:not(.admin-dashboard):not(.organizer-dashboard) .calendar-container .fc-scrollgrid-section-sticky > *,
+body:not(.admin-dashboard):not(.organizer-dashboard) .calendar-container .fc-col-header,
+body:not(.admin-dashboard):not(.organizer-dashboard) .eventify-dashboard-cal-container .fc-scrollgrid-section-sticky > *,
+body:not(.admin-dashboard):not(.organizer-dashboard) .eventify-dashboard-cal-container .fc-col-header {
     position: relative !important;
     top: auto !important;
 }
 
-/* Do NOT clip day cells — that was hiding all event pills */
-.calendar-container .fc-daygrid-day-frame {
+.calendar-container .fc-daygrid-day-frame,
+.eventify-dashboard-cal-container .fc-daygrid-day-frame {
     position: relative;
 }
 
-.calendar-container .fc-daygrid-day-events {
+.calendar-container .fc-daygrid-day-events,
+.eventify-dashboard-cal-container .fc-daygrid-day-events {
     position: relative;
     min-height: 1.25rem;
 }
 
 .calendar-container .fc-daygrid-event-harness,
-.calendar-container .fc-daygrid-event-harness-abs {
+.calendar-container .fc-daygrid-event-harness-abs,
+.eventify-dashboard-cal-container .fc-daygrid-event-harness,
+.eventify-dashboard-cal-container .fc-daygrid-event-harness-abs {
     visibility: visible;
 }
 
-.calendar-container .fc-event {
+.calendar-container .fc-daygrid-event-harness-abs:not(:has(.fc-daygrid-block-event)),
+.calendar-container .fc-daygrid-event-harness:not(:has(.fc-daygrid-block-event)),
+.eventify-dashboard-cal-container .fc-daygrid-event-harness-abs:not(:has(.fc-daygrid-block-event)),
+.eventify-dashboard-cal-container .fc-daygrid-event-harness:not(:has(.fc-daygrid-block-event)) {
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    right: auto !important;
+}
+
+.calendar-container .fc-event,
+.eventify-dashboard-cal-container .fc-event {
     max-width: 100%;
     visibility: visible;
     opacity: 1;
-}
-
-/* Organizer / admin */
-body.organizer-dashboard .calendar-container,
-body.admin-dashboard .calendar-container {
-    flex: 1 1 auto;
-    height: auto;
-    min-height: 420px;
-}
-
-@media (min-width: 769px) {
-    body.organizer-dashboard .main-content,
-    body.admin-dashboard .main-content {
-        min-height: calc(100vh - var(--student-navbar-height, 64px));
-        max-height: calc(100vh - var(--student-navbar-height, 64px));
-    }
-
-    body.organizer-dashboard .calendar-container,
-    body.admin-dashboard .calendar-container {
-        flex: 1 1 420px;
-        min-height: 420px;
-    }
 }

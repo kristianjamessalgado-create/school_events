@@ -47,7 +47,13 @@ $notif_interactive = !empty($notif_interactive);
                     tabindex="0"
                     data-notif-id="<?= $nid ?>"
                     data-event-id="<?= $evId > 0 ? $evId : '' ?>"
-                    data-notif-type="<?= htmlspecialchars($notifType) ?>"
+                    data-notif-type="<?= htmlspecialchars($notifType, ENT_QUOTES, 'UTF-8') ?>"
+                    data-notif-title="<?= htmlspecialchars((string) ($n['title'] ?? 'Notification'), ENT_QUOTES, 'UTF-8') ?>"
+                    data-notif-message="<?= htmlspecialchars((string) ($n['message'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
+                    data-notif-time="<?= htmlspecialchars($timeLabel, ENT_QUOTES, 'UTF-8') ?>"
+                    data-notif-icon="<?= htmlspecialchars($vis['icon'], ENT_QUOTES, 'UTF-8') ?>"
+                    data-notif-accent="<?= htmlspecialchars($accent, ENT_QUOTES, 'UTF-8') ?>"
+                    data-notif-label="<?= htmlspecialchars($vis['label'], ENT_QUOTES, 'UTF-8') ?>"
                     <?= $isUnread ? ' data-unread="1"' : '' ?>
                 >
             <?php else: ?>

@@ -6,6 +6,9 @@ $user = $user ?? ['name' => $user_name, 'user_id' => 'N/A', 'department' => null
 $department = $user['department'] ?? null;
 $upcomingEvents = $upcomingEvents ?? [];
 $photoStatusEnabled = (bool) ($photoStatusEnabled ?? false);
+$is_multimedia_moderator = (bool) ($is_multimedia_moderator ?? false);
+$pending_photo_count = (int) ($pending_photo_count ?? 0);
+$pending_photos_queue = is_array($pending_photos_queue ?? null) ? $pending_photos_queue : [];
 
 $totalEvents = is_array($events) ? count($events) : 0;
 $totalPhotos = 0;
@@ -23,10 +26,10 @@ if (is_array($events)) {
     <title>Multimedia Dashboard - EVENTIFY</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/dashboard_multimedia.css">
-    <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/notifications.css">
+    <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/dashboard_multimedia.css?v=6">
+    <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/notifications.css?v=4">
 </head>
-<body>
+<body class="multimedia-dashboard" data-eventify-keyboard-scroll data-eventify-sidebar="mmSidebar" data-eventify-main=".multimedia-dashboard .main-content">
 <input type="hidden" id="csrf_token_value" value="<?= htmlspecialchars(csrf_token()) ?>">
 
 <nav class="top-navbar">
@@ -46,10 +49,10 @@ if (is_array($events)) {
             $mm_notif_dropdown = $multimedia_notif_dropdown ?? [];
         ?>
         <div class="dropdown me-2">
-            <button class="nav-btn position-relative dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" title="Notifications">
+            <button class="nav-btn eventify-notif-btn position-relative dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" data-eventify-notif-badge aria-expanded="false" title="Notifications">
                 <i class="fas fa-bell"></i>
                 <?php if ($mm_unread_count > 0): ?>
-                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.55rem;"><?= $mm_unread_count > 99 ? '99+' : $mm_unread_count ?></span>
+                    <span class="eventify-nav-badge badge rounded-pill bg-danger"><?= $mm_unread_count > 99 ? '99+' : $mm_unread_count ?></span>
                 <?php endif; ?>
             </button>
             <ul class="dropdown-menu dropdown-menu-end eventify-notif-dropdown">
@@ -116,7 +119,7 @@ if (is_array($events)) {
 
 <div class="dashboard-layout">
     <div class="sidebar-backdrop" id="mmSidebarBackdrop" aria-hidden="true"></div>
-    <aside class="sidebar" id="mmSidebar">
+    <aside class="sidebar eventify-kb-scroll-zone" id="mmSidebar" tabindex="0" aria-label="Multimedia sidebar — use arrow keys to scroll">
         <div class="sidebar-section">
             <div class="mm-user-card">
                 <div class="mm-user-avatar">
@@ -149,6 +152,19 @@ if (is_array($events)) {
                 $activities_hub_btn_class = '';
                 include __DIR__ . '/partials/activities_hub_quick_action.php';
             ?>
+            <?php if ($is_multimedia_moderator): ?>
+            <button type="button" class="action-btn" data-bs-toggle="modal" data-bs-target="#photoApprovalsModal">
+                <i class="fas fa-user-shield"></i>
+                <span>Photo approvals</span>
+                <?php if ($pending_photo_count > 0): ?>
+                    <span class="badge bg-primary ms-1"><?= $pending_photo_count > 99 ? '99+' : $pending_photo_count ?></span>
+                <?php endif; ?>
+            </button>
+            <button type="button" class="action-btn" data-bs-toggle="modal" data-bs-target="#photoActivityLogModal">
+                <i class="fas fa-clipboard-list"></i>
+                <span>Photo activity log</span>
+            </button>
+            <?php endif; ?>
             <a href="#" class="action-btn" data-bs-toggle="modal" data-bs-target="#logoutModal">
                 <i class="fas fa-sign-out-alt"></i>
                 <span>Logout</span>
@@ -157,21 +173,36 @@ if (is_array($events)) {
         <div class="sidebar-section">
             <h3 class="sidebar-title">YOUR ROLE</h3>
             <p class="role-desc">
-                You are part of the multimedia team.
-                Each department may have its own multimedia club – choose any event below and add photos for it.
+                <?php if ($is_multimedia_moderator): ?>
+                    You are the photo moderator for your multimedia team. Upload photos like other members, and approve or reject pending uploads before students can see them.
+                <?php else: ?>
+                    You are part of the multimedia team.
+                    Upload photos for events and activities; your moderator will review them before they go live for students.
+                <?php endif; ?>
             </p>
         </div>
     </aside>
 
-    <main class="main-content">
+    <main class="main-content eventify-kb-scroll-zone" tabindex="0" aria-label="Multimedia events — use arrow keys to scroll">
         <div class="content-header">
             <div class="content-header-top">
                 <div>
                     <div class="page-kicker">Multimedia</div>
                     <h1>Event photos</h1>
-                    <p class="text-muted">Choose an event and upload photos. You can also review uploaded photos per event.</p>
+                    <p class="text-muted">
+                        <?php if ($is_multimedia_moderator): ?>
+                            Upload photos and review pending submissions from your team before they appear for students.
+                        <?php else: ?>
+                            Choose an event and upload photos. They stay pending until your moderator approves them.
+                        <?php endif; ?>
+                    </p>
                 </div>
                 <div class="header-actions">
+                    <?php if ($is_multimedia_moderator && $pending_photo_count > 0): ?>
+                    <button type="button" class="btn btn-outline-light btn-sm btn-upcoming" data-bs-toggle="modal" data-bs-target="#photoApprovalsModal">
+                        <i class="fas fa-user-shield me-1"></i> <?= $pending_photo_count ?> pending
+                    </button>
+                    <?php endif; ?>
                     <a class="btn btn-outline-light btn-sm btn-upcoming" href="#" data-bs-toggle="modal" data-bs-target="#upcomingEventsModal">
                         <i class="fas fa-calendar-check me-1"></i> Upcoming events
                     </a>
@@ -206,9 +237,16 @@ if (is_array($events)) {
                 <div class="alert alert-warning mm-migration-hint d-flex align-items-start gap-2 mb-0 mt-3" role="status">
                     <i class="fas fa-database mt-1 flex-shrink-0"></i>
                     <div class="small">
-                        <strong>Publish is unavailable until the database is updated.</strong>
-                        Your <code>event_photos</code> table is missing the <code>status</code> column, so the dashboard cannot count drafts and keeps Publish disabled.
-                        Run <code>migrations/event_photos_publish_columns.sql</code> in phpMyAdmin (or MySQL), then refresh this page. New uploads will stay as drafts until you publish them.
+                        <strong>Photo moderation is unavailable until the database is updated.</strong>
+                        Your <code>event_photos</code> table is missing the <code>status</code> column.
+                        Run <code>migrations/event_photos_publish_columns.sql</code> in phpMyAdmin (or MySQL), then refresh this page.
+                    </div>
+                </div>
+            <?php elseif (!$is_multimedia_moderator): ?>
+                <div class="alert alert-info mm-migration-hint d-flex align-items-start gap-2 mb-0 mt-3" role="status">
+                    <i class="fas fa-hourglass-half mt-1 flex-shrink-0"></i>
+                    <div class="small">
+                        Uploads are saved as <strong>pending</strong> until your multimedia moderator approves them. You cannot publish photos yourself.
                     </div>
                 </div>
             <?php endif; ?>
@@ -246,13 +284,19 @@ if (is_array($events)) {
                         $location = (string)($ev['location'] ?? '');
                         $myCount = (int)($ev['my_photo_count'] ?? 0);
                         $myDraftCount = (int)($ev['my_draft_count'] ?? 0);
-                        $canPublish = $photoStatusEnabled && $myDraftCount > 0;
+                        $pendingDraftCount = (int)($ev['pending_draft_count'] ?? 0);
+                        $canModeratePublish = $photoStatusEnabled && $is_multimedia_moderator && $pendingDraftCount > 0;
+                        $showPendingNotice = $photoStatusEnabled && !$is_multimedia_moderator && $myDraftCount > 0;
                         if (!$photoStatusEnabled) {
-                            $publishHelpTitle = 'Publishing needs the status column. Run migrations/event_photos_publish_columns.sql on your database, then refresh this page.';
+                            $publishHelpTitle = 'Photo moderation needs the status column. Run migrations/event_photos_publish_columns.sql on your database, then refresh this page.';
+                        } elseif ($is_multimedia_moderator && $pendingDraftCount <= 0) {
+                            $publishHelpTitle = 'No pending photos for this event.';
+                        } elseif ($is_multimedia_moderator) {
+                            $publishHelpTitle = 'Approve all pending photos for this event';
                         } elseif ($myDraftCount <= 0) {
-                            $publishHelpTitle = 'No draft photos for this event. Upload new images (they are saved as drafts) or your photos are already published.';
+                            $publishHelpTitle = 'No pending photos from you for this event.';
                         } else {
-                            $publishHelpTitle = 'Publish your draft photos for students';
+                            $publishHelpTitle = 'Your photos are waiting for moderator approval';
                         }
                         $previewPath = null;
                         if (!empty($photosByEvent) && isset($photosByEvent[$eid]) && !empty($photosByEvent[$eid][0]['file_path'])) {
@@ -296,9 +340,13 @@ if (is_array($events)) {
                                 <span class="photo-badge">
                                     <i class="fas fa-images"></i> <?= (int)($ev['photo_count'] ?? 0) ?> photo(s)
                                 </span>
-                                <?php if ($myDraftCount > 0): ?>
-                                    <span class="photo-badge" title="Draft photos uploaded by you">
-                                        <i class="fas fa-hourglass-half"></i> <?= $myDraftCount ?> draft
+                                <?php if ($is_multimedia_moderator && $pendingDraftCount > 0): ?>
+                                    <span class="photo-badge" title="Pending photos awaiting approval">
+                                        <i class="fas fa-user-shield"></i> <?= $pendingDraftCount ?> pending
+                                    </span>
+                                <?php elseif ($myDraftCount > 0): ?>
+                                    <span class="photo-badge" title="Your photos waiting for moderator approval">
+                                        <i class="fas fa-hourglass-half"></i> <?= $myDraftCount ?> pending
                                     </span>
                                 <?php endif; ?>
                             </div>
@@ -310,25 +358,21 @@ if (is_array($events)) {
                                     data-event-title="<?= htmlspecialchars($title) ?>">
                                 <i class="fas fa-cloud-upload-alt"></i> Upload
                             </button>
-                            <?php if ($canPublish): ?>
+                            <?php if ($canModeratePublish): ?>
                                 <button type="button"
                                         class="btn btn-outline-success mm-publish-btn"
                                         data-bs-toggle="modal"
                                         data-bs-target="#publishPhotosModal"
                                         data-event-id="<?= $eid ?>"
                                         data-event-title="<?= htmlspecialchars($title, ENT_QUOTES, 'UTF-8') ?>"
-                                        data-draft-count="<?= (int)$myDraftCount ?>"
+                                        data-draft-count="<?= (int)$pendingDraftCount ?>"
                                         title="<?= htmlspecialchars($publishHelpTitle) ?>">
-                                    <i class="fas fa-bullhorn"></i> Publish
+                                    <i class="fas fa-check-double"></i> Approve all
                                 </button>
-                            <?php else: ?>
-                                <button type="button"
-                                        class="btn btn-outline-success mm-publish-btn disabled"
-                                        disabled
-                                        aria-disabled="true"
-                                        title="<?= htmlspecialchars($publishHelpTitle) ?>">
-                                    <i class="fas fa-bullhorn"></i> Publish
-                                </button>
+                            <?php elseif ($showPendingNotice): ?>
+                                <span class="btn btn-outline-secondary mm-pending-label disabled" title="<?= htmlspecialchars($publishHelpTitle) ?>">
+                                    <i class="fas fa-hourglass-half"></i> Pending
+                                </span>
                             <?php endif; ?>
                             <button type="button"
                                     class="btn btn-outline-secondary btn-gallery <?= empty($ev['photo_count']) ? 'disabled' : '' ?>"
@@ -536,6 +580,7 @@ if (is_array($events)) {
 <?php
     $notif_clear_modal_id = 'multimediaClearNotifsModal';
     include __DIR__ . '/partials/notification_clear_confirm_modal.php';
+    include __DIR__ . '/partials/notification_detail_modal.php';
 ?>
 
 <div class="modal fade" id="logoutModal" tabindex="-1">
@@ -587,12 +632,12 @@ if (is_array($events)) {
     </div>
 </div>
 
-<!-- Publish draft photos confirmation -->
+<!-- Publish / approve pending photos confirmation -->
 <div class="modal fade" id="publishPhotosModal" tabindex="-1" aria-labelledby="publishPhotosModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="publishPhotosModalLabel"><i class="fas fa-bullhorn me-2"></i>Publish photos</h5>
+                <h5 class="modal-title" id="publishPhotosModalLabel"><i class="fas fa-check-double me-2"></i>Approve photos</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form method="POST" action="<?= BASE_URL ?>/backend/auth/publish_event_photos.php">
@@ -601,19 +646,25 @@ if (is_array($events)) {
                 <div class="modal-body">
                     <p class="mb-0" id="publishPhotosMessage"></p>
                     <small class="text-muted d-block mt-2">
-                        Only your draft uploads for this event will become visible in the student photo gallery.
+                        All pending photos for this event will become visible in the student photo gallery and Activities hub.
                     </small>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-success">
-                        <i class="fas fa-check me-1"></i> Yes, publish
+                        <i class="fas fa-check me-1"></i> Yes, approve all
                     </button>
                 </div>
             </form>
         </div>
     </div>
 </div>
+
+<!-- Photo approvals queue (moderator) -->
+<?php if ($is_multimedia_moderator): ?>
+<?php include __DIR__ . '/partials/photo_approvals_modal.php'; ?>
+<?php include __DIR__ . '/partials/multimedia_photo_activity_modal.php'; ?>
+<?php endif; ?>
 
 <!-- Delete Event Photos (My uploads) Confirmation Modal -->
 <div class="modal fade" id="deleteEventPhotosModal" tabindex="-1" aria-hidden="true">
@@ -665,8 +716,10 @@ if (is_array($events)) {
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>window.csrfToken = <?= json_encode(function_exists('csrf_token') ? csrf_token() : '') ?>;</script>
-<script src="<?= BASE_URL ?>/assets/js/eventify_notifications.js?v=1"></script>
+<script src="<?= BASE_URL ?>/assets/js/eventify_notifications.js?v=6"></script>
+<script src="<?= BASE_URL ?>/assets/js/eventify_dashboard_keyboard_scroll.js"></script>
 <script src="<?= BASE_URL ?>/assets/js/logout_confirm.js"></script>
+<script src="<?= BASE_URL ?>/assets/js/photo_moderation_confirm.js?v=1"></script>
 <script>
 // Upload modal helper:
 // - Uses Bootstrap modal if available
@@ -860,9 +913,23 @@ document.addEventListener('DOMContentLoaded', function() {
             var title = btn.dataset.eventTitle || '';
             var drafts = parseInt(btn.dataset.draftCount || '0', 10) || 0;
             idEl.value = eventId;
-            var noun = drafts === 1 ? 'draft photo' : 'draft photos';
-            msgEl.textContent = 'Publish ' + drafts + ' ' + noun + ' for "' + title + '"? Students with the gallery link will be able to see them.';
+            var noun = drafts === 1 ? 'pending photo' : 'pending photos';
+            msgEl.textContent = 'Approve all ' + drafts + ' ' + noun + ' for "' + title + '"? Students will be able to see them in the gallery and Activities hub.';
         });
+    }
+
+    var openModal = new URLSearchParams(window.location.search).get('open_modal');
+    if (openModal === 'photo_approvals') {
+        var approvalsModal = document.getElementById('photoApprovalsModal');
+        if (approvalsModal && window.bootstrap) {
+            bootstrap.Modal.getOrCreateInstance(approvalsModal).show();
+        }
+    }
+    if (openModal === 'photo_activity') {
+        var activityLogModal = document.getElementById('photoActivityLogModal');
+        if (activityLogModal && window.bootstrap) {
+            bootstrap.Modal.getOrCreateInstance(activityLogModal).show();
+        }
     }
 
     var deleteEventPhotosModal = document.getElementById('deleteEventPhotosModal');

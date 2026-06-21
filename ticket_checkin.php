@@ -14,7 +14,7 @@ require_once __DIR__ . '/backend/lib/event_calendar.php';
 require_once __DIR__ . '/backend/lib/event_status_auto.php';
 require_once __DIR__ . '/backend/lib/event_checkin_security.php';
 
-eventify_auto_complete_past_events($conn);
+eventify_run_dashboard_maintenance($conn);
 
 $token = trim($_GET['tk'] ?? '');
 $error = '';

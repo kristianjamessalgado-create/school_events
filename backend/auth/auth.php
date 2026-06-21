@@ -1,20 +1,5 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) {
-    ini_set('session.cookie_httponly', 1);
-    ini_set('session.use_strict_mode', 1);
-    if (!headers_sent()) {
-        $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
-        session_set_cookie_params([
-            'lifetime' => 0,
-            'path'     => '/',
-            'domain'   => '',
-            'secure'   => $secure,
-            'httponly' => true,
-            'samesite' => 'Lax',
-        ]);
-    }
-    session_start();
-}
+require_once __DIR__ . '/../../config/session.php';
 // In production, keep errors out of the browser (log them instead)
 ini_set('display_errors', 0);
 error_reporting(E_ALL);
@@ -53,8 +38,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($action === 'register') {
         // --- REGISTRATION ---
-        $name     = trim($_POST['name'] ?? '');
-        $email    = trim($_POST['email'] ?? '');
+        $firstName = trim($_POST['first_name'] ?? '');
+        $lastName = trim($_POST['last_name'] ?? '');
+        $name = trim($firstName . ' ' . $lastName);
+        $email    = strtolower(trim($_POST['email'] ?? ''));
         $password = $_POST['password'] ?? '';
         $confirm_password = $_POST['confirm_password'] ?? '';
         $role     = $_POST['role'] ?? '';
@@ -85,6 +72,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = "Year level is required for students.";
         } elseif ($role === 'student' && !eventify_student_course_matches_department($studentCourse, (string)$department)) {
             $error = "Selected course / program does not match the selected department.";
+        } elseif ($firstName === '' || strlen($firstName) > 50) {
+            $error = "First name is required (max 50 characters).";
+        } elseif ($lastName === '' || strlen($lastName) > 50) {
+            $error = "Last name is required (max 50 characters).";
         } elseif (strlen($name) < 1 || strlen($name) > 100) {
             $error = "Name must be between 1 and 100 characters.";
         } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -118,6 +109,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     null,
                     [
                         'name' => $name,
+                        'first_name' => $firstName,
+                        'last_name' => $lastName,
                         'password_hash' => $hashed_password,
                         'role' => $role,
                         'department' => $department,
@@ -132,10 +125,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 } else {
                     $sendRes = eventify_send_account_otp_email($email, 'register', (string)$otpCreate['code']);
                     if (empty($sendRes['ok'])) {
-                        $error = "Registration OTP email failed: " . ($sendRes['error'] ?? 'unknown error');
+                        $error = "Registration OTP email failed: " . ($sendRes['error'] ?? 'unknown error') . " Set up config/smtp.local.php (see config/smtp.local.php.example).";
                     } else {
-                        $success = "Registration OTP sent. After verification, your account will be pending super admin approval.";
-                        header("Location: " . BASE_URL . "/views/verify_account_otp.php?purpose=register&email=" . urlencode($email) . "&success=" . urlencode($success));
+                        $via = (string) ($sendRes['via'] ?? 'smtp');
+                        if ($via === 'mail') {
+                            $success = 'Registration started. If you do not receive an OTP email within a few minutes, check Spam/Junk or configure SMTP (config/smtp.local.php). You can also tap Resend OTP below.';
+                        } else {
+                            $success = 'Registration OTP sent to your email. Check your inbox and Spam/Junk folder, then enter the 6-digit code below.';
+                        }
+                        eventify_set_verify_otp_flash('register', $email, $success, null);
+                        $verifyUrl = BASE_URL . '/index.php?' . http_build_query([
+                            'auth_modal' => 'verify',
+                            'verify_purpose' => 'register',
+                            'verify_email' => $email,
+                        ]);
+                        header('Location: ' . $verifyUrl);
                         exit();
                     }
                 }

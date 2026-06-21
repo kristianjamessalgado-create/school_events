@@ -2,6 +2,7 @@
 /** @var array<int, array<string, mixed>> $activities_hub_events */
 $activities_hub_events = $activities_hub_events ?? [];
 $activities_hub_count = count($activities_hub_events);
+$activities_hub_current_event_id = (int) ($activities_hub_current_event_id ?? 0);
 ?>
 <div class="modal fade" id="activitiesHubPickModal" tabindex="-1" aria-labelledby="activitiesHubPickModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
@@ -23,7 +24,7 @@ $activities_hub_count = count($activities_hub_events);
                 $actCount = (int) ($ev['activity_count'] ?? 0);
                 $hubHref = BASE_URL . '/event_activities.php?id=' . $eid;
               ?>
-              <a class="list-group-item list-group-item-action text-decoration-none text-reset" href="<?= htmlspecialchars($hubHref) ?>">
+              <a class="list-group-item list-group-item-action text-decoration-none text-reset<?= $eid === $activities_hub_current_event_id ? ' active' : '' ?>" href="<?= htmlspecialchars($hubHref) ?>"<?= $eid === $activities_hub_current_event_id ? ' aria-current="true"' : '' ?>>
                 <div class="d-flex w-100 justify-content-between align-items-start gap-2">
                   <div>
                     <h6 class="mb-1">

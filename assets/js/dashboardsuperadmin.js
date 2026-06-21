@@ -198,14 +198,25 @@ function eventifyInitSuperAdminDashboard() {
                 events: events,
                 eventDisplay: 'block',
                 height: 400,
+                eventContent: function (arg) {
+                    if (typeof eventifyCalendarEventContent === 'function') {
+                        var custom = eventifyCalendarEventContent(arg);
+                        if (custom !== true) {
+                            return custom;
+                        }
+                    }
+                    return true;
+                },
                 eventDidMount: function (info) {
-                    var status = (info.event.extendedProps && info.event.extendedProps.status) ? info.event.extendedProps.status : '';
-                    if (status === 'pending') info.el.style.backgroundColor = '#d97706';
-                    else if (status === 'rejected') info.el.style.backgroundColor = '#b91c1c';
-                    else if (status === 'closed' || status === 'completed') info.el.style.backgroundColor = '#64748b';
+                    if (typeof eventifyApplyCalendarEventMount === 'function') {
+                        eventifyApplyCalendarEventMount(info);
+                    }
                 }
             });
             saCalendarInstance.render();
+            if (typeof eventifyBindCalendarDoubleClickUnselect === 'function') {
+                eventifyBindCalendarDoubleClickUnselect(saCalendarInstance, el);
+            }
         });
         calendarModalEl.addEventListener('hidden.bs.modal', function () {
             if (saCalendarInstance) {

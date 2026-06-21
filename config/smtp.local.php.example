@@ -1,0 +1,12 @@
+<?php
+/**
+ * Copy to config/smtp.local.php and fill in your Gmail App Password.
+ * smtp.local.php is gitignored — never commit real credentials.
+ */
+define('EVENTIFY_SMTP_HOST', 'smtp.gmail.com');
+define('EVENTIFY_SMTP_PORT', 587);
+define('EVENTIFY_SMTP_USERNAME', 'your_email@gmail.com');
+define('EVENTIFY_SMTP_PASSWORD', 'your_google_app_password');
+define('EVENTIFY_SMTP_FROM_EMAIL', 'your_email@gmail.com');
+define('EVENTIFY_SMTP_FROM_NAME', 'EVENTIFY');
+define('EVENTIFY_SMTP_ALLOW_INSECURE_TLS', false);

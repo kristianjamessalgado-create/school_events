@@ -14,7 +14,7 @@ require_once __DIR__ . '/backend/lib/event_calendar.php';
 require_once __DIR__ . '/backend/lib/event_status_auto.php';
 require_once __DIR__ . '/backend/lib/nav_helpers.php';
 
-eventify_auto_complete_past_events($conn);
+eventify_run_dashboard_maintenance($conn);
 
 $role = $_SESSION['role'] ?? '';
 if (!isset($_SESSION['user_id']) || !in_array($role, ['organizer', 'admin', 'super_admin'], true)) {
@@ -212,7 +212,12 @@ include __DIR__ . '/views/partials/standalone_page_shell_open.php';
                     <button type="submit" class="btn btn-success w-100"<?= $eventLive ? '' : ' disabled' ?>>Save mode</button>
                 </div>
             </form>
-            <?php if ($mode === 'paid_ticket' && $eventLive): ?>
+            <?php if ($mode === 'rsvp'): ?>
+                <p class="small mt-2 mb-0 text-muted">Main event stays <strong>free RSVP</strong>. Add ticket types below for paid hub activities (e.g. Mr &amp; Ms), then set each activity to <em>Ticket required</em> in the activities manager.</p>
+                <?php if ($eventLive && $types !== []): ?>
+                    <p class="small mt-1 mb-0">Activity ticket shop: <a href="<?= htmlspecialchars($shopUrl) ?>" target="_blank" rel="noopener"><?= htmlspecialchars($shopUrl) ?></a></p>
+                <?php endif; ?>
+            <?php elseif ($mode === 'paid_ticket' && $eventLive): ?>
                 <p class="small mt-2 mb-0">Student shop: <a href="<?= htmlspecialchars($shopUrl) ?>" target="_blank" rel="noopener"><?= htmlspecialchars($shopUrl) ?></a></p>
             <?php elseif ($mode === 'paid_ticket'): ?>
                 <p class="small mt-2 mb-0 text-muted">Student shop is closed for this event.</p>
@@ -220,10 +225,10 @@ include __DIR__ . '/views/partials/standalone_page_shell_open.php';
         </div>
     </div>
 
-    <?php if ($mode === 'paid_ticket'): ?>
+    <?php if ($mode === 'paid_ticket' || $mode === 'rsvp'): ?>
         <?php if ($eventLive): ?>
         <div class="efs-card">
-            <div class="efs-card__head">Add ticket type</div>
+            <div class="efs-card__head"><?= $mode === 'rsvp' ? 'Add activity ticket type' : 'Add ticket type' ?></div>
             <div class="efs-card__body">
                 <form method="post" class="row g-2">
                     <?= csrf_field() ?>

@@ -6,7 +6,7 @@ $notif_clear_modal_id = trim((string) ($notif_clear_modal_id ?? 'eventifyClearNo
 
 ?>
 
-<div class="modal fade eventify-notif-modal" id="<?= htmlspecialchars($notif_clear_modal_id) ?>" tabindex="-1" aria-labelledby="<?= htmlspecialchars($notif_clear_modal_id) ?>Label" aria-hidden="true">
+<div class="modal fade eventify-notif-modal eventify-notif-clear-modal" id="<?= htmlspecialchars($notif_clear_modal_id) ?>" tabindex="-1" aria-labelledby="<?= htmlspecialchars($notif_clear_modal_id) ?>Label" aria-hidden="true">
 
   <div class="modal-dialog modal-dialog-centered">
 

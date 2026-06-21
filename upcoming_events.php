@@ -8,7 +8,7 @@ include __DIR__ . '/config/departments.php';
 require_once __DIR__ . '/backend/lib/event_status_auto.php';
 require_once __DIR__ . '/backend/lib/event_calendar.php';
 
-eventify_auto_complete_past_events($conn);
+eventify_run_dashboard_maintenance($conn);
 eventify_events_department_ensure_varchar($conn);
 
 // Allow logged-in users (student / multimedia / organizer) to view upcoming events

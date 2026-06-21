@@ -587,7 +587,7 @@ INSERT INTO `events` (`id`, `title`, `description`, `date`, `end_date`, `start_t
 (17, 'event for june', 'june try 1 week event intrams', '2026-06-02', NULL, '10:30:00', '00:44:00', 0, 'Western Leyte College, Bonifacio Street, West, Ormoc City Proper, Ormoc, Leyte, Eastern Visayas, 654', 29, '2026-06-01 16:44:31', 'closed', 'ALL', '02651c31a0641d9a8ce8aa51e41623fe', NULL, 'rsvp'),
 (18, 'june try 3 days', '3 days intrams', '2026-06-02', NULL, '00:00:00', '17:00:00', 0, 'Intrams 2026', 29, '2026-06-01 16:57:47', 'closed', 'ALL', '0bd03673fe51adb2354b78d6d4920122', NULL, 'rsvp'),
 (19, 'another june sample', 'sample', '2026-06-02', NULL, '10:41:00', '22:41:00', 0, 'Tide Embankment Boulevard, Mercado, Poblacion, Basey, Samar, Eastern Visayas, 6720, Philippines', 29, '2026-06-02 02:42:11', 'rejected', 'ALL', '555798c40037114819a3d0826d09d1c9', '', 'rsvp'),
-(20, 'ms intrams', 'ms intrams', '2026-06-12', NULL, '08:00:00', '16:00:00', 0, 'Superdome, I. Larrazabal Boulevard, South, Ormoc City Proper, Ormoc, Leyte, Eastern Visayas, 6541, P', 29, '2026-06-06 05:24:24', 'active', 'ALL', '8fcc7f2aae2728c8a43532a08c181caf', NULL, 'paid_ticket');
+(20, 'ms intrams', 'ms intrams', '2026-06-12', NULL, '08:00:00', '16:00:00', 0, 'Superdome, I. Larrazabal Boulevard, South, Ormoc City Proper, Ormoc, Leyte, Eastern Visayas, 6541, P', 29, '2026-06-06 05:24:24', 'active', 'ALL', '8fcc7f2aae2728c8a43532a08c181caf', NULL, 'rsvp');
 
 -- --------------------------------------------------------
 

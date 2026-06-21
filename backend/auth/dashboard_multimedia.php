@@ -6,13 +6,14 @@ include __DIR__ . '/../../config/csrf.php';
 include __DIR__ . '/../../config/departments.php';
 require_once __DIR__ . '/../lib/event_status_auto.php';
 require_once __DIR__ . '/../lib/event_day_sessions.php';
+require_once __DIR__ . '/../lib/multimedia_moderator.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'multimedia') {
     header("Location: " . BASE_URL . "/views/login.php?error=" . urlencode("Access denied"));
     exit();
 }
 
-eventify_auto_complete_past_events($conn);
+eventify_run_dashboard_maintenance($conn);
 eventify_events_department_ensure_varchar($conn);
 
 $hasMustChangePasswordColumn = false;
@@ -40,7 +41,7 @@ if ($hasMustChangePasswordColumn) {
 $session_user_id = (int) $_SESSION['user_id'];
 
 // Fetch user info (including department and profile picture)
-$stmt = $conn->prepare("SELECT id, user_id, name, department, profile_picture FROM users WHERE id = ?");
+$stmt = $conn->prepare("SELECT id, user_id, name, department, profile_picture, is_multimedia_moderator FROM users WHERE id = ?");
 $stmt->bind_param("i", $session_user_id);
 $stmt->execute();
 $result = $stmt->get_result();
@@ -49,6 +50,7 @@ $stmt->close();
 
 $user_name  = $user['name'] ?? 'Multimedia';
 $user_department = $user['department'] ?? null;
+$is_multimedia_moderator = eventify_user_is_multimedia_moderator($conn, $session_user_id);
 
 // Feature flag: photo publishing workflow (status column on event_photos)
 $photoStatusEnabled = false;
@@ -68,7 +70,8 @@ if ($photoStatusEnabled) {
         SELECT e.id, e.title, e.date, e.location, e.department,
                (SELECT COUNT(*) FROM event_photos p WHERE p.event_id = e.id AND p.status = 'published') AS photo_count,
                (SELECT COUNT(*) FROM event_photos p WHERE p.event_id = e.id AND p.uploaded_by = {$uid}) AS my_photo_count,
-               (SELECT COUNT(*) FROM event_photos p WHERE p.event_id = e.id AND p.uploaded_by = {$uid} AND p.status = 'draft') AS my_draft_count
+               (SELECT COUNT(*) FROM event_photos p WHERE p.event_id = e.id AND p.uploaded_by = {$uid} AND p.status = 'draft') AS my_draft_count,
+               (SELECT COUNT(*) FROM event_photos p WHERE p.event_id = e.id AND p.status = 'draft') AS pending_draft_count
         FROM events e
         WHERE e.title NOT LIKE 'sample%'
           AND ({$deptWhere})
@@ -79,7 +82,8 @@ if ($photoStatusEnabled) {
         SELECT e.id, e.title, e.date, e.location, e.department,
                (SELECT COUNT(*) FROM event_photos p WHERE p.event_id = e.id) AS photo_count,
                (SELECT COUNT(*) FROM event_photos p WHERE p.event_id = e.id AND p.uploaded_by = {$uid}) AS my_photo_count,
-               0 AS my_draft_count
+               0 AS my_draft_count,
+               0 AS pending_draft_count
         FROM events e
         WHERE e.title NOT LIKE 'sample%'
           AND ({$deptWhere})
@@ -206,6 +210,10 @@ try {
 } catch (Throwable $e) {
     $activities_hub_events = [];
 }
+
+$pending_photo_count = $is_multimedia_moderator ? eventify_count_pending_photos($conn) : 0;
+$pending_photos_queue = $is_multimedia_moderator ? eventify_load_pending_photos_for_moderator($conn, 60) : [];
+$multimedia_photo_activity_logs = $is_multimedia_moderator ? eventify_load_multimedia_photo_activity_logs($conn, 50) : [];
 
 $conn->close();
 

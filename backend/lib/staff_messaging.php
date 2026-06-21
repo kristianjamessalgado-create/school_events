@@ -17,12 +17,20 @@ function eventify_staff_messages_ensure_table(mysqli $conn): bool
                 sender_id INT NOT NULL,
                 recipient_id INT NOT NULL,
                 body VARCHAR(8000) NOT NULL,
+                attachment_path VARCHAR(512) NULL DEFAULT NULL,
                 created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 read_at DATETIME NULL DEFAULT NULL,
                 KEY idx_pair_time (sender_id, recipient_id, created_at),
                 KEY idx_inbox (recipient_id, read_at, created_at)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         ");
+        $col = $conn->query("SHOW COLUMNS FROM staff_messages LIKE 'attachment_path'");
+        if ($col && $col->num_rows === 0) {
+            $conn->query("ALTER TABLE staff_messages ADD COLUMN attachment_path VARCHAR(512) NULL DEFAULT NULL AFTER body");
+        }
+        if ($col) {
+            $col->free();
+        }
         $done = true;
         return true;
     } catch (Throwable $e) {

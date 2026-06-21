@@ -7,6 +7,7 @@ include __DIR__ . '/../../config/db.php';
 include __DIR__ . '/../../config/config.php';
 include __DIR__ . '/../../config/csrf.php';
 require_once __DIR__ . '/../lib/event_feedback_schema.php';
+require_once __DIR__ . '/../lib/event_evaluation.php';
 
 if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'student') {
     header("Location: " . BASE_URL . "/views/login.php?error=" . urlencode("Access denied"));
@@ -20,13 +21,14 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !csrf_validate()) {
 
 $user_id  = (int) $_SESSION['user_id'];
 $event_id = isset($_POST['event_id']) ? (int) $_POST['event_id'] : 0;
-$rating   = isset($_POST['rating']) ? (int) $_POST['rating'] : 0;
+$evalInput = isset($_POST['eval']) && is_array($_POST['eval']) ? $_POST['eval'] : [];
+$parsedEval = eventify_evaluation_parse_scores($evalInput);
+$rating   = (int) ($parsedEval['scores']['overall_event'] ?? 0);
 $comment  = trim($_POST['comment'] ?? '');
-$visibility = strtolower(trim((string)($_POST['feedback_visibility'] ?? 'anonymous')));
-$is_anonymous = ($visibility !== 'named') ? 1 : 0;
-$msg      = 'Invalid feedback.';
+$is_anonymous = 1;
+$msg      = 'Please answer all evaluation questions (1 = lowest, 5 = highest).';
 
-if ($event_id < 1 || $rating < 1 || $rating > 5) {
+if ($event_id < 1 || !$parsedEval['valid']) {
     header("Location: " . BASE_URL . "/backend/auth/dashboard_student.php?msg=" . urlencode($msg));
     exit();
 }
@@ -75,21 +77,31 @@ try {
                 }
 
                 if ($already) {
-                    $msg = 'You already submitted feedback for this event.';
+                    $msg = 'You already submitted your evaluation for this event.';
                     $_SESSION['eventify_feedback_ack'] = $_SESSION['eventify_feedback_ack'] ?? [];
                     if (!in_array($event_id, $_SESSION['eventify_feedback_ack'], true)) {
                         $_SESSION['eventify_feedback_ack'][] = $event_id;
                     }
                 } else {
                     eventify_event_feedback_ensure_schema($conn);
+                    $evalJson = json_encode($parsedEval['scores'], JSON_UNESCAPED_UNICODE);
+                    $hasEvalCol = false;
                     $hasAnonCol = false;
                     try {
+                        $chkEval = $conn->query("SHOW COLUMNS FROM event_feedback LIKE 'evaluation_json'");
+                        $hasEvalCol = (bool) ($chkEval && $chkEval->num_rows > 0);
                         $chkCol = $conn->query("SHOW COLUMNS FROM event_feedback LIKE 'is_anonymous'");
                         $hasAnonCol = (bool) ($chkCol && $chkCol->num_rows > 0);
                     } catch (Throwable $e) {
+                        $hasEvalCol = false;
                         $hasAnonCol = false;
                     }
-                    if ($hasAnonCol) {
+                    if ($hasEvalCol && $hasAnonCol) {
+                        $ins = $conn->prepare("INSERT INTO event_feedback (event_id, user_id, rating, comment, evaluation_json, is_anonymous) VALUES (?, ?, ?, ?, ?, ?)");
+                        if ($ins) {
+                            $ins->bind_param("iiissi", $event_id, $user_id, $rating, $comment, $evalJson, $is_anonymous);
+                        }
+                    } elseif ($hasAnonCol) {
                         $ins = $conn->prepare("INSERT INTO event_feedback (event_id, user_id, rating, comment, is_anonymous) VALUES (?, ?, ?, ?, ?)");
                         if ($ins) {
                             $ins->bind_param("iiisi", $event_id, $user_id, $rating, $comment, $is_anonymous);
@@ -101,11 +113,7 @@ try {
                         }
                     }
                     if ($ins && $ins->execute()) {
-                        $msg = $hasAnonCol && $is_anonymous
-                            ? 'Thank you — your feedback was saved anonymously.'
-                            : ($hasAnonCol
-                                ? 'Thank you — your feedback was saved. The organizer and admin can see your name with this rating.'
-                                : 'Thank you — your feedback was saved.');
+                        $msg = 'Thank you — your evaluation was saved. Organizers and admin see your responses anonymously; only your department may be shown.';
                         $_SESSION['eventify_feedback_ack'] = $_SESSION['eventify_feedback_ack'] ?? [];
                         if (!in_array($event_id, $_SESSION['eventify_feedback_ack'], true)) {
                             $_SESSION['eventify_feedback_ack'][] = $event_id;

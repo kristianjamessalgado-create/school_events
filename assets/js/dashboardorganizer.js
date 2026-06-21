@@ -2,6 +2,26 @@
 let calendar = null;
 const EVENTIFY_ROLE = (window.currentRole || 'organizer').toLowerCase();
 
+function eventifyCalendarDayHeaderFormat() {
+    if (window.matchMedia('(max-width: 480px)').matches) {
+        return { weekday: 'narrow' };
+    }
+    if (window.matchMedia('(max-width: 768px)').matches) {
+        return { weekday: 'short' };
+    }
+    return { weekday: 'long' };
+}
+
+function eventifyApplyCalendarDayHeaderFormat() {
+    if (!calendar || typeof calendar.setOption !== 'function') {
+        return;
+    }
+    calendar.setOption('dayHeaderFormat', eventifyCalendarDayHeaderFormat());
+    try {
+        calendar.updateSize();
+    } catch (e) { /* ignore */ }
+}
+
 /** Sidebar filter: event row matches selected department (supports JSON multi-audience). */
 function eventifyEventDeptMatchesFilter(eventDept, filterDept) {
     const f = String(filterDept || 'ALL').trim();
@@ -28,70 +48,32 @@ function eventifyEventDeptMatchesFilter(eventDept, filterDept) {
     return false;
 }
 
+function eventifyOrganizerCalendarUsesAutoHeight(viewType) {
+    var vt = String(viewType || '').toLowerCase();
+    return vt === 'daygridmonth' || vt.indexOf('daygrid') === 0;
+}
+
+function eventifyOrganizerSyncCalendarLayout(viewType) {
+    if (EVENTIFY_ROLE !== 'organizer') {
+        return;
+    }
+    var isMonth = eventifyOrganizerCalendarUsesAutoHeight(viewType);
+    document.body.classList.toggle('organizer-cal--month', isMonth);
+    document.body.classList.toggle('organizer-cal--time', !isMonth);
+    if (!calendar) {
+        return;
+    }
+    calendar.setOption('height', isMonth ? 'auto' : '100%');
+    try {
+        calendar.updateSize();
+    } catch (e) { /* ignore */ }
+}
+
 function eventifyOrganizerTodayYmd() {
     const d = new Date();
     const m = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
     return d.getFullYear() + '-' + m + '-' + day;
-}
-
-function eventifyFormatDayEndTimeLabel(endTime, endTimeNa, tOpts) {
-    if (endTimeNa) {
-        return 'N/A';
-    }
-    if (!endTime) {
-        return '';
-    }
-    const et = new Date('1970-01-01T' + String(endTime).slice(0, 8));
-    if (isNaN(et.getTime())) {
-        return '';
-    }
-    return et.toLocaleTimeString(undefined, tOpts);
-}
-
-function eventifyAppendPerDayEndTimes(dateStr, props, tOpts) {
-    const days = Array.isArray(props.schedule_days) ? props.schedule_days : [];
-    if (days.length < 2) {
-        return dateStr;
-    }
-    const parts = [];
-    let hasPerDayStart = false;
-    days.forEach(function (day) {
-        const ymd = String(day.schedule_date || '').slice(0, 10);
-        if (!ymd) {
-            return;
-        }
-        const d = new Date(ymd + 'T12:00:00');
-        const lbl = isNaN(d.getTime()) ? ymd : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-        const startLbl = day.start_time
-            ? eventifyFormatDayEndTimeLabel(day.start_time, false, tOpts)
-            : '';
-        if (startLbl) {
-            hasPerDayStart = true;
-        }
-        let segment = lbl;
-        if (startLbl) {
-            segment += ' ' + startLbl;
-        }
-        if (!day.end_time_na && day.end_time) {
-            const endLbl = eventifyFormatDayEndTimeLabel(day.end_time, false, tOpts);
-            if (endLbl) {
-                segment += (startLbl ? '–' : ', ends ') + endLbl;
-            }
-        }
-        parts.push(segment);
-    });
-    if (parts.length) {
-        let out = dateStr + ' · ' + parts.join('; ');
-        const allEndNa = days.every(function (day) {
-            return !!day.end_time_na;
-        });
-        if (allEndNa) {
-            out += ' · Ends N/A';
-        }
-        return out;
-    }
-    return dateStr;
 }
 
 function eventifyFormatStoredDeptForModal(stored) {
@@ -115,10 +97,11 @@ function eventifyFormatStoredDeptForModal(stored) {
 /**
  * Fill event details modal from a FullCalendar EventApi (shared: calendar click, admin upcoming list).
  */
-function eventifyFillAndShowEventDetails(event) {
+function eventifyFillAndShowEventDetails(event, options) {
     if (!event) {
         return;
     }
+    options = options || {};
     const props = event.extendedProps || {};
     const realEventId = props.event_id || (function () {
         const id = String(event.id || '');
@@ -132,72 +115,29 @@ function eventifyFillAndShowEventDetails(event) {
     }
 
     let dateStr = '';
-    const startYmd = String(props.event_date_ymd || '').trim();
-    const endYmd = String(props.event_end_ymd || props.event_date_ymd || '').trim();
-    const dOpts = { year: 'numeric', month: 'short', day: 'numeric' };
-    const tOpts = { hour: 'numeric', minute: '2-digit', hour12: true };
-  const scheduleDates = Array.isArray(props.schedule_dates) ? props.schedule_dates.filter(Boolean) : [];
-    if (scheduleDates.length > 1) {
-        dateStr = scheduleDates.map(function (ymd) {
-            const d = new Date(ymd + 'T12:00:00');
-            return isNaN(d.getTime()) ? ymd : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-        }).join(', ');
-        const y = scheduleDates[0].slice(0, 4);
-        if (scheduleDates.every(function (d) { return d.slice(0, 4) === y; })) {
-            dateStr += ', ' + y;
-        }
-        const hasPerDayStart = Array.isArray(props.schedule_days) && props.schedule_days.some(function (d) {
-            return d && String(d.start_time || '').trim() !== '';
-        });
-        if (props.start_time && !hasPerDayStart) {
-            const st = new Date('1970-01-01T' + String(props.start_time).slice(0, 8));
-            if (!isNaN(st.getTime())) {
-                dateStr += ' · Starts ' + st.toLocaleTimeString(undefined, tOpts);
-            }
-        }
-        if (Array.isArray(props.schedule_days) && props.schedule_days.length >= 2) {
-            dateStr = eventifyAppendPerDayEndTimes(dateStr, props, tOpts);
-        } else if (props.end_time_na) {
-            dateStr += ' · Ends N/A';
-        } else if (props.end_time) {
-            const et = new Date('1970-01-01T' + String(props.end_time).slice(0, 8));
-            if (!isNaN(et.getTime())) {
-                dateStr += ' · Ends ' + et.toLocaleTimeString(undefined, tOpts);
-            }
-        }
-    } else if (startYmd && endYmd && endYmd > startYmd) {
-        const startD = new Date(startYmd + 'T12:00:00');
-        const endD = new Date(endYmd + 'T12:00:00');
-        dateStr = startD.toLocaleDateString(undefined, dOpts) + ' – ' + endD.toLocaleDateString(undefined, dOpts);
-        if (props.start_time) {
-            const st = new Date('1970-01-01T' + String(props.start_time).slice(0, 8));
-            if (!isNaN(st.getTime())) {
-                dateStr += ' · Starts ' + st.toLocaleTimeString(undefined, tOpts);
-            }
-        }
-        if (props.end_time_na) {
-            dateStr += ' · Ends N/A';
-        } else if (props.end_time) {
-            const et = new Date('1970-01-01T' + String(props.end_time).slice(0, 8));
-            if (!isNaN(et.getTime())) {
-                dateStr += ' · Ends ' + et.toLocaleTimeString(undefined, tOpts);
-            }
-        }
-    } else if (event.start) {
-        dateStr = event.start.toLocaleDateString(undefined, dOpts);
-        const startTime = event.start.toLocaleTimeString(undefined, tOpts);
-        let range = startTime;
-        if (event.end && !event.allDay) {
-            const endTime = event.end.toLocaleTimeString(undefined, tOpts);
-            range = startTime + ' – ' + endTime;
-        }
-        if (!event.allDay) {
-            dateStr += ' · ' + range;
-        }
-    }
     const dateCell = document.getElementById('eventDate');
     if (dateCell) {
-        dateCell.textContent = dateStr || (event.startStr || '');
+        if (typeof eventifyRenderEventScheduleInto === 'function') {
+            eventifyRenderEventScheduleInto(dateCell, props, {
+                start: event.start,
+                end: event.end,
+                allDay: event.allDay,
+                startStr: event.startStr
+            });
+            dateStr = dateCell.textContent || '';
+        } else {
+            const startYmd = String(props.event_date_ymd || '').trim();
+            const endYmd = String(props.event_end_ymd || props.event_date_ymd || '').trim();
+            const dOpts = { year: 'numeric', month: 'short', day: 'numeric' };
+            if (startYmd && endYmd && endYmd > startYmd) {
+                const startD = new Date(startYmd + 'T12:00:00');
+                const endD = new Date(endYmd + 'T12:00:00');
+                dateStr = startD.toLocaleDateString(undefined, dOpts) + ' – ' + endD.toLocaleDateString(undefined, dOpts);
+            } else if (event.start) {
+                dateStr = event.start.toLocaleDateString(undefined, dOpts);
+            }
+            dateCell.textContent = dateStr || (event.startStr || '');
+        }
     }
 
     const locEl = document.getElementById('eventLocation');
@@ -218,6 +158,26 @@ function eventifyFillAndShowEventDetails(event) {
     const orgEl = document.getElementById('eventOrganizer');
     if (orgEl) {
         orgEl.textContent = props.organizer || 'N/A';
+    }
+
+    const attWrap = document.getElementById('eventAttendanceSummaryWrap');
+    const rsvpEl = document.getElementById('eventRsvpCount');
+    const checkinEl = document.getElementById('eventCheckinCount');
+    if (attWrap) {
+        const showAtt = EVENTIFY_ROLE === 'admin' || EVENTIFY_ROLE === 'super_admin';
+        if (showAtt) {
+            const rsvp = parseInt(props.rsvp_count, 10);
+            const checkin = parseInt(props.checkin_count, 10);
+            if (rsvpEl) {
+                rsvpEl.textContent = String(Number.isFinite(rsvp) ? rsvp : 0);
+            }
+            if (checkinEl) {
+                checkinEl.textContent = String(Number.isFinite(checkin) ? checkin : 0);
+            }
+            attWrap.style.display = 'block';
+        } else {
+            attWrap.style.display = 'none';
+        }
     }
 
     const statusEl = document.getElementById('eventStatus');
@@ -248,12 +208,26 @@ function eventifyFillAndShowEventDetails(event) {
     const otpWrap = document.getElementById('eventOtpVerifyWrap');
     const otpEventIdInput = document.getElementById('eventOtpEventId');
     const otpCodeInput = document.getElementById('eventOtpCodeInput');
+    const otpForm = document.getElementById('eventOtpVerifyForm');
+    const otpWaitingHint = document.getElementById('eventOtpWaitingHint');
+    const otpVerifyHint = document.getElementById('eventOtpVerifyHint');
     if (otpWrap && otpEventIdInput) {
         const showOtpVerify = status === 'pending' && !!realEventId;
+        const hasActiveOtp = props.has_active_otp === true;
         otpWrap.style.display = showOtpVerify ? 'block' : 'none';
         otpEventIdInput.value = showOtpVerify ? String(realEventId) : '';
+        if (otpWaitingHint) {
+            otpWaitingHint.style.display = showOtpVerify && !hasActiveOtp ? 'block' : 'none';
+        }
+        if (otpVerifyHint) {
+            otpVerifyHint.style.display = showOtpVerify && hasActiveOtp ? 'block' : 'none';
+        }
+        if (otpForm) {
+            otpForm.style.display = showOtpVerify && hasActiveOtp ? 'flex' : 'none';
+        }
         if (otpCodeInput) {
             otpCodeInput.value = '';
+            otpCodeInput.disabled = !(showOtpVerify && hasActiveOtp);
         }
     }
 
@@ -366,11 +340,9 @@ function eventifyFillAndShowEventDetails(event) {
 
     const markBtn = document.getElementById('organizerMarkEndedBtn');
     if (markBtn) {
-        const ymd = String(props.event_date_ymd || '').trim();
         const canMarkEnded =
             EVENTIFY_ROLE === 'organizer' &&
-            status === 'active' &&
-            !eventIsLive;
+            status === 'active';
         if (canMarkEnded && realEventId) {
             markBtn.style.display = 'inline-block';
             markBtn.setAttribute('data-eventify-event-id', String(realEventId));
@@ -381,7 +353,10 @@ function eventifyFillAndShowEventDetails(event) {
     }
 
     if (typeof eventifyLoadDaySessionsForEvent === 'function') {
-        eventifyLoadDaySessionsForEvent(event, EVENTIFY_ROLE === 'organizer');
+        eventifyLoadDaySessionsForEvent(event, EVENTIFY_ROLE === 'organizer', {
+            clickEl: options.clickEl || null,
+            jsEvent: options.jsEvent || null
+        });
     } else {
         const panel = document.getElementById('eventDaySessionsPanel');
         if (panel) {
@@ -404,24 +379,99 @@ function eventifyFillAndShowEventDetails(event) {
 }
 
 /**
- * Open event details from calendar by id (e.g. admin upcoming modal).
+ * Resolve a DB event id to a FullCalendar event or plain event payload from eventsData.
+ */
+function eventifyFindEventByDbId(eventId) {
+    if (eventId == null || eventId === '') {
+        return null;
+    }
+    var idStr = String(eventId);
+
+    if (calendar) {
+        var direct = calendar.getEventById(idStr);
+        if (direct) {
+            return direct;
+        }
+        var loaded = calendar.getEvents();
+        for (var i = 0; i < loaded.length; i++) {
+            var ev = loaded[i];
+            var props = ev.extendedProps || {};
+            if (String(props.event_id || '') === idStr) {
+                return ev;
+            }
+        }
+        for (var j = 0; j < loaded.length; j++) {
+            var ev2 = loaded[j];
+            var fcId = String(ev2.id || '');
+            if (fcId === idStr || fcId.indexOf(idStr + '-') === 0) {
+                return ev2;
+            }
+        }
+    }
+
+    if (window.eventsData && Array.isArray(window.eventsData)) {
+        var dataMatch = window.eventsData.find(function (entry) {
+            var props = entry.extendedProps || {};
+            return String(entry.id) === idStr
+                || String(props.event_id || '') === idStr
+                || String(entry.id || '').indexOf(idStr + '-') === 0;
+        });
+        if (dataMatch) {
+            return {
+                id: dataMatch.id,
+                title: dataMatch.title,
+                start: dataMatch.start ? new Date(dataMatch.start) : null,
+                end: dataMatch.end ? new Date(dataMatch.end) : null,
+                allDay: !!dataMatch.allDay,
+                startStr: dataMatch.start,
+                extendedProps: dataMatch.extendedProps || {}
+            };
+        }
+    }
+
+    return null;
+}
+
+/**
+ * Open event details from calendar by id (e.g. admin upcoming modal, notification action).
  */
 function eventifyOpenEventDetailsById(eventId) {
-    if (!calendar || eventId == null || eventId === '') {
+    var ev = eventifyFindEventByDbId(eventId);
+    if (!ev) {
         return false;
     }
-    const ev = calendar.getEventById(String(eventId));
-    if (ev) {
-        eventifyFillAndShowEventDetails(ev);
-        return true;
+    if (calendar) {
+        try {
+            var goto = ev.start || ev.startStr;
+            if (goto) {
+                calendar.gotoDate(goto);
+            }
+        } catch (err) { /* ignore */ }
     }
-    return false;
+    eventifyFillAndShowEventDetails(ev);
+    return true;
 }
 
 window.eventifyFillAndShowEventDetails = eventifyFillAndShowEventDetails;
 window.eventifyOpenEventDetailsById = eventifyOpenEventDetailsById;
+
+document.addEventListener('eventify:notif-view-event', function (e) {
+    var detail = (e && e.detail) || {};
+    if (!detail.eventId) {
+        return;
+    }
+    setTimeout(function () {
+        var opened = eventifyOpenEventDetailsById(String(detail.eventId));
+        if (!opened && String(window.currentRole || '').toLowerCase() === 'organizer') {
+            var base = (window.BASE_URL || '/school_events').replace(/\/$/, '');
+            window.location.href = base + '/event_activities.php?id=' + encodeURIComponent(String(detail.eventId));
+        }
+    }, 200);
+});
+
 let currentDate = new Date();
 let selectedDate = new Date(); // highlighted day in mini calendar
+let fcDateClickTimers = {};
 let selectedDepartment = (function () {
     var os = (typeof window !== 'undefined' && window.__organizerSettings) ? window.__organizerSettings : {};
     var d = String(os.default_department_filter != null ? os.default_department_filter : 'ALL').trim();
@@ -442,6 +492,37 @@ function isSameDay(a, b) {
     );
 }
 
+function clearFcDateClickTimers() {
+    Object.keys(fcDateClickTimers).forEach(function (key) {
+        clearTimeout(fcDateClickTimers[key]);
+        delete fcDateClickTimers[key];
+    });
+}
+
+function attachMiniCalDayInteraction(dayEl, dateObj) {
+    dayEl.addEventListener('click', function () {
+        currentDate = dateObj;
+        selectedDate = dateObj;
+        if (calendar) {
+            calendar.gotoDate(dateObj);
+        }
+        renderMiniCalendar();
+    });
+    dayEl.addEventListener('dblclick', function (e) {
+        e.preventDefault();
+        if (!isSameDay(dateObj, selectedDate)) {
+            return;
+        }
+        selectedDate = null;
+        if (calendar) {
+            try {
+                calendar.unselect();
+            } catch (err) { /* ignore */ }
+        }
+        renderMiniCalendar();
+    });
+}
+
 function initOrganizerSidebarToggle() {
     const toggle = document.getElementById('organizerSidebarToggle');
     const closeBtn = document.getElementById('organizerSidebarClose');
@@ -457,7 +538,7 @@ function initOrganizerSidebarToggle() {
     };
 
     const refreshCalendarLayoutSmooth = () => {
-        [0, 90, 180, 280, 360].forEach(function (ms) {
+        [0, 90, 180, 280, 360, 520, 680].forEach(function (ms) {
             setTimeout(refreshCalendarLayout, ms);
         });
     };
@@ -470,7 +551,10 @@ function initOrganizerSidebarToggle() {
                 document.body.classList.toggle('organizer-sidebar-open');
                 return;
             }
-            document.body.classList.toggle('organizer-sidebar-collapsed');
+            var collapsed = document.body.classList.toggle('organizer-sidebar-collapsed');
+            if (sidebar) {
+                sidebar.classList.toggle('is-collapsed', collapsed);
+            }
             refreshCalendarLayoutSmooth();
         });
     }
@@ -479,7 +563,8 @@ function initOrganizerSidebarToggle() {
 
     if (sidebar) {
         sidebar.addEventListener('transitionend', function (e) {
-            if (e.propertyName === 'width' || e.propertyName === 'padding-left' || e.propertyName === 'padding-right') {
+            if (e.propertyName === 'width' || e.propertyName === 'padding-left' || e.propertyName === 'padding-right'
+                || e.propertyName === 'flex-basis' || e.propertyName === 'max-width') {
                 refreshCalendarLayout();
             }
         });
@@ -625,8 +710,8 @@ function initOrganizerEventStatusModal() {
             eventifyOpenOrganizerEventStatusModal({
                 action: 'close',
                 eventId: eventId,
-                title: 'Mark event as ended?',
-                body: 'Students will no longer be able to check in for this event.'
+                title: 'End this event?',
+                body: 'Use this if the event finished early. Check-in, RSVP, and ticket sales will stop for students.'
             });
         }
     });
@@ -641,21 +726,43 @@ function initOrganizerEventStatusModal() {
             eventifyOpenOrganizerEventStatusModal({
                 action: 'close',
                 eventId: eventId,
-                title: 'Mark event as ended?',
-                body: 'Students will no longer be able to check in for this event.'
+                title: 'End this event?',
+                body: 'Use this if the event finished early. Check-in, RSVP, and ticket sales will stop for students.'
             });
         });
     }
 }
 
-document.addEventListener('DOMContentLoaded', function() {
-    document.addEventListener('eventify:notif-read', function (e) {
-        var detail = (e && e.detail) || {};
-        if (detail.notifType === 'ticket_payment_pending' && detail.eventId) {
-            var base = (window.BASE_URL || '/school_events').replace(/\/$/, '');
-            window.location.href = base + '/manage_event_tickets.php?event_id=' + encodeURIComponent(String(detail.eventId)) + '#pendingPayments';
+function initOrganizerFlashToast() {
+    var flash = window.__organizerFlash;
+    if (!flash || !flash.message) {
+        return;
+    }
+    if (window.eventifyToast) {
+        var type = flash.type || 'info';
+        var show = window.eventifyToast[type] || window.eventifyToast.info;
+        show.call(window.eventifyToast, flash.message, type === 'error' ? 6500 : 5200);
+    }
+    try {
+        var url = new URL(window.location.href);
+        var changed = false;
+        if (url.searchParams.has('msg')) {
+            url.searchParams.delete('msg');
+            changed = true;
         }
-    });
+        if (url.searchParams.has('error')) {
+            url.searchParams.delete('error');
+            changed = true;
+        }
+        if (changed) {
+            var next = url.pathname + (url.searchParams.toString() ? '?' + url.searchParams.toString() : '') + url.hash;
+            history.replaceState({}, '', next);
+        }
+    } catch (e) { /* ignore */ }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    initOrganizerFlashToast();
 
     initOrganizerSidebarToggle();
     initMiniCalendar();
@@ -663,7 +770,6 @@ document.addEventListener('DOMContentLoaded', function() {
     initDepartmentFilter();
     initViewButtons();
     initCalendarNavigation();
-    initCreateEventDeptAudience();
     initOrganizerEventStatusModal();
 
     var orgSettingsForm = document.getElementById('organizerSettingsForm');
@@ -744,15 +850,7 @@ function initMiniCalendar() {
             dayEl.textContent = day;
             
             // Make previous month days clickable
-            dayEl.addEventListener('click', function() {
-                const clickedDate = new Date(year, month - 1, day);
-                currentDate = clickedDate;
-                selectedDate = clickedDate;
-                if (calendar) {
-                    calendar.gotoDate(clickedDate);
-                }
-                renderMiniCalendar();
-            });
+            attachMiniCalDayInteraction(dayEl, new Date(year, month - 1, day));
 
             if (isSameDay(new Date(year, month - 1, day), selectedDate)) {
                 dayEl.classList.add('selected');
@@ -774,15 +872,7 @@ function initMiniCalendar() {
             }
 
             // Click handler - navigate main calendar to this date
-            dayEl.addEventListener('click', function() {
-                const clickedDate = new Date(year, month, day);
-                currentDate = clickedDate;
-                selectedDate = clickedDate;
-                if (calendar) {
-                    calendar.gotoDate(clickedDate);
-                }
-                renderMiniCalendar();
-            });
+            attachMiniCalDayInteraction(dayEl, new Date(year, month, day));
 
             if (isSameDay(new Date(year, month, day), selectedDate)) {
                 dayEl.classList.add('selected');
@@ -800,15 +890,7 @@ function initMiniCalendar() {
             dayEl.textContent = day;
             
             // Make next month days clickable
-            dayEl.addEventListener('click', function() {
-                const clickedDate = new Date(year, month + 1, day);
-                currentDate = clickedDate;
-                selectedDate = clickedDate;
-                if (calendar) {
-                    calendar.gotoDate(clickedDate);
-                }
-                renderMiniCalendar();
-            });
+            attachMiniCalDayInteraction(dayEl, new Date(year, month + 1, day));
 
             if (isSameDay(new Date(year, month + 1, day), selectedDate)) {
                 dayEl.classList.add('selected');
@@ -883,29 +965,40 @@ function initFullCalendar() {
         });
     }
 
+    var initMonthLayout = eventifyOrganizerCalendarUsesAutoHeight(initView);
+    if (EVENTIFY_ROLE === 'organizer') {
+        document.body.classList.toggle('organizer-cal--month', initMonthLayout);
+        document.body.classList.toggle('organizer-cal--time', !initMonthLayout);
+    }
+
     calendar = new FullCalendar.Calendar(calendarEl, {
         initialView: initView,
         initialDate: currentDate,
         selectable: true,
         selectMirror: true,
-        dayMaxEvents: true,
+        dayMaxEvents: false,
+        moreLinkClick: 'popover',
+        eventOrder: 'start',
         headerToolbar: false, // We use custom controls
         events: getFilteredEvents(),
         eventDisplay: 'block',
-        height: '100%',
+        height: initMonthLayout ? 'auto' : '100%',
         expandRows: true,
+        fixedWeekCount: false,
         slotMinTime: '06:00:00',
         slotMaxTime: '22:00:00',
         scrollTime: '07:00:00',
         slotEventOverlap: false,
         eventMaxStack: 4,
-        dayHeaderFormat: { weekday: 'long' },
+        dayHeaderFormat: eventifyCalendarDayHeaderFormat(),
         firstDay: weekStartsOn,
         weekends: showWeekends,
         nowIndicator: true,
         views: {
             dayGridMonth: {
-                dayMaxEvents: 3
+                dayMaxEvents: false,
+                dayMaxEventRows: false,
+                expandRows: true
             },
             timeGridWeek: {
                 dayMaxEvents: 3,
@@ -933,14 +1026,23 @@ function initFullCalendar() {
 
         // Click empty date -> create event (organizer only)
         dateClick: function(info) {
-            if (EVENTIFY_ROLE === 'organizer') {
-                window.location.href = BASE_URL + "/backend/auth/createevent.php?date=" + info.dateStr;
+            if (EVENTIFY_ROLE !== 'organizer') {
+                return;
             }
+            var dateStr = info.dateStr;
+            clearTimeout(fcDateClickTimers[dateStr]);
+            fcDateClickTimers[dateStr] = setTimeout(function () {
+                delete fcDateClickTimers[dateStr];
+                window.location.href = BASE_URL + "/backend/auth/createevent.php?date=" + dateStr;
+            }, 220);
         },
 
         // Click existing event -> show details modal
         eventClick: function(info) {
-            eventifyFillAndShowEventDetails(info.event);
+            eventifyFillAndShowEventDetails(info.event, {
+                clickEl: info.el,
+                jsEvent: info.jsEvent
+            });
             info.jsEvent.preventDefault();
         },
 
@@ -965,15 +1067,44 @@ function initFullCalendar() {
             requestAnimationFrame(function () {
                 try { calendar.updateSize(); } catch (e) { /* ignore */ }
             });
+            eventifyOrganizerSyncCalendarLayout(calendar.view ? calendar.view.type : initView);
         }
     });
 
     calendar.render();
     window.eventifyCalendar = calendar;
+    eventifyOrganizerSyncCalendarLayout(initView);
+
+    if (EVENTIFY_ROLE === 'admin') {
+        [0, 80, 240, 480].forEach(function (ms) {
+            setTimeout(function () {
+                try {
+                    calendar.updateSize();
+                } catch (e) { /* ignore */ }
+            }, ms);
+        });
+    }
+
+    window.addEventListener('resize', eventifyApplyCalendarDayHeaderFormat);
+
+    if (typeof eventifyBindCalendarDoubleClickUnselect === 'function') {
+        eventifyBindCalendarDoubleClickUnselect(calendar, calendarEl, {
+            clearPendingClicks: clearFcDateClickTimers,
+            onClear: function () {
+                selectedDate = null;
+                if (renderMiniCalendar) {
+                    renderMiniCalendar();
+                }
+            }
+        });
+    }
 
     var orgCalContainer = calendarEl.closest('.calendar-container');
     if (typeof eventifyBindCalendarScrollFix === 'function') {
         eventifyBindCalendarScrollFix(calendar, orgCalContainer);
+    }
+    if (typeof eventifyBindCalendarSegmentRepaint === 'function') {
+        eventifyBindCalendarSegmentRepaint(calendar, calendarEl);
     }
 
     document.querySelectorAll('.calendar-item').forEach(function (i) {
@@ -1061,6 +1192,7 @@ function initViewButtons() {
             } else {
                 // Change view
                 calendar.changeView(view);
+                eventifyOrganizerSyncCalendarLayout(view);
             }
         });
     });

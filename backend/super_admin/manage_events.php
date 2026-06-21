@@ -6,6 +6,7 @@ if (session_status() === PHP_SESSION_NONE) {
 include __DIR__ . '/../../config/db.php';
 include __DIR__ . '/../../config/config.php';
 include __DIR__ . '/../../config/csrf.php';
+require_once __DIR__ . '/../lib/event_organizer_assign.php';
 
 // Only admin or super_admin can manage event approvals
 if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['admin', 'super_admin'], true)) {
@@ -28,7 +29,7 @@ if ($_SESSION['role'] === 'admin') {
 // Fetch pending events with organizer info
 $pendingEvents = [];
 $stmt = $conn->prepare("
-    SELECT e.id, e.title, e.description, e.date, e.location, e.department, e.status,
+    SELECT e.id, e.organizer_id, e.title, e.description, e.date, e.location, e.department, e.status,
            u.name AS organizer_name, u.email AS organizer_email
     FROM events e
     JOIN users u ON e.organizer_id = u.id
@@ -42,6 +43,8 @@ if ($stmt && $stmt->execute()) {
     }
     $stmt->close();
 }
+
+$assignableOrganizers = eventify_fetch_assignable_organizers($conn);
 
 $conn->close();
 

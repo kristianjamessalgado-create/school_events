@@ -1,5 +1,5 @@
 <?php
-session_start();
+require_once __DIR__ . '/../../config/session.php';
 include __DIR__ . '/../../config/db.php';
 include __DIR__ . '/../../config/config.php';
 include __DIR__ . '/../../config/csrf.php';
@@ -8,6 +8,7 @@ require_once __DIR__ . '/../../config/departments.php';
 require_once __DIR__ . '/../lib/event_status_auto.php';
 require_once __DIR__ . '/../lib/staff_messaging.php';
 require_once __DIR__ . '/../lib/event_feedback_schema.php';
+require_once __DIR__ . '/../lib/event_evaluation.php';
 require_once __DIR__ . '/../lib/event_calendar.php';
 require_once __DIR__ . '/../lib/event_day_sessions.php';
 require_once __DIR__ . '/../lib/event_ticketing.php';
@@ -18,7 +19,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'organizer') {
     exit();
 }
 
-eventify_auto_complete_past_events($conn);
+eventify_run_dashboard_maintenance($conn);
 
 $hasMustChangePasswordColumn = false;
 try {
@@ -93,6 +94,16 @@ if ($result) {
 $stmt2->close();
 eventify_events_attach_schedule_dates($conn, $events);
 
+require_once __DIR__ . '/../lib/event_approval_otp.php';
+foreach ($events as &$evRow) {
+    $evId = (int) ($evRow['id'] ?? 0);
+    $evRow['has_active_otp'] = (
+        strtolower((string) ($evRow['status'] ?? '')) === 'pending'
+        && eventify_event_has_active_approval_otp($conn, $evId)
+    );
+}
+unset($evRow);
+
 // Quick stats for organizer dashboard
 $today = date('Y-m-d');
 $upcomingCount = 0;
@@ -158,14 +169,14 @@ try {
     $feedbackStats = ['total_feedback' => 0, 'avg_rating' => 0.0, 'five_star' => 0];
 }
 
-// Student feedback for this organizer's events (rating + optional comment; name shown only if student chose not to be anonymous)
+// Student evaluations for this organizer's events (anonymous; department only)
 $organizer_feedback_list = [];
 try {
     if (eventify_event_feedback_ensure_schema($conn)) {
         $cStmt = $conn->prepare("
-            SELECT ef.rating, ef.comment, ef.created_at, ef.is_anonymous,
+            SELECT ef.rating, ef.comment, ef.created_at, ef.evaluation_json,
                    e.title AS event_title,
-                   u.name AS student_name, u.user_id AS student_code
+                   u.department AS student_department
             FROM event_feedback ef
             JOIN events e ON e.id = ef.event_id
             LEFT JOIN users u ON u.id = ef.user_id
@@ -186,6 +197,29 @@ try {
     }
 } catch (Throwable $e) {
     $organizer_feedback_list = [];
+}
+
+$organizer_evaluation_averages = [];
+try {
+    if (eventify_event_feedback_ensure_schema($conn)) {
+        $evStmt = $conn->prepare("
+            SELECT ef.evaluation_json
+            FROM event_feedback ef
+            JOIN events e ON e.id = ef.event_id
+            WHERE e.organizer_id = ? AND ef.evaluation_json IS NOT NULL AND ef.evaluation_json != ''
+        ");
+        if ($evStmt) {
+            $evStmt->bind_param('i', $session_user_id);
+            if ($evStmt->execute()) {
+                $evRes = $evStmt->get_result();
+                $evalRows = $evRes ? $evRes->fetch_all(MYSQLI_ASSOC) : [];
+                $organizer_evaluation_averages = eventify_evaluation_aggregate_from_rows($evalRows);
+            }
+            $evStmt->close();
+        }
+    }
+} catch (Throwable $e) {
+    $organizer_evaluation_averages = [];
 }
 
 // Fetch unread notifications for organizer (approve/reject etc.)

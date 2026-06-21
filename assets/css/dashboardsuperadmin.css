@@ -227,6 +227,39 @@ body {
     padding: 1rem 1.25rem;
 }
 .sa-table-wrap { padding: 0 1.5rem 1.5rem; overflow-x: auto; }
+.sa-modal-table-panel {
+    padding: 0;
+    overflow: visible;
+    max-width: 100%;
+}
+.modal-dialog-scrollable .modal-body {
+    overflow-x: auto;
+    overflow-y: auto;
+}
+.sa-modal-table-scroll {
+    overflow-x: auto;
+    overflow-y: visible;
+    width: 100%;
+    max-width: 100%;
+    -webkit-overflow-scrolling: touch;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    background: #fff;
+}
+.sa-modal-table-scroll .sa-table {
+    margin: 0;
+    min-width: 1100px;
+}
+.sa-modal-table-scroll .sa-table th,
+.sa-modal-table-scroll .sa-table td {
+    white-space: nowrap;
+}
+#usersTable td:nth-child(2),
+#usersTable td:nth-child(3) {
+    white-space: normal;
+    min-width: 120px;
+    max-width: 220px;
+}
 .sa-table {
     width: 100%;
     border-collapse: collapse;
@@ -305,6 +338,12 @@ body {
     }
     .sa-table-wrap {
         padding: 0 0.75rem 1rem;
+    }
+    .sa-modal-table-panel {
+        padding: 0;
+    }
+    .sa-modal-table-scroll .sa-table {
+        min-width: 900px;
     }
     .sa-actions {
         gap: 0.25rem;

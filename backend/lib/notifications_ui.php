@@ -13,6 +13,8 @@ function eventify_notification_visual(string $type): array
         'event_auto_approved' => ['icon' => 'fa-circle-check', 'accent' => 'success', 'label' => 'Approved'],
         'event_rejected' => ['icon' => 'fa-circle-xmark', 'accent' => 'danger', 'label' => 'Rejected'],
         'event_pending_review' => ['icon' => 'fa-hourglass-half', 'accent' => 'warning', 'label' => 'Pending'],
+        'event_organizer_reassigned' => ['icon' => 'fa-user-pen', 'accent' => 'secondary', 'label' => 'Reassigned'],
+        'event_admin_corrected' => ['icon' => 'fa-pen-to-square', 'accent' => 'info', 'label' => 'Corrected'],
         'event_update_pending_review' => ['icon' => 'fa-pen-to-square', 'accent' => 'warning', 'label' => 'Review'],
         'event_updated_pending' => ['icon' => 'fa-clock', 'accent' => 'info', 'label' => 'Updated'],
         'event_update' => ['icon' => 'fa-pen', 'accent' => 'info', 'label' => 'Update'],
@@ -28,6 +30,8 @@ function eventify_notification_visual(string $type): array
         'ticket_payment_pending' => ['icon' => 'fa-ticket-alt', 'accent' => 'warning', 'label' => 'Tickets'],
         'ticket_paid' => ['icon' => 'fa-ticket-alt', 'accent' => 'success', 'label' => 'Tickets'],
         'account_pending_approval' => ['icon' => 'fa-user-clock', 'accent' => 'warning', 'label' => 'Account'],
+        'photo_approved' => ['icon' => 'fa-camera', 'accent' => 'success', 'label' => 'Photo'],
+        'photo_rejected' => ['icon' => 'fa-camera', 'accent' => 'danger', 'label' => 'Photo'],
     ];
     if (isset($map[$type])) {
         return $map[$type];

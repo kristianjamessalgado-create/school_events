@@ -20,7 +20,18 @@ function eventify_send_email(string $to, string $subject, string $body): array
     }
 
     if (!eventify_email_enabled()) {
-        return ['ok' => false, 'error' => 'SMTP not configured'];
+        $fromName = defined('EVENTIFY_SMTP_FROM_NAME') && EVENTIFY_SMTP_FROM_NAME !== ''
+            ? (string) EVENTIFY_SMTP_FROM_NAME
+            : 'EVENTIFY';
+        $fromEmail = defined('EVENTIFY_SMTP_FROM_EMAIL') && EVENTIFY_SMTP_FROM_EMAIL !== ''
+            ? (string) EVENTIFY_SMTP_FROM_EMAIL
+            : 'noreply@localhost';
+        $from = $fromName . ' <' . $fromEmail . '>';
+        $headers = 'From: ' . $from . "\r\n" . 'Content-Type: text/plain; charset=UTF-8';
+        if (@mail($to, $subject, $body, $headers)) {
+            return ['ok' => true, 'via' => 'mail'];
+        }
+        return ['ok' => false, 'error' => 'SMTP not configured and PHP mail() failed. Copy config/smtp.local.php.example to config/smtp.local.php'];
     }
 
     $host = (string) EVENTIFY_SMTP_HOST;

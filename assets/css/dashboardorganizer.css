@@ -210,7 +210,7 @@ body, html {
     display: block;
 }
 
-/* Organizer profile modal */
+/* Organizer profile modal — base avatar (themed in organizer_profile_modal.css) */
 .organizer-profile-picture-container {
     display: flex;
     justify-content: center;
@@ -220,7 +220,7 @@ body, html {
     margin-right: auto;
     border-radius: 50%;
     overflow: hidden;
-    border: 3px solid rgba(255, 255, 255, 0.15);
+    border: 3px solid #e6c54a;
 }
 
 .organizer-profile-picture-container .organizer-profile-picture-preview,
@@ -237,15 +237,15 @@ body, html {
     height: 100px;
     border-radius: 50%;
     object-fit: cover;
-    border: 3px solid rgba(255, 255, 255, 0.15);
+    border: none;
     cursor: pointer;
 }
 .organizer-profile-picture-placeholder {
     width: 100px;
     height: 100px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
-    color: #fff;
+    background: linear-gradient(135deg, #1b4a1b 0%, #3d8a35 100%);
+    color: #e6c54a;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -285,7 +285,10 @@ body, html {
    LEFT SIDEBAR
 ================================ */
 .sidebar {
+    flex: 0 0 320px;
     width: 320px;
+    max-width: 320px;
+    min-width: 0;
     background: #ffffff;
     border-right: 1px solid #e5e7eb;
     box-shadow: 4px 0 24px rgba(0, 0, 0, 0.08);
@@ -294,6 +297,50 @@ body, html {
     display: flex;
     flex-direction: column;
     gap: 32px;
+}
+
+.organizer-dashboard {
+    --eventify-kb-focus: #e6c54a;
+}
+
+body.organizer-dashboard #organizerSidebar.eventify-kb-scroll-zone:focus-visible {
+    outline: 2px solid var(--eventify-kb-focus, #e6c54a);
+    outline-offset: -2px;
+}
+
+body.organizer-dashboard .main-content.eventify-kb-scroll-zone:focus-visible {
+    outline: none;
+}
+
+body.organizer-dashboard #organizerSidebar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(27, 74, 27, 0.45) transparent;
+}
+
+body.organizer-dashboard #organizerSidebar::-webkit-scrollbar {
+    width: 8px;
+}
+
+body.organizer-dashboard #organizerSidebar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+body.organizer-dashboard #organizerSidebar::-webkit-scrollbar-thumb {
+    background: rgba(27, 74, 27, 0.35);
+    border-radius: 999px;
+}
+
+body.organizer-dashboard #organizerSidebar::-webkit-scrollbar-thumb:hover {
+    background: rgba(27, 74, 27, 0.55);
+}
+
+.eventify-kb-scroll-zone:focus {
+    outline: none;
+}
+
+.eventify-kb-scroll-zone:focus-visible {
+    outline: 2px solid var(--eventify-kb-focus, #7c3aed);
+    outline-offset: -2px;
 }
 
 .sidebar-close-mobile {
@@ -611,6 +658,8 @@ body, html {
     overflow: hidden;
     background: #ffffff;
     box-shadow: -4px 0 24px rgba(0, 0, 0, 0.15);
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
 }
 
 .calendar-controls {
@@ -684,7 +733,6 @@ body, html {
 
 .calendar-container {
     flex: 1;
-    padding: 24px;
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -889,6 +937,12 @@ body, html {
     color: #ffffff !important;
 }
 
+.fc-event[data-eventify-range-gradient="1"] {
+    background-color: transparent !important;
+    border-color: transparent !important;
+    color: #ffffff !important;
+}
+
 /* Event Colors by Lifecycle State (takes priority) */
 .fc-event[data-event-state="pending"] {
     background-color: #d97706 !important;
@@ -1033,31 +1087,67 @@ body, html {
 
 @media (min-width: 769px) {
     #organizerSidebar {
+        --organizer-sidebar-close-duration: 0.5s;
+        --organizer-sidebar-open-duration: 0.42s;
         position: sticky;
         top: 64px;
         height: calc(100vh - 64px);
-        transition: width 0.34s cubic-bezier(0.22, 1, 0.36, 1),
-                    padding-left 0.34s cubic-bezier(0.22, 1, 0.36, 1),
-                    padding-right 0.34s cubic-bezier(0.22, 1, 0.36, 1),
-                    opacity 0.22s ease,
-                    border-color 0.22s ease,
-                    box-shadow 0.22s ease;
+        overflow-x: hidden;
+        overflow-y: auto;
+        visibility: visible;
+        opacity: 1;
+        transform: translateX(0);
+        transition:
+            flex-basis var(--organizer-sidebar-open-duration) cubic-bezier(0.22, 1, 0.36, 1),
+            max-width var(--organizer-sidebar-open-duration) cubic-bezier(0.22, 1, 0.36, 1),
+            width var(--organizer-sidebar-open-duration) cubic-bezier(0.22, 1, 0.36, 1),
+            padding-left var(--organizer-sidebar-open-duration) cubic-bezier(0.22, 1, 0.36, 1),
+            padding-right var(--organizer-sidebar-open-duration) cubic-bezier(0.22, 1, 0.36, 1),
+            transform var(--organizer-sidebar-open-duration) cubic-bezier(0.22, 1, 0.36, 1),
+            opacity 0.28s ease 0.1s,
+            visibility 0s linear 0s;
     }
 
-    body.organizer-sidebar-collapsed #organizerSidebar {
+    body.organizer-sidebar-collapsed #organizerSidebar,
+    #organizerSidebar.is-collapsed {
+        flex: 0 0 0 !important;
         width: 0 !important;
         min-width: 0 !important;
+        max-width: 0 !important;
         padding-left: 0 !important;
         padding-right: 0 !important;
+        margin: 0 !important;
+        border-right: none !important;
         border-right-color: transparent !important;
         box-shadow: none !important;
-        opacity: 0;
-        overflow: hidden;
-        pointer-events: none;
+        opacity: 0 !important;
+        transform: translateX(-16px);
+        visibility: hidden;
+        overflow: hidden !important;
+        pointer-events: none !important;
+        /* Fade content first, then slide/shrink width slowly (no clipped text strip) */
+        transition:
+            flex-basis var(--organizer-sidebar-close-duration) cubic-bezier(0.4, 0, 0.2, 1),
+            max-width var(--organizer-sidebar-close-duration) cubic-bezier(0.4, 0, 0.2, 1),
+            width var(--organizer-sidebar-close-duration) cubic-bezier(0.4, 0, 0.2, 1),
+            padding-left var(--organizer-sidebar-close-duration) cubic-bezier(0.4, 0, 0.2, 1),
+            padding-right var(--organizer-sidebar-close-duration) cubic-bezier(0.4, 0, 0.2, 1),
+            transform var(--organizer-sidebar-close-duration) cubic-bezier(0.4, 0, 0.2, 1),
+            opacity 0.2s ease 0s,
+            visibility 0s linear var(--organizer-sidebar-close-duration);
     }
 
     body.organizer-sidebar-collapsed .main-content {
         border-left: 0 !important;
+        flex: 1 1 auto !important;
+        width: auto !important;
+        max-width: none !important;
+        min-width: 0 !important;
+        transition: flex-basis var(--organizer-sidebar-close-duration) cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    body:not(.organizer-sidebar-collapsed) .main-content {
+        transition: flex-basis var(--organizer-sidebar-open-duration) cubic-bezier(0.22, 1, 0.36, 1);
     }
 }
 
@@ -1074,19 +1164,6 @@ body, html {
     max-height: 160px;
     overflow-y: auto;
     z-index: 2;
-}
-
-/* Create event modal: scroll long form + slightly shorter map */
-#createEventModal .modal-body {
-    max-height: min(78vh, 720px);
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    -webkit-overflow-scrolling: touch;
-}
-
-#createEventModal .event-location-map {
-    height: 200px;
-    min-height: 160px;
 }
 
 /* Organizer settings modal */
@@ -1323,101 +1400,11 @@ body, html {
 }
 
 .main-content {
-    background: linear-gradient(180deg, #ffffff 0%, var(--school-cream) 100%);
     border-left: 2px solid var(--school-border);
     box-shadow: -6px 0 32px rgba(0, 0, 0, 0.2);
 }
 
-.calendar-controls {
-    background: var(--school-gold) !important;
-    border: 2px solid rgba(1, 50, 32, 0.2) !important;
-    border-radius: 0;
-}
-
-.calendar-title {
-    color: var(--school-forest-card) !important;
-    font-weight: 800;
-}
-
-.control-nav,
-.view-btn {
-    background: rgba(255, 255, 255, 0.55);
-    border-color: var(--school-forest-card) !important;
-    color: var(--school-forest-card);
-}
-
-.control-nav:hover,
-.view-btn:hover {
-    background: #ffffff;
-    border-color: var(--school-forest-deep) !important;
-    color: var(--school-forest-deep);
-}
-
-.view-btn.active {
-    background: var(--school-forest-card) !important;
-    border-color: var(--school-forest-card) !important;
-    color: var(--school-gold) !important;
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
-}
-
-#calendar {
-    border: 2px solid rgba(1, 50, 32, 0.25);
-    border-radius: 0;
-    padding: 10px;
-    background: #ffffff !important;
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18);
-}
-
-.fc-col-header-cell {
-    background: var(--school-gold) !important;
-    border-bottom: 2px solid var(--school-forest-card) !important;
-}
-
-.fc-col-header-cell-cushion {
-    color: var(--school-forest-card) !important;
-    font-weight: 800 !important;
-}
-
-.fc-daygrid-day:hover {
-    background: rgba(249, 237, 0, 0.12) !important;
-    box-shadow: inset 0 0 0 1px rgba(249, 237, 0, 0.45);
-}
-
-.fc-day-today {
-    background-color: rgba(249, 237, 0, 0.35) !important;
-}
-
-.fc-day-today .fc-daygrid-day-number {
-    color: var(--school-forest-card) !important;
-    font-weight: 800 !important;
-}
-
-.fc-day-other .fc-daygrid-day-frame {
-    background: var(--school-soft-bg) !important;
-}
-
-.fc-event {
-    border-radius: 9px !important;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.16) !important;
-}
-
-.fc-event[data-event-state="active"] {
-    background-color: var(--school-forest-card) !important;
-    color: var(--school-white) !important;
-    border: 1px solid rgba(249, 237, 0, 0.35) !important;
-}
-
-.fc-event[data-event-state="upcoming"] {
-    background-color: var(--school-gold) !important;
-    color: var(--school-forest-card) !important;
-}
-
-.fc-event[data-event-state="closed"] {
-    background-color: #4b5563 !important;
-}
-
-/* Keep FullCalendar day popovers below Bootstrap modals (1055) */
-.fc-popover {
+.action-btn {
     z-index: 1040 !important;
 }
 
@@ -1559,4 +1546,11 @@ body, html {
     .action-btn:not(.logout-btn)::after {
         animation: none;
     }
+}
+
+/* Keep keyboard focus off the calendar panel (avoids purple box around the whole grid) */
+body.organizer-dashboard .main-content.eventify-kb-scroll-zone:focus,
+body.organizer-dashboard .main-content.eventify-kb-scroll-zone:focus-visible {
+    outline: none !important;
+    box-shadow: none !important;
 }

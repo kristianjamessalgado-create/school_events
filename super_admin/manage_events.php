@@ -1,5 +1,6 @@
 <?php
 $pendingEvents = $pendingEvents ?? [];
+$assignableOrganizers = $assignableOrganizers ?? [];
 $success = $success ?? '';
 $error   = $error ?? '';
 $backUrl   = $backUrl   ?? (BASE_URL . '/backend/super_admin/dashboardsuperadmin.php');
@@ -255,6 +256,22 @@ $backLabel = $backLabel ?? 'Back';
                                             <?= htmlspecialchars($event['organizer_email']) ?>
                                         </div>
                                     <?php endif; ?>
+                                    <?php if (!empty($assignableOrganizers)): ?>
+                                        <?php $evOrganizerId = (int) ($event['organizer_id'] ?? 0); ?>
+                                        <form method="POST" action="<?= BASE_URL ?>/backend/admin/assign_event_organizer.php" class="sa-assign-org-form mt-2 js-assign-organizer-form" data-event-title="<?= htmlspecialchars((string) ($event['title'] ?? 'Event'), ENT_QUOTES, 'UTF-8') ?>">
+                                            <?= csrf_field() ?>
+                                            <input type="hidden" name="event_id" value="<?= (int) $event['id'] ?>">
+                                            <input type="hidden" name="return_to" value="manage_events">
+                                            <select name="organizer_id" class="form-select form-select-sm mb-1" required aria-label="Assign organizer">
+                                                <?php foreach ($assignableOrganizers as $orgOpt): ?>
+                                                    <option value="<?= (int) ($orgOpt['id'] ?? 0) ?>" <?= $evOrganizerId === (int) ($orgOpt['id'] ?? 0) ? 'selected' : '' ?>>
+                                                        <?= htmlspecialchars((string) ($orgOpt['name'] ?? 'Organizer')) ?>
+                                                    </option>
+                                                <?php endforeach; ?>
+                                            </select>
+                                            <button type="submit" class="btn btn-sm btn-outline-secondary w-100"><i class="fas fa-user-check me-1"></i>Assign</button>
+                                        </form>
+                                    <?php endif; ?>
                                 </td>
                                 <td>
                                     <span class="sa-badge sa-badge-dept">
@@ -335,6 +352,17 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+    document.querySelectorAll('.js-assign-organizer-form').forEach(function (form) {
+        form.addEventListener('submit', function (e) {
+            var sel = form.querySelector('select[name="organizer_id"]');
+            if (!sel) return;
+            var eventTitle = form.getAttribute('data-event-title') || 'this event';
+            var orgName = sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].text.trim() : 'organizer';
+            if (!window.confirm('Assign "' + eventTitle + '" to ' + orgName + '?\n\nAny pending OTP will be cleared.')) {
+                e.preventDefault();
+            }
+        });
+    });
 });
 </script>
 </body>

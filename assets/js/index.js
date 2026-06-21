@@ -305,7 +305,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const verifyModalEmail = document.getElementById('verifyModalEmail');
     const loginModalMessage = document.getElementById('loginModalMessage');
     const registerModalMessage = document.getElementById('registerModalMessage');
-    const verifyModalMessage = document.getElementById('verifyModalMessage');
+    const verifyModalTopAlert = document.getElementById('verifyModalTopAlert');
     if (hamburgerBtn) {
         hamburgerBtn.addEventListener('click', toggleMobileNav);
     }
@@ -462,10 +462,24 @@ document.addEventListener('DOMContentLoaded', function () {
         el.style.display = 'block';
     }
 
+    function setVerifyTopAlert(type, text) {
+        if (!verifyModalTopAlert) return;
+        if (!text) {
+            verifyModalTopAlert.textContent = '';
+            verifyModalTopAlert.classList.remove('error', 'success');
+            verifyModalTopAlert.style.display = 'none';
+            return;
+        }
+        verifyModalTopAlert.textContent = text;
+        verifyModalTopAlert.classList.remove('error', 'success');
+        verifyModalTopAlert.classList.add(type === 'success' ? 'success' : 'error');
+        verifyModalTopAlert.style.display = 'block';
+    }
+
     function clearAllModalMessages() {
         setInlineMessage(loginModalMessage, '', '');
         setInlineMessage(registerModalMessage, '', '');
-        setInlineMessage(verifyModalMessage, '', '');
+        setVerifyTopAlert('', '');
     }
 
     function resolveFinalUrl(rawUrl) {
@@ -554,36 +568,12 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    // Hard reliability fix for OTP verify too: do normal submit (same as login/register).
+    // AJAX fetch + redirect parsing was dropping errors and breaking CSRF on some browsers.
     if (verifyModalForm) {
-        verifyModalForm.addEventListener('submit', function (e) {
-            e.preventDefault();
+        verifyModalForm.addEventListener('submit', function () {
             clearAllModalMessages();
             setFormSubmitting(verifyModalForm, true, 'Verifying...');
-            submitModalForm(verifyModalForm, function (finalUrl) {
-                if (!finalUrl) {
-                    setFormSubmitting(verifyModalForm, false);
-                    setInlineMessage(verifyModalMessage, 'error', 'Verification failed. Please try again.');
-                    return;
-                }
-                const p = finalUrl.pathname || '';
-                const q = finalUrl.searchParams;
-                if (p.indexOf('/views/verify_account_otp.php') !== -1 && q.get('error')) {
-                    setFormSubmitting(verifyModalForm, false);
-                    setInlineMessage(verifyModalMessage, 'error', q.get('error'));
-                    openVerifyModal();
-                    return;
-                }
-                if (p.indexOf('/views/login.php') !== -1) {
-                    setFormSubmitting(verifyModalForm, false);
-                    setInlineMessage(loginModalMessage, q.get('error') ? 'error' : 'success', q.get('error') || q.get('success') || 'Done.');
-                    openLoginModal();
-                    return;
-                }
-                safeNavigate(finalUrl.href);
-            }).catch(function () {
-                setFormSubmitting(verifyModalForm, false);
-                setInlineMessage(verifyModalMessage, 'error', 'Unable to connect. Please try again.');
-            });
         });
     }
 
@@ -599,10 +589,12 @@ document.addEventListener('DOMContentLoaded', function () {
             if (registerModalConfirmPassword) registerModalConfirmPassword.value = '';
         }
     } else if (window.AUTH_MODAL === 'verify') {
-        openVerifyModal();
-        if (window.AUTH_ERROR && verifyModalMessage) {
-            setInlineMessage(verifyModalMessage, 'error', window.AUTH_ERROR);
-        }
+        openVerifyModal({
+            purpose: window.VERIFY_PURPOSE || 'register',
+            email: window.VERIFY_EMAIL || '',
+            error: window.AUTH_ERROR || '',
+            success: window.AUTH_SUCCESS || ''
+        });
     } else if (window.AUTH_MODAL === 'login') {
         openLoginModal();
         var loginServerEl = document.getElementById('loginModalMessageServer');
@@ -663,6 +655,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 eventTextColor: '#fefce8',
                 events: events,
                 eventDidMount: function (info) {
+                    if (typeof eventifyApplyCalendarEventMount === 'function') {
+                        eventifyApplyCalendarEventMount(info);
+                        return;
+                    }
                     var st = String((info.event.extendedProps && info.event.extendedProps.status) || '').toLowerCase();
                     if (st === 'closed' || st === 'completed') {
                         info.el.style.backgroundColor = '#64748b';
@@ -767,13 +763,65 @@ function closeRegisterModal() {
     closeAllLegalModals();
 }
 
-function openVerifyModal() {
+function openVerifyModal(opts) {
+    opts = opts || {};
     var modal = document.getElementById('loginModal');
     var registerModal = document.getElementById('registerModal');
     var verifyModal = document.getElementById('verifyModal');
+    var purposeInput = document.getElementById('verifyModalPurpose');
+    var titleEl = document.getElementById('verifyModalTitle');
+    var subtitleEl = document.getElementById('verifyModalSubtitle');
+    var emailInput = document.getElementById('verifyModalEmail');
+    var otpInput = document.getElementById('verifyOtpCode');
+    var topAlert = document.getElementById('verifyModalTopAlert');
+    var resendPurpose = document.getElementById('verifyResendPurpose');
+    var resendEmail = document.getElementById('verifyResendEmail');
+    var purpose = opts.purpose === 'reactivate' ? 'reactivate' : 'register';
     closeAllLegalModals();
     if (modal) modal.style.display = 'none';
     if (registerModal) registerModal.style.display = 'none';
+    if (purposeInput) purposeInput.value = purpose;
+    if (titleEl) {
+        titleEl.textContent = purpose === 'register' ? 'Verify your email' : 'Verify reactivation OTP';
+    }
+    if (subtitleEl) {
+        subtitleEl.textContent = purpose === 'register'
+            ? 'Enter the 6-digit code we sent to your email. After verification, super admin will approve your account.'
+            : 'Enter the code sent to your registered email.';
+    }
+    if (emailInput && opts.email) {
+        emailInput.value = opts.email;
+        if (purpose === 'register') {
+            emailInput.readOnly = true;
+        }
+    }
+    if (resendPurpose) {
+        resendPurpose.value = purpose;
+    }
+    if (resendEmail && emailInput && emailInput.value) {
+        resendEmail.value = emailInput.value;
+    }
+    if (otpInput && !opts.keepOtp) {
+        otpInput.value = '';
+    }
+    if (topAlert) {
+        var existingMsg = (topAlert.textContent || '').trim();
+        if (opts.error) {
+            topAlert.textContent = opts.error;
+            topAlert.classList.remove('success');
+            topAlert.classList.add('error');
+            topAlert.style.display = 'block';
+        } else if (opts.success) {
+            topAlert.textContent = opts.success;
+            topAlert.classList.remove('error');
+            topAlert.classList.add('success');
+            topAlert.style.display = 'block';
+        } else if (!existingMsg) {
+            topAlert.textContent = '';
+            topAlert.classList.remove('error', 'success');
+            topAlert.style.display = 'none';
+        }
+    }
     if (verifyModal) verifyModal.style.display = 'flex';
 }
 

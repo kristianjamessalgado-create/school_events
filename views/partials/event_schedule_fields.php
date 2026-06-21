@@ -30,7 +30,7 @@ $startDateInputId = $idPrefix === 'ce' ? 'ceDate' : ($idPrefix === 'standalone' 
 <link rel="stylesheet" href="<?= htmlspecialchars($scheduleCss) ?>">
 <div class="event-schedule-block mb-3" data-schedule-prefix="<?= htmlspecialchars($idPrefix) ?>">
   <label class="form-label fw-semibold">When is this event? <span class="text-danger">*</span></label>
-  <p class="text-muted small mb-2">Pick a schedule type, then click dates on the calendar. Selected days turn <strong class="text-secondary">gray</strong>.</p>
+  <p class="text-muted small mb-2">Pick a schedule type, then click dates on the calendar. Selected days turn <strong class="text-secondary">gray</strong>. Double-click a gray day to clear it.</p>
 
   <div class="mb-2">
     <div class="form-check">

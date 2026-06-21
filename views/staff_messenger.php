@@ -25,13 +25,17 @@ $peerLabel = ($role === 'admin') ? 'Organizers' : 'Admins';
     <title><?= htmlspecialchars($pageTitle) ?> — EVENTIFY</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="<?= htmlspecialchars(BASE_URL) ?>/assets/css/staff_messenger.css?v=2">
+    <link rel="stylesheet" href="<?= htmlspecialchars(BASE_URL) ?>/assets/css/eventify_modal.css?v=1">
+    <link rel="stylesheet" href="<?= htmlspecialchars(BASE_URL) ?>/assets/css/staff_messenger.css?v=4">
 </head>
 <body class="msgr-body">
 <div class="msgr-detail-backdrop" id="msgrDetailBackdrop" hidden aria-hidden="true"></div>
 <div class="msgr-app" id="staffMessengerApp">
     <aside class="msgr-rail" aria-label="Shortcuts">
-        <div class="msgr-rail-brand">EVENTIFY</div>
+        <div class="msgr-rail-brand">
+            <i class="fas fa-calendar-check msgr-rail-logo" aria-hidden="true"></i>
+            <span>EVENTIFY</span>
+        </div>
         <a href="<?= htmlspecialchars($dashboardHref) ?>" class="msgr-rail-btn" title="Back to dashboard">
             <i class="fas fa-arrow-left"></i>
         </a>
@@ -40,8 +44,9 @@ $peerLabel = ($role === 'admin') ? 'Organizers' : 'Admins';
 
     <aside class="msgr-inbox">
         <div class="msgr-inbox-head">
-            <div class="d-flex align-items-start justify-content-between mb-1">
+            <div class="d-flex align-items-start justify-content-between gap-2">
                 <div>
+                    <span class="msgr-inbox-eyebrow">Messaging</span>
                     <h1 class="msgr-inbox-title mb-0">Staff messages</h1>
                     <p class="msgr-inbox-sub mb-0">Chat with <?= htmlspecialchars(strtolower($peerLabel)) ?></p>
                 </div>
@@ -83,10 +88,15 @@ $peerLabel = ($role === 'admin') ? 'Organizers' : 'Admins';
         <div class="msgr-messages" id="msgrThread"></div>
 
         <footer class="msgr-composer-wrap">
-            <form id="msgrSendForm" class="msgr-composer">
+            <div id="msgrAttachPreview" class="msgr-attach-preview" hidden>
+                <img id="msgrAttachPreviewImg" src="" alt="Attachment preview">
+                <button type="button" class="msgr-attach-preview__clear" id="msgrAttachClear" title="Remove attachment"><i class="fas fa-times"></i></button>
+            </div>
+            <form id="msgrSendForm" class="msgr-composer" enctype="multipart/form-data">
                 <input type="hidden" name="csrf_token" id="msgrCsrf" value="<?= htmlspecialchars(function_exists('csrf_token') ? csrf_token() : '') ?>">
                 <input type="hidden" name="recipient_id" id="msgrRecipientId" value="">
-                <button type="button" class="msgr-composer-icon" disabled title="Attachments (coming soon)"><i class="fas fa-plus"></i></button>
+                <input type="file" id="msgrAttachmentInput" name="attachment" accept="image/jpeg,image/png,image/gif,image/webp" class="d-none">
+                <button type="button" class="msgr-composer-icon" id="msgrAttachBtn" disabled title="Attach image"><i class="fas fa-paperclip"></i></button>
                 <textarea class="msgr-input" name="body" id="msgrBody" rows="1" placeholder="Write a message…" maxlength="8000" disabled></textarea>
                 <button type="submit" class="msgr-send" id="msgrSendBtn" disabled title="Send"><i class="fas fa-paper-plane"></i></button>
             </form>
@@ -95,6 +105,10 @@ $peerLabel = ($role === 'admin') ? 'Organizers' : 'Admins';
 
     <aside class="msgr-detail" id="msgrDetailPanel">
         <div class="msgr-detail-inner">
+            <div class="msgr-detail-topbar">
+                <span class="msgr-detail-topbar-label">Contact info</span>
+                <button type="button" class="msgr-icon-btn msgr-detail-close" id="msgrDetailClose" title="Close panel"><i class="fas fa-times"></i></button>
+            </div>
             <div class="msgr-detail-hero">
                 <div class="msgr-avatar msgr-avatar-xl" id="msgrDetailAvatar">?</div>
                 <h2 class="msgr-detail-name" id="msgrDetailName">—</h2>
@@ -102,11 +116,11 @@ $peerLabel = ($role === 'admin') ? 'Organizers' : 'Admins';
                 <span class="msgr-detail-role" id="msgrDetailRole"><?= htmlspecialchars($peerLabel) ?></span>
             </div>
             <div class="msgr-detail-actions">
-                <button type="button" class="msgr-pill-btn" disabled><i class="fas fa-bell-slash me-2"></i>Mute</button>
-                <button type="button" class="msgr-pill-btn" disabled><i class="fas fa-magnifying-glass me-2"></i>Search</button>
+                <button type="button" class="msgr-pill-btn" disabled><i class="fas fa-bell-slash"></i><span>Mute</span></button>
+                <button type="button" class="msgr-pill-btn" disabled><i class="fas fa-magnifying-glass"></i><span>Search in chat</span></button>
             </div>
             <div class="msgr-detail-section">
-                <div class="msgr-detail-section-title"><i class="fas fa-shield-alt me-1"></i> Staff channel</div>
+                <div class="msgr-detail-section-title"><i class="fas fa-shield-alt"></i> Staff channel</div>
                 <p class="small msgr-muted mb-0">Official admin ↔ organizer messaging on EVENTIFY. Use this for event approvals, updates, and coordination.</p>
             </div>
         </div>
@@ -123,6 +137,7 @@ window.__staffMessengerInitialWith = <?= (int)$initialWith ?>;
 window.__staffMessengerPeerLabel = <?= json_encode($peerLabel) ?>;
 window.__staffMessengerError = <?= json_encode($messaging_error) ?>;
 </script>
-<script src="<?= htmlspecialchars(BASE_URL) ?>/assets/js/staff_messenger.js?v=2"></script>
+<script src="<?= htmlspecialchars(BASE_URL) ?>/assets/js/eventify_toast.js?v=1"></script>
+<script src="<?= htmlspecialchars(BASE_URL) ?>/assets/js/staff_messenger.js?v=4"></script>
 </body>
 </html>

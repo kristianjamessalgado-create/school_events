@@ -21,6 +21,7 @@ document.addEventListener('DOMContentLoaded', function() {
     initRegisterRsvpConfirmModal();
     initStudentNotificationHooks();
     initStudentEventDetailsModalCleanup();
+    initStudentEvaluationChoiceDelegation();
     initStudentMobileNav();
 });
 
@@ -260,7 +261,7 @@ function refreshOpenStudentEventDetails(eventId) {
         return String(p.event_id || String(e.id || '').split('-')[0]) === id;
     });
     if (updated) {
-        showStudentEventDetails(updated, { contentOnly: true });
+        showStudentEventDetails(updated, { contentOnly: true, preserveSessions: true });
     }
 }
 
@@ -371,6 +372,128 @@ function studentEventAllowsMainRsvp(props) {
     return true;
 }
 
+function normalizeEvaluationSections(sections) {
+    if (!sections) {
+        return [];
+    }
+    if (Array.isArray(sections)) {
+        return sections;
+    }
+    if (typeof sections === 'object') {
+        return Object.keys(sections).map(function (key) {
+            return sections[key];
+        });
+    }
+    return [];
+}
+
+function buildStudentEvaluationFormHtml(eventId, csrf, base) {
+    var sections = normalizeEvaluationSections(window.__eventEvaluationSections);
+    if (!eventId || !csrf || !sections.length) {
+        return '';
+    }
+    var html = '<hr class="my-3">' +
+        '<h6 class="small text-uppercase text-muted mb-2">Post-event evaluation</h6>' +
+        '<p class="small text-muted mb-2">You checked in to this event. Rate each statement from <strong>1 (lowest)</strong> to <strong>5 (highest)</strong>. Your name and ID stay private — organizers and admin only see <strong>Anonymous</strong> and your <strong>department</strong>.</p>' +
+        '<form method="post" action="' + escapeHtmlStudent(base + '/backend/auth/submit_event_feedback.php') + '">' +
+        '<input type="hidden" name="csrf_token" value="' + escapeHtmlStudent(csrf) + '">' +
+        '<input type="hidden" name="event_id" value="' + escapeHtmlStudent(String(eventId)) + '">';
+    sections.forEach(function (section, sIdx) {
+        html += '<div class="mb-3">' +
+            '<div class="fw-semibold small text-success mb-2">' + escapeHtmlStudent(String(section.label || 'Section')) + '</div>';
+        (section.questions || []).forEach(function (q, qIdx) {
+            var key = String(q.key || '');
+            if (!key) return;
+            var fieldId = 'eval_' + String(eventId).replace(/\W/g, '') + '_' + sIdx + '_' + qIdx;
+            html += '<div class="mb-2 ps-1 border-start border-2 border-success-subtle">' +
+                '<label class="form-label small mb-1 d-block">' + escapeHtmlStudent(String(q.text || key)) + '</label>' +
+                '<input type="number" class="efy-eval-choice__value" name="eval[' + escapeHtmlStudent(key) + ']" id="' + fieldId + '" value="" min="1" max="5" required tabindex="-1" aria-hidden="true">' +
+                '<div class="efy-eval-choice" role="group" aria-label="' + escapeHtmlStudent(String(q.text || key)) + '">' +
+                '<button type="button" class="efy-eval-choice__btn" data-target="' + fieldId + '" data-value="1" title="1 - Strongly disagree / Poor">1</button>' +
+                '<button type="button" class="efy-eval-choice__btn" data-target="' + fieldId + '" data-value="2" title="2">2</button>' +
+                '<button type="button" class="efy-eval-choice__btn" data-target="' + fieldId + '" data-value="3" title="3 - Neutral">3</button>' +
+                '<button type="button" class="efy-eval-choice__btn" data-target="' + fieldId + '" data-value="4" title="4">4</button>' +
+                '<button type="button" class="efy-eval-choice__btn" data-target="' + fieldId + '" data-value="5" title="5 - Strongly agree / Excellent">5</button>' +
+                '</div>' +
+                '<div class="small text-muted mt-1">1 = lowest, 5 = highest</div>' +
+                '</div>';
+        });
+        html += '</div>';
+    });
+    html += '<div class="mb-2">' +
+        '<label class="form-label small">Additional comments (optional)</label>' +
+        '<textarea name="comment" class="form-control form-control-sm" rows="3" maxlength="2000" placeholder="Anything else we should know?"></textarea>' +
+        '</div>' +
+        '<button type="submit" class="btn btn-outline-primary btn-sm">Submit evaluation</button>' +
+        '</form>';
+    return html;
+}
+
+function applyStudentEvaluationChoice(btn) {
+    if (!btn) return;
+    var targetId = btn.getAttribute('data-target');
+    var value = btn.getAttribute('data-value');
+    if (!targetId || !value) return;
+    var hidden = document.getElementById(targetId);
+    if (!hidden) return;
+    hidden.value = value;
+    hidden.setCustomValidity('');
+    var group = btn.closest('.efy-eval-choice');
+    if (!group) return;
+    group.querySelectorAll('.efy-eval-choice__btn').forEach(function (b) {
+        b.classList.toggle('is-active', b === btn);
+    });
+}
+
+function captureStudentEvaluationDraft(bodyEl) {
+    if (!bodyEl) return null;
+    var form = bodyEl.querySelector('form[action*="submit_event_feedback"]');
+    if (!form) return null;
+    var draft = { comment: '', choices: {} };
+    var commentEl = form.querySelector('textarea[name="comment"]');
+    draft.comment = commentEl ? commentEl.value : '';
+    form.querySelectorAll('.efy-eval-choice__value').forEach(function (input) {
+        if (input.name) {
+            draft.choices[input.name] = input.value || '';
+        }
+    });
+    return draft;
+}
+
+function restoreStudentEvaluationDraft(bodyEl, draft) {
+    if (!bodyEl || !draft) return;
+    var form = bodyEl.querySelector('form[action*="submit_event_feedback"]');
+    if (!form) return;
+    var commentEl = form.querySelector('textarea[name="comment"]');
+    if (commentEl && draft.comment) {
+        commentEl.value = draft.comment;
+    }
+    form.querySelectorAll('.efy-eval-choice__value').forEach(function (input) {
+        var val = draft.choices[input.name];
+        if (!val) return;
+        input.value = val;
+        input.setCustomValidity('');
+        var activeBtn = form.querySelector(
+            '.efy-eval-choice__btn[data-target="' + input.id + '"][data-value="' + val + '"]'
+        );
+        if (activeBtn) {
+            applyStudentEvaluationChoice(activeBtn);
+        }
+    });
+}
+
+function initStudentEvaluationChoiceDelegation() {
+    var bodyEl = document.getElementById('eventDetailsModalBody');
+    if (!bodyEl || bodyEl.dataset.evalChoiceDelegated === '1') return;
+    bodyEl.dataset.evalChoiceDelegated = '1';
+    bodyEl.addEventListener('click', function (ev) {
+        var btn = ev.target && ev.target.closest ? ev.target.closest('.efy-eval-choice__btn') : null;
+        if (!btn || !bodyEl.contains(btn)) return;
+        ev.preventDefault();
+        applyStudentEvaluationChoice(btn);
+    });
+}
+
 function closeStudentNotifDropdown() {
     var toggle = document.getElementById('studentNotifDropdownToggle');
     if (!toggle || typeof bootstrap === 'undefined' || !bootstrap.Dropdown) {
@@ -408,11 +531,18 @@ function initStudentNotificationHooks() {
             updateStudentNavbarNotifBadge(detail.unreadCount);
         }
         closeStudentNotifDropdown();
-        if (detail.eventId) {
-            setTimeout(function () {
-                openStudentEventById(String(detail.eventId));
-            }, 120);
+    });
+    document.addEventListener('eventify:notif-view-event', function (e) {
+        var detail = (e && e.detail) || {};
+        if (!detail.eventId) {
+            return;
         }
+        setTimeout(function () {
+            if (!openStudentEventById(String(detail.eventId))) {
+                var base = (window.BASE_URL || '/school_events').replace(/\/$/, '');
+                window.location.href = base + '/event_activities.php?id=' + encodeURIComponent(String(detail.eventId));
+            }
+        }, 200);
     });
 }
 
@@ -498,6 +628,39 @@ function initScanQRModal() {
         return null;
     }
 
+    function navigateToCheckin(parsed) {
+        if (!parsed || !parsed.token) return false;
+        stopCamera();
+        var base = (window.BASE_URL || '').replace(/\/$/, '');
+        if (parsed.type === 'ticket') {
+            window.location.href = base + '/ticket_checkin.php?tk=' + encodeURIComponent(parsed.token);
+        } else if (parsed.type === 'activity') {
+            window.location.href = base + '/activity_checkin.php?st=' + encodeURIComponent(parsed.token);
+        } else {
+            window.location.href = base + '/checkin.php?t=' + encodeURIComponent(parsed.token);
+        }
+        return true;
+    }
+
+    function showScanFallback() {
+        var fallback = document.getElementById('scanQRFallback');
+        if (fallback) fallback.style.display = 'block';
+    }
+
+    function decodeQrFromImageData(imageData) {
+        if (typeof jsQR === 'undefined' || !imageData) return null;
+        return jsQR(imageData.data, imageData.width, imageData.height);
+    }
+
+    function handleQrText(text) {
+        if (!text) return false;
+        var parsed = parseCheckinFromQrUrl(text);
+        if (parsed && parsed.token) {
+            return navigateToCheckin(parsed);
+        }
+        return false;
+    }
+
     function tick() {
         if (!videoEl || !videoEl.srcObject || videoEl.readyState !== videoEl.HAVE_ENOUGH_DATA) {
             scanAnimationId = requestAnimationFrame(tick);
@@ -516,20 +679,8 @@ function initScanQRModal() {
         var imageData = ctx.getImageData(0, 0, w, h);
         if (typeof jsQR !== 'undefined') {
             var code = jsQR(imageData.data, imageData.width, imageData.height);
-            if (code && code.data) {
-                var parsed = parseCheckinFromQrUrl(code.data);
-                if (parsed && parsed.token) {
-                    stopCamera();
-                    var base = (window.BASE_URL || '').replace(/\/$/, '');
-                    if (parsed.type === 'ticket') {
-                        window.location.href = base + '/ticket_checkin.php?tk=' + encodeURIComponent(parsed.token);
-                    } else if (parsed.type === 'activity') {
-                        window.location.href = base + '/activity_checkin.php?st=' + encodeURIComponent(parsed.token);
-                    } else {
-                        window.location.href = base + '/checkin.php?t=' + encodeURIComponent(parsed.token);
-                    }
-                    return;
-                }
+            if (code && code.data && handleQrText(code.data)) {
+                return;
             }
         }
         scanAnimationId = requestAnimationFrame(tick);
@@ -603,16 +754,68 @@ function initScanQRModal() {
             clearReadyPoll();
             placeholderEl.innerHTML = '<span><i class="fas fa-video-slash fa-2x mb-2 d-block"></i>Camera not available here</span>';
             placeholderEl.style.display = 'flex';
-            statusEl.innerHTML = 'Camera access needs <strong>HTTPS</strong> or is blocked in this browser. <br class="d-none d-md-inline">' +
-                '<strong>Workaround:</strong> Open your phone’s <strong>Camera</strong> or <strong>QR scanner</strong> app, scan the event QR code, then open the link to check in.';
+            statusEl.innerHTML = 'Live camera needs <strong>HTTPS</strong> on phones (not <code>http://192.168…</code>). Use the options below instead.';
+            showScanFallback();
         });
     });
+
+    var fileInput = document.getElementById('scanQRFileInput');
+    if (fileInput) {
+        fileInput.addEventListener('change', function () {
+            var file = fileInput.files && fileInput.files[0];
+            fileInput.value = '';
+            if (!file) return;
+            statusEl.textContent = 'Reading QR from photo…';
+            var reader = new FileReader();
+            reader.onload = function () {
+                var img = new Image();
+                img.onload = function () {
+                    canvasEl.width = img.width;
+                    canvasEl.height = img.height;
+                    var ctx = canvasEl.getContext('2d');
+                    ctx.drawImage(img, 0, 0);
+                    var imageData = ctx.getImageData(0, 0, img.width, img.height);
+                    var code = decodeQrFromImageData(imageData);
+                    if (code && code.data && handleQrText(code.data)) {
+                        return;
+                    }
+                    statusEl.textContent = 'No valid EVENTIFY check-in QR found in that image.';
+                };
+                img.onerror = function () {
+                    statusEl.textContent = 'Could not load that image.';
+                };
+                img.src = reader.result;
+            };
+            reader.onerror = function () {
+                statusEl.textContent = 'Could not read that file.';
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    var linkInput = document.getElementById('scanQRLinkInput');
+    var linkGo = document.getElementById('scanQRLinkGo');
+    if (linkGo && linkInput) {
+        linkGo.addEventListener('click', function () {
+            var raw = (linkInput.value || '').trim();
+            if (!raw) return;
+            if (handleQrText(raw)) return;
+            if (/^https?:\/\//i.test(raw)) {
+                window.location.href = raw;
+                return;
+            }
+            statusEl.textContent = 'Paste the full check-in URL from the QR (starts with http).';
+        });
+    }
 
     modalEl.addEventListener('hidden.bs.modal', function() {
         stopCamera();
         placeholderEl.style.display = 'flex';
         placeholderEl.innerHTML = '<span><i class="fas fa-camera fa-2x mb-2 d-block"></i>Starting camera…</span>';
         statusEl.textContent = 'Position the event QR code within the frame.';
+        var fallback = document.getElementById('scanQRFallback');
+        if (fallback) fallback.style.display = 'none';
+        if (linkInput) linkInput.value = '';
     });
 }
 
@@ -827,12 +1030,19 @@ function initFullCalendar() {
         initialView: defaultView,
         initialDate: currentDate,
         selectable: false, // Students can't create events
-        dayMaxEvents: true,
+        dayMaxEvents: false,
+        eventOrder: 'start',
         headerToolbar: false, // We use custom controls
         events: studentCalendarEvents,
         eventDisplay: 'block',
         height: getStudentCalendarHeight(),
         expandRows: true,
+        views: {
+            dayGridMonth: {
+                dayMaxEvents: false,
+                dayMaxEventRows: false
+            }
+        },
         dayHeaderFormat: window.matchMedia('(max-width: 768px)').matches ? { weekday: 'short' } : { weekday: 'long' },
         firstDay: 0,
         weekends: true,
@@ -846,7 +1056,10 @@ function initFullCalendar() {
 
         // Click event -> show details in modal (read-only for students)
         eventClick: function(info) {
-            showStudentEventDetails(info.event);
+            showStudentEventDetails(info.event, {
+                clickEl: info.el,
+                jsEvent: info.jsEvent
+            });
             info.jsEvent.preventDefault();
         },
 
@@ -890,6 +1103,9 @@ function initFullCalendar() {
     if (typeof eventifyBindCalendarScrollFix === 'function') {
         eventifyBindCalendarScrollFix(calendar, calContainer);
     }
+    if (typeof eventifyBindCalendarSegmentRepaint === 'function') {
+        eventifyBindCalendarSegmentRepaint(calendar, calendarEl);
+    }
     window.addEventListener('resize', syncStudentCalendarHeight);
 
     // On resize (e.g. rotate phone), switch day headers between short (mobile) and long (desktop)
@@ -916,65 +1132,6 @@ function studentFormatDeptLabel(stored) {
         } catch (e) { /* ignore */ }
     }
     return d;
-}
-
-function eventifyFormatDayEndTimeLabel(endTime, endTimeNa, tOpts) {
-    if (endTimeNa) {
-        return 'N/A';
-    }
-    if (!endTime) {
-        return '';
-    }
-    const et = new Date('1970-01-01T' + String(endTime).slice(0, 8));
-    if (isNaN(et.getTime())) {
-        return '';
-    }
-    return et.toLocaleTimeString(undefined, tOpts);
-}
-
-function eventifyAppendPerDayEndTimes(dateStr, props, tOpts) {
-    const days = Array.isArray(props.schedule_days) ? props.schedule_days : [];
-    if (days.length < 2) {
-        return dateStr;
-    }
-    const parts = [];
-    let hasPerDayStart = false;
-    days.forEach(function (day) {
-        const ymd = String(day.schedule_date || '').slice(0, 10);
-        if (!ymd) {
-            return;
-        }
-        const d = new Date(ymd + 'T12:00:00');
-        const lbl = isNaN(d.getTime()) ? ymd : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-        const startLbl = day.start_time
-            ? eventifyFormatDayEndTimeLabel(day.start_time, false, tOpts)
-            : '';
-        if (startLbl) {
-            hasPerDayStart = true;
-        }
-        let segment = lbl;
-        if (startLbl) {
-            segment += ' ' + startLbl;
-        }
-        if (!day.end_time_na && day.end_time) {
-            const endLbl = eventifyFormatDayEndTimeLabel(day.end_time, false, tOpts);
-            if (endLbl) {
-                segment += (startLbl ? '–' : ', ends ') + endLbl;
-            }
-        }
-        parts.push(segment);
-    });
-    if (parts.length) {
-        let out = dateStr + ' · ' + parts.join('; ');
-        const allEndNa = days.every(function (day) {
-            return !!day.end_time_na;
-        });
-        if (allEndNa) {
-            out += ' · Ends N/A';
-        }
-        return out;
-    }
-    return dateStr;
 }
 
 // ===============================
@@ -1006,76 +1163,20 @@ function showStudentEventDetails(eventLike, options) {
         }
     }
 
-    let dateStr = '';
-    const startYmd = String(props.event_date_ymd || '').trim();
-    const endYmd = String(props.event_end_ymd || props.event_date_ymd || '').trim();
-    const scheduleDates = Array.isArray(props.schedule_dates) ? props.schedule_dates.filter(Boolean) : [];
-    const dOpts = { year: 'numeric', month: 'long', day: 'numeric' };
-    const tOpts = { hour: 'numeric', minute: '2-digit', hour12: true };
-    if (scheduleDates.length > 1) {
-        dateStr = scheduleDates.map(function (ymd) {
-            const d = new Date(ymd + 'T12:00:00');
-            return isNaN(d.getTime()) ? ymd : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-        }).join(', ');
-        const y = scheduleDates[0].slice(0, 4);
-        if (scheduleDates.every(function (d) { return d.slice(0, 4) === y; })) {
-            dateStr += ', ' + y;
-        }
-        const hasPerDayStartInProps = Array.isArray(props.schedule_days) && props.schedule_days.some(function (d) {
-            return d && String(d.start_time || '').trim() !== '';
+    let scheduleHtml = '';
+    if (typeof eventifyBuildEventScheduleDisplayHtml === 'function') {
+        scheduleHtml = eventifyBuildEventScheduleDisplayHtml(props, {
+            start: startDate,
+            end: endDate,
+            allDay: !!eventLike.allDay,
+            startStr: eventLike.startStr || ''
         });
-        if (props.start_time && !hasPerDayStartInProps) {
-            const st = new Date('1970-01-01T' + String(props.start_time).slice(0, 8));
-            if (!isNaN(st.getTime())) {
-                dateStr += ' · Starts ' + st.toLocaleTimeString(undefined, tOpts);
-            }
-        }
-        if (Array.isArray(props.schedule_days) && props.schedule_days.length >= 2) {
-            dateStr = eventifyAppendPerDayEndTimes(dateStr, props, tOpts);
-        } else if (props.end_time_na) {
-            dateStr += ' · Ends N/A';
-        } else if (props.end_time) {
-            const et = new Date('1970-01-01T' + String(props.end_time).slice(0, 8));
-            if (!isNaN(et.getTime())) {
-                dateStr += ' · Ends ' + et.toLocaleTimeString(undefined, tOpts);
-            }
-        }
-    } else if (startYmd && endYmd && endYmd > startYmd) {
-        const startD = new Date(startYmd + 'T12:00:00');
-        const endD = new Date(endYmd + 'T12:00:00');
-        dateStr = startD.toLocaleDateString(undefined, dOpts) + ' – ' + endD.toLocaleDateString(undefined, dOpts);
-        const hasPerDayStartRange = Array.isArray(props.schedule_days) && props.schedule_days.some(function (d) {
-            return d && String(d.start_time || '').trim() !== '';
-        });
-        if (props.start_time && !hasPerDayStartRange) {
-            const st = new Date('1970-01-01T' + String(props.start_time).slice(0, 8));
-            if (!isNaN(st.getTime())) {
-                dateStr += ' · Starts ' + st.toLocaleTimeString(undefined, tOpts);
-            }
-        }
-        if (Array.isArray(props.schedule_days) && props.schedule_days.length >= 2) {
-            dateStr = eventifyAppendPerDayEndTimes(dateStr, props, tOpts);
-        } else if (props.end_time_na) {
-            dateStr += ' · Ends N/A';
-        } else if (props.end_time) {
-            const et = new Date('1970-01-01T' + String(props.end_time).slice(0, 8));
-            if (!isNaN(et.getTime())) {
-                dateStr += ' · Ends ' + et.toLocaleTimeString(undefined, tOpts);
-            }
-        }
-    } else if (startDate) {
-        dateStr = startDate.toLocaleDateString(undefined, dOpts);
-        const startTime = startDate.toLocaleTimeString(undefined, tOpts);
-        let range = startTime;
-        if (endDate && !eventLike.allDay) {
-            const endTime = endDate.toLocaleTimeString(undefined, tOpts);
-            range = startTime + ' – ' + endTime;
-        }
-        if (!eventLike.allDay) {
-            dateStr += ' · ' + range;
-        }
+    } else {
+        scheduleHtml = '<div class="efy-event-schedule"><div class="efy-event-schedule__summary">' + escapeHtmlStudent('TBA') + '</div></div>';
     }
 
+    const startYmd = String(props.event_date_ymd || '').trim();
+    const endYmd = String(props.event_end_ymd || props.event_date_ymd || '').trim();
     const eventYmd = endYmd || startYmd || '';
     const todayY = todayYmdLocal();
     const isPast = eventYmd !== '' && eventYmd < todayY;
@@ -1089,6 +1190,8 @@ function showStudentEventDetails(eventLike, options) {
     const isRegistered = !!props.is_registered;
     const hasFeedback = !!props.has_feedback;
     const attended = !!props.attended;
+    const forceEvaluation = !!options.forceEvaluation;
+    const showingEvaluation = attended && (isEndedForFeedback || forceEvaluation) && !hasFeedback;
     let eventId = props.event_id || eventLike.id;
     if (eventId && String(eventId).indexOf('-') > 0) {
         eventId = String(eventId).split('-')[0];
@@ -1122,6 +1225,15 @@ function showStudentEventDetails(eventLike, options) {
         capacityHtml = '<p class="mb-2"><strong>Entry:</strong> Ticket sales closed</p>';
         actionHtml = '<p class="mb-2 small text-muted">This event has ended. If you already bought a ticket, open <strong>My tickets</strong> for your digital pass.</p>';
         footerRsvpHtml = '<a class="btn btn-outline-primary btn-sm" href="' + escapeHtmlStudent(base + '/my_tickets.php') + '"><i class="fas fa-ticket-alt me-1"></i>My tickets</a>';
+    } else if (attended && (isEndedForFeedback || forceEvaluation)) {
+        if (!hasFeedback && eventId && csrf) {
+            actionHtml = buildStudentEvaluationFormHtml(eventId, csrf, base);
+            if (!actionHtml) {
+                actionHtml = '<p class="mb-0 small text-warning">Unable to load the evaluation form. Please refresh the page and try again.</p>';
+            }
+        } else if (hasFeedback) {
+            actionHtml = '<p class="mb-0 small text-muted mt-2"><i class="fas fa-check me-1"></i>Thanks — you already submitted your evaluation for this event.</p>';
+        }
     } else if (allowsMainRsvp) {
         if (isRegistered) {
             actionHtml = '<p class="mb-2 text-success small"><i class="fas fa-check-circle me-1"></i>Your RSVP for this event is confirmed.</p>';
@@ -1149,65 +1261,53 @@ function showStudentEventDetails(eventLike, options) {
             isRegistered: true,
             allowsMainRsvp: false
         });
-    } else if (attended) {
-        if (!hasFeedback && eventId && csrf) {
-            var fbRad = 'fbvis_' + String(eventId).replace(/\W/g, '');
-            actionHtml = '<hr class="my-3">' +
-                '<h6 class="small text-uppercase text-muted mb-2">Post-event feedback</h6>' +
-                '<p class="small text-muted mb-2">You checked in to this event. Choose whether the organizer and admin see your <strong>name</strong> with your rating and comment.</p>' +
-                '<form method="post" action="' + escapeHtmlStudent(base + '/backend/auth/submit_event_feedback.php') + '">' +
-                '<input type="hidden" name="csrf_token" value="' + escapeHtmlStudent(csrf) + '">' +
-                '<input type="hidden" name="event_id" value="' + escapeHtmlStudent(String(eventId)) + '">' +
-                '<div class="mb-2">' +
-                '<label class="form-label small">Rating (1–5)</label>' +
-                '<select name="rating" class="form-select form-select-sm" required>' +
-                '<option value="">Choose…</option>' +
-                '<option value="5">5 – Excellent</option>' +
-                '<option value="4">4</option>' +
-                '<option value="3">3</option>' +
-                '<option value="2">2</option>' +
-                '<option value="1">1 – Poor</option>' +
-                '</select></div>' +
-                '<div class="mb-2">' +
-                '<label class="form-label small">Comments (optional)</label>' +
-                '<textarea name="comment" class="form-control form-control-sm" rows="3" maxlength="2000" placeholder="How was the event? Suggestions?"></textarea>' +
-                '</div>' +
-                '<div class="mb-2">' +
-                '<span class="form-label small d-block">Visibility</span>' +
-                '<div class="form-check">' +
-                '<input class="form-check-input" type="radio" name="feedback_visibility" id="' + fbRad + '_anon" value="anonymous" checked>' +
-                '<label class="form-check-label small" for="' + fbRad + '_anon">Anonymous — name hidden from organizer and admin</label>' +
-                '</div>' +
-                '<div class="form-check">' +
-                '<input class="form-check-input" type="radio" name="feedback_visibility" id="' + fbRad + '_named" value="named">' +
-                '<label class="form-check-label small" for="' + fbRad + '_named">Show my name — organizer and admin may see my name with this feedback</label>' +
-                '</div></div>' +
-                '<button type="submit" class="btn btn-outline-primary btn-sm">Submit feedback</button>' +
-                '</form>';
-        } else if (hasFeedback) {
-            actionHtml = '<p class="mb-0 small text-muted mt-2"><i class="fas fa-check me-1"></i>Thanks — you already submitted feedback for this event.</p>';
-        }
+    } else if (attended && !isEndedForFeedback) {
+        actionHtml = '<p class="mb-0 small text-muted"><i class="fas fa-check-circle me-1 text-success"></i>You checked in. Post-event evaluation will open after this event ends.</p>';
     } else {
-        actionHtml = '<p class="mb-0 small text-muted">This event is finished or was marked ended by the organizer. <strong>Post-event feedback</strong> is only available if you attended using <strong>QR check-in</strong>.</p>';
+        actionHtml = '<p class="mb-0 small text-muted">This event is finished or was marked ended by the organizer. <strong>Post-event evaluation</strong> is only available if you attended using <strong>QR check-in</strong>.</p>';
     }
 
     const title = eventLike.title || 'Untitled';
     const bodyEl = document.getElementById('eventDetailsModalBody');
-    if (bodyEl) {
-        bodyEl.innerHTML = '<p class="mb-2"><strong>Event:</strong> ' + escapeHtmlStudent(title) + '</p>' +
-            '<p class="mb-2"><strong>Date &amp; Time:</strong> ' + escapeHtmlStudent(dateStr || 'TBA') + '</p>' +
+    const clickCtx = {
+        clickEl: options.clickEl || null,
+        jsEvent: options.jsEvent || null
+    };
+    const scheduleDateForSessions = (typeof eventifyResolveStudentDaySessionsDate === 'function')
+        ? eventifyResolveStudentDaySessionsDate(eventLike, clickCtx)
+        : '';
+    const mainBodyHtml = '<p class="mb-2"><strong>Event:</strong> ' + escapeHtmlStudent(title) + '</p>' +
+            '<div class="mb-2"><strong class="d-block mb-1">Schedule</strong>' + scheduleHtml + '</div>' +
             '<p class="mb-2"><strong>Location:</strong> ' + escapeHtmlStudent(props.location || 'N/A') + '</p>' +
             '<p class="mb-2"><strong>Department:</strong> ' + escapeHtmlStudent(deptText) + '</p>' +
             capacityHtml +
             '<p class="mb-2"><strong>Description:</strong> ' + escapeHtmlStudent(props.description || 'No description provided.') + '</p>' +
             (eventId ? '<p class="mb-2"><a class="btn btn-sm btn-outline-success" href="' + escapeHtmlStudent(base + '/event_activities.php?id=' + encodeURIComponent(String(eventId))) + '" target="_blank" rel="noopener"><i class="fas fa-th-large me-1"></i>Browse activities</a></p>' : '') +
             actionHtml;
+    if (bodyEl) {
+        var evalDraft = captureStudentEvaluationDraft(bodyEl);
+        var existingSessions = bodyEl.querySelector('#studentDaySessionsBlock');
+        var preserveSessions = options.contentOnly && existingSessions && eventId && scheduleDateForSessions &&
+            existingSessions.getAttribute('data-event-id') === String(eventId) &&
+            existingSessions.getAttribute('data-schedule-date') === scheduleDateForSessions;
+        if (preserveSessions) {
+            var keptSessions = existingSessions;
+            keptSessions.remove();
+            bodyEl.innerHTML = mainBodyHtml;
+            bodyEl.appendChild(keptSessions);
+        } else {
+            bodyEl.innerHTML = mainBodyHtml;
+            if (typeof eventifyAppendStudentDaySessions === 'function' && eventId && scheduleDateForSessions) {
+                eventifyAppendStudentDaySessions(bodyEl, eventLike, clickCtx);
+            }
+        }
+        restoreStudentEvaluationDraft(bodyEl, evalDraft);
     }
     var footerRsvpEl = document.getElementById('studentEventDetailsRsvpActions');
     if (footerRsvpEl) {
         footerRsvpEl.innerHTML = footerRsvpHtml;
     }
-    if (eventId && !isPaidTicketEvent && (allowsMainRsvp || !isRegistered)) {
+    if (eventId && !isPaidTicketEvent && !showingEvaluation && (allowsMainRsvp || !isRegistered)) {
         fetchStudentEventRsvpStatus(eventId).then(function (data) {
             if (!data || !data.ok) return;
             var regChanged = !!data.is_registered !== isRegistered;
@@ -1222,11 +1322,8 @@ function showStudentEventDetails(eventLike, options) {
             var curProps = current.extendedProps || {};
             var curId = String(curProps.event_id || String(current.id || '').split('-')[0]);
             if (curId !== String(eventId)) return;
-            showStudentEventDetails(current, { contentOnly: true });
+            showStudentEventDetails(current, { contentOnly: true, preserveSessions: true });
         }).catch(function () { /* ignore */ });
-    }
-    if (typeof eventifyAppendStudentDaySessions === 'function' && bodyEl) {
-        eventifyAppendStudentDaySessions(bodyEl, eventLike);
     }
     const modalEl = document.getElementById('eventDetailsModal');
     if (modalEl && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
@@ -1268,7 +1365,9 @@ function initStudentUpcomingEventClicks() {
 }
 
 function openStudentEventById(id) {
-    if (!id || !window.studentEvents) return;
+    if (!id || !window.studentEvents) {
+        return false;
+    }
     const events = Array.isArray(window.studentEvents) ? window.studentEvents : [];
     const match = events.find(function(e) {
         return String(e.id) === String(id) || String((e.extendedProps && e.extendedProps.event_id) || '') === String(id);
@@ -1279,17 +1378,19 @@ function openStudentEventById(id) {
         });
         if (byPrefix) {
             showStudentEventDetails(byPrefix);
-            return;
+            return true;
         }
+        return false;
     }
-    if (match) {
-        showStudentEventDetails(match);
-    }
+    showStudentEventDetails(match);
+    return true;
 }
 
 function studentEventFromUrgentPayload(ev) {
     if (!ev || ev.id == null) return null;
     var ymd = String(ev.date || '').trim();
+    var endYmd = String(ev.end_date || ev.date || '').trim();
+    var status = String(ev.status || '').toLowerCase();
     return {
         id: ev.id,
         title: ev.title || 'Event',
@@ -1297,6 +1398,7 @@ function studentEventFromUrgentPayload(ev) {
         extendedProps: {
             event_id: ev.id,
             event_date_ymd: ymd,
+            event_end_ymd: endYmd,
             location: '',
             description: 'Open your calendar for full details.',
             department: 'ALL',
@@ -1306,7 +1408,7 @@ function studentEventFromUrgentPayload(ev) {
             is_registered: false,
             has_feedback: false,
             attended: true,
-            status: String(ev.status || '')
+            status: status
         }
     };
 }
@@ -1328,7 +1430,7 @@ function initUrgentFeedbackPrompt() {
 
     var body = document.getElementById('studentUrgentFeedbackModalBody');
     if (body) {
-        var html = '<p class="mb-3 fw-semibold">You attended the event(s) below. Please share feedback while it is still fresh — you can choose anonymous or named when you submit.</p>' +
+        var html = '<p class="mb-3 fw-semibold">You attended the event(s) below. Please complete the post-event evaluation (1 = lowest, 5 = highest). Your name stays private — only your department may be shown to organizers and admin.</p>' +
             '<ul class="list-group list-group-flush">';
         list.forEach(function (ev) {
             var dateLine = '';
@@ -1345,7 +1447,7 @@ function initUrgentFeedbackPrompt() {
                 (dateLine ? '<br><span class="small text-muted">' + escapeHtmlStudent(dateLine) + '</span>' : '') +
                 '</span>' +
                 '<button type="button" class="btn btn-primary btn-sm urgent-fb-open" data-event-id="' + escapeHtmlStudent(String(ev.id)) + '">' +
-                '<i class="fas fa-comment-dots me-1"></i>Give feedback</button></li>';
+                '<i class="fas fa-comment-dots me-1"></i>Evaluate</button></li>';
         });
         html += '</ul>';
         body.innerHTML = html;
@@ -1360,7 +1462,7 @@ function initUrgentFeedbackPrompt() {
                 var inst = bootstrap.Modal.getInstance(modalEl);
                 if (inst) inst.hide();
                 if (toShow && typeof showStudentEventDetails === 'function') {
-                    setTimeout(function () { showStudentEventDetails(toShow); }, 320);
+                    setTimeout(function () { showStudentEventDetails(toShow, { forceEvaluation: true }); }, 320);
                 }
             });
         });

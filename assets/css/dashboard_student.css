@@ -1,6 +1,19 @@
 /* ===============================
    UI POLISH LAYER
 ================================ */
+.student-dashboard {
+    --eventify-kb-focus: #15803d;
+}
+
+.eventify-kb-scroll-zone:focus {
+    outline: none;
+}
+
+.eventify-kb-scroll-zone:focus-visible {
+    outline: 2px solid var(--eventify-kb-focus, #15803d);
+    outline-offset: -2px;
+}
+
 .main-content {
     border-left: 1px solid #e2e8f0;
 }
@@ -62,6 +75,55 @@
 .modal-content {
     border-radius: 14px;
     border: 1px solid #e2e8f0;
+}
+
+/* Evaluation 1-5 choice chips */
+.efy-eval-choice {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0.45rem;
+}
+
+.efy-eval-choice__value {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.efy-eval-choice__btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.42rem 0.4rem;
+    border-radius: 10px;
+    border: 1px solid #cbd5e1;
+    background: #ffffff;
+    color: #334155;
+    font-weight: 700;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.16s ease;
+    min-height: 2.1rem;
+}
+
+.efy-eval-choice__btn:hover {
+    border-color: #86efac;
+    background: #f0fdf4;
+}
+
+.efy-eval-choice__btn.is-active {
+    border-color: #6b7280;
+    background: #6b7280;
+    color: #ffffff;
+}
+
+.efy-eval-choice__btn.is-active:hover,
+.efy-eval-choice__btn.is-active:focus {
+    border-color: #6b7280;
+    background: #6b7280;
+    color: #ffffff;
 }
 /* ===============================
    RESET & BASE
@@ -780,6 +842,12 @@ body.student-sidebar-collapsed .dashboard-layout {
     color: #ffffff !important;
 }
 
+.fc-event[data-eventify-range-gradient="1"] {
+    background-color: transparent !important;
+    border-color: transparent !important;
+    color: #ffffff !important;
+}
+
 /* Event Colors by Lifecycle State (takes priority) */
 .fc-event[data-event-state="pending"] {
     background-color: #d97706 !important;
@@ -941,94 +1009,105 @@ body.student-sidebar-collapsed .dashboard-layout {
     width: 100%;
     height: 100%;
     overflow: auto;
-    background-color: rgba(0,0,0,0.5);
+    background-color: rgba(21, 51, 19, 0.55);
     justify-content: center;
     align-items: center;
+    padding: 1rem;
 }
 
-/* Confirmation modal should appear above profile modal */
-#confirmProfileChangesModal {
-    z-index: 1200 !important;
+.profile-modal-content.efy-modal {
+    margin: 0;
+    padding: 0;
+    max-width: 460px;
+    width: 100%;
+    max-height: calc(100vh - 2rem);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
 }
 
-#confirmProfileChangesModal .modal-backdrop {
-    z-index: 1199 !important;
+.profile-modal-header.efy-modal__header {
+    flex-shrink: 0;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.5rem;
 }
 
-.profile-modal-content {
-    background-color: #ffffff;
-    margin: 20px;
-    padding: 24px;
-    border-radius: 12px;
-    max-width: 450px;
-    width: 90%;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-    position: relative;
+.profile-modal-body.efy-modal__body {
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
 }
 
 .profile-close {
-    position: absolute;
-    top: 16px;
-    right: 16px;
-    color: #9ca3af;
-    font-size: 28px;
-    font-weight: bold;
-    cursor: pointer;
+    position: static;
+    flex-shrink: 0;
+    opacity: 1;
+    font-size: 1.25rem;
     width: 32px;
     height: 32px;
+    padding: 0;
+    border: none;
+    background: transparent;
+}
+
+.profile-modal-content h2,
+.profile-modal-content .efy-modal__title {
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: #fff;
     display: flex;
     align-items: center;
-    justify-content: center;
-    border-radius: 6px;
-    transition: all 0.2s ease;
+    gap: 0.45rem;
 }
 
-.profile-close:hover,
-.profile-close:focus {
-    color: #1f2937;
-    background: #f3f4f6;
+.profile-modal-content .efy-modal__title i {
+    color: var(--efy-gold, #e6c54a);
 }
 
-.profile-modal-content h2 {
-    font-size: 20px;
-    font-weight: 600;
-    color: #1f2937;
-    margin-bottom: 20px;
+.form-group label {
+    display: block;
+    font-weight: 700;
+    margin-bottom: 6px;
+    font-size: 0.78rem;
+    color: var(--efy-text, #1b4a1b);
+}
+
+.form-group input,
+.form-group select {
+    width: 100%;
+    border-radius: 10px;
+    border: 1px solid rgba(27, 74, 27, 0.14);
+    background: var(--efy-cream-2, #fffdf8);
+    padding: 0.45rem 0.65rem;
+    font-size: 0.8125rem;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    border-color: rgba(61, 138, 53, 0.55);
+    box-shadow: 0 0 0 3px rgba(61, 138, 53, 0.15);
+    outline: none;
+}
+
+.form-group input[readonly] {
+    background: rgba(27, 74, 27, 0.06);
+    color: #4b5f4b;
+}
+
+.profile-picture-placeholder {
+    background: linear-gradient(135deg, #1b4a1b 0%, #3d8a35 100%);
+    color: #e6c54a;
 }
 
 .form-group {
     margin-bottom: 16px;
 }
 
-.form-group label {
-    display: block;
-    font-weight: 500;
-    margin-bottom: 6px;
-    font-size: 14px;
-    color: #374151;
-}
-
-.form-group input,
-.form-group select {
-    width: 100%;
-    padding: 10px 12px;
-    border: 1px solid #e5e7eb;
-    border-radius: 8px;
-    font-size: 14px;
-    color: #1f2937;
-    transition: border-color 0.2s ease;
-}
-
-.form-group input:focus,
-.form-group select:focus {
-    outline: none;
-    border-color: #10b981;
-    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
-}
-
-.form-group input[readonly] {
-    background: #f9fafb;
-    color: #6b7280;
+/* Confirmation modal should appear above profile modal */
+#confirmProfileChangesModal {
+    z-index: 1200 !important;
 }
 
 .profile-picture-preview-container {
@@ -1240,27 +1319,27 @@ body.student-sidebar-collapsed .dashboard-layout {
         margin: 0 16px 8px;
     }
 
-    .fc-daygrid-day-frame {
+    body.student-dashboard .fc-daygrid-day-frame {
         min-height: 100px !important;
     }
 
-    /* Calendar event text: glide left like marquee on small screens */
-    .fc-event {
+    /* Calendar event text: glide left like marquee on small screens (student only) */
+    body.student-dashboard .fc-event {
         overflow: hidden !important;
         max-width: 100% !important;
         min-height: 1.8em !important;
         line-height: 1.4 !important;
     }
 
-    .fc-event .fc-event-main,
-    .fc-event .fc-event-main-frame,
-    .fc-event .fc-event-title-container {
+    body.student-dashboard .fc-event .fc-event-main,
+    body.student-dashboard .fc-event .fc-event-main-frame,
+    body.student-dashboard .fc-event .fc-event-title-container {
         overflow: hidden !important;
         min-width: 0 !important;
         width: 100% !important;
     }
 
-    .fc-event .fc-event-title {
+    body.student-dashboard .fc-event .fc-event-title {
         display: inline-block !important;
         white-space: nowrap !important;
         width: max-content !important;
@@ -1276,8 +1355,8 @@ body.student-sidebar-collapsed .dashboard-layout {
         line-height: 1.4 !important;
     }
 
-    .fc-event:hover .fc-event-title,
-    .fc-event:focus-within .fc-event-title {
+    body.student-dashboard .fc-event:hover .fc-event-title,
+    body.student-dashboard .fc-event:focus-within .fc-event-title {
         animation-play-state: paused !important;
     }
 

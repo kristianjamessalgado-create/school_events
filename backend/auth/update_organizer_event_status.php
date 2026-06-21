@@ -51,14 +51,10 @@ if ($current === 'pending' && $action === 'close') {
     exit();
 }
 
-// Ending an active event: only on or after the scheduled event date (avoids closing future events).
-if ($current === 'active' && in_array($action, ['close', 'cancel'], true)) {
-    $d = substr(trim((string) ($event['event_date'] ?? '')), 0, 10);
-    if ($d === '' || $d > date('Y-m-d')) {
-        $conn->close();
-        header("Location: " . BASE_URL . "/backend/auth/dashboardorganizer.php?msg=" . urlencode("You can mark this event as ended on or after its scheduled date."));
-        exit();
-    }
+if ($current === 'active' && $action === 'cancel') {
+    $conn->close();
+    header("Location: " . BASE_URL . "/backend/auth/dashboardorganizer.php?msg=" . urlencode("Use Mark as ended to finish an active event."));
+    exit();
 }
 
 $newStatus = eventify_events_completed_or_closed_target($conn);
@@ -102,11 +98,17 @@ if ($ok) {
         // keep status update successful even if notifications table isn't available
     }
 
+    $redirectTo = trim((string) ($_POST['redirect_to'] ?? ''));
+    $defaultRedirect = BASE_URL . '/backend/auth/dashboardorganizer.php';
+    if ($redirectTo === '' || strpos($redirectTo, BASE_URL) !== 0) {
+        $redirectTo = $defaultRedirect;
+    }
     $conn->close();
     $doneMsg = $action === 'cancel'
         ? 'Submission withdrawn successfully.'
         : 'Event marked as ended successfully.';
-    header("Location: " . BASE_URL . "/backend/auth/dashboardorganizer.php?msg=" . urlencode($doneMsg));
+    $sep = strpos($redirectTo, '?') !== false ? '&' : '?';
+    header('Location: ' . $redirectTo . $sep . 'msg=' . urlencode($doneMsg));
     exit();
 }
 

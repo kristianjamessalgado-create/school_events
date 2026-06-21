@@ -1,7 +1,5 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+require_once __DIR__ . '/../../config/session.php';
 
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../config/config.php';
@@ -10,9 +8,38 @@ require_once __DIR__ . '/../../config/student_profile_fields.php';
 require_once __DIR__ . '/../lib/activity_logger.php';
 require_once __DIR__ . '/../lib/account_email_otp.php';
 
-if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !csrf_validate()) {
-    header("Location: " . BASE_URL . "/views/login.php?error=" . urlencode("Invalid request."));
+function eventify_redirect_verify_otp_ui(string $purpose, string $email, ?string $error = null, ?string $success = null, string $authModal = 'verify'): void
+{
+    $purpose = $purpose === 'reactivate' ? 'reactivate' : 'register';
+    if ($authModal === 'verify') {
+        eventify_set_verify_otp_flash($purpose, $email, $success, $error);
+    }
+    $params = [
+        'auth_modal' => $authModal,
+        'verify_purpose' => $purpose,
+        'verify_email' => $email,
+    ];
+    if ($authModal === 'verify' && $error !== null && $error !== '') {
+        $params['auth_error'] = $error;
+    }
+    if ($authModal === 'login' && $error !== null && $error !== '') {
+        $params['auth_error'] = $error;
+    }
+    if ($authModal === 'login' && $success !== null && $success !== '') {
+        $params['auth_success'] = $success;
+    }
+    header('Location: ' . BASE_URL . '/index.php?' . http_build_query($params));
     exit();
+}
+
+if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !csrf_validate()) {
+    $failPurpose = (($_POST['purpose'] ?? 'register') === 'reactivate') ? 'reactivate' : 'register';
+    $failEmail = trim(strtolower((string) ($_POST['email'] ?? '')));
+    eventify_redirect_verify_otp_ui(
+        $failPurpose,
+        $failEmail,
+        'Invalid or expired session. Refresh the page and try again.'
+    );
 }
 
 $purpose = ($_POST['purpose'] ?? 'register') === 'reactivate' ? 'reactivate' : 'register';
@@ -20,28 +47,24 @@ $email = trim(strtolower($_POST['email'] ?? ''));
 $otpCode = trim($_POST['otp_code'] ?? '');
 
 if (!filter_var($email, FILTER_VALIDATE_EMAIL) || !preg_match('/^\d{6}$/', $otpCode)) {
-    header("Location: " . BASE_URL . "/views/verify_account_otp.php?purpose={$purpose}&email=" . urlencode($email) . "&error=" . urlencode("Invalid verification input."));
-    exit();
+    eventify_redirect_verify_otp_ui($purpose, $email, 'Invalid verification input.');
 }
 
 if (!eventify_account_otp_table_ready($conn)) {
-    header("Location: " . BASE_URL . "/views/verify_account_otp.php?purpose={$purpose}&email=" . urlencode($email) . "&error=" . urlencode("OTP system unavailable."));
-    exit();
+    eventify_redirect_verify_otp_ui($purpose, $email, 'OTP system unavailable.');
 }
 
-$stmt = $conn->prepare("SELECT id, user_id, otp_hash, payload_json, expires_at FROM account_email_otps WHERE purpose = ? AND email = ? AND used_at IS NULL ORDER BY id DESC LIMIT 1");
+$stmt = $conn->prepare("SELECT id, user_id, otp_hash, payload_json, expires_at, attempt_count FROM account_email_otps WHERE purpose = ? AND email = ? AND used_at IS NULL ORDER BY id DESC LIMIT 1");
 $stmt->bind_param("ss", $purpose, $email);
 $stmt->execute();
 $otpRow = $stmt->get_result()->fetch_assoc();
 $stmt->close();
 
 if (!$otpRow) {
-    header("Location: " . BASE_URL . "/views/verify_account_otp.php?purpose={$purpose}&email=" . urlencode($email) . "&error=" . urlencode("No active OTP found."));
-    exit();
+    eventify_redirect_verify_otp_ui($purpose, $email, 'No active OTP found.');
 }
 if (strtotime((string)$otpRow['expires_at']) < time()) {
-    header("Location: " . BASE_URL . "/views/verify_account_otp.php?purpose={$purpose}&email=" . urlencode($email) . "&error=" . urlencode("OTP expired."));
-    exit();
+    eventify_redirect_verify_otp_ui($purpose, $email, 'OTP expired. Tap Resend OTP below to get a new code.');
 }
 if (!password_verify($otpCode, (string)$otpRow['otp_hash'])) {
     // Increment failed attempt counter and invalidate this OTP after too many attempts.
@@ -60,11 +83,9 @@ if (!password_verify($otpCode, (string)$otpRow['otp_hash'])) {
             $expireOtp->execute();
             $expireOtp->close();
         }
-        header("Location: " . BASE_URL . "/views/verify_account_otp.php?purpose={$purpose}&email=" . urlencode($email) . "&error=" . urlencode("Too many incorrect OTP attempts. Request a new OTP."));
-        exit();
+        eventify_redirect_verify_otp_ui($purpose, $email, 'Too many incorrect OTP attempts. Request a new OTP.');
     }
-    header("Location: " . BASE_URL . "/views/verify_account_otp.php?purpose={$purpose}&email=" . urlencode($email) . "&error=" . urlencode("Incorrect OTP."));
-    exit();
+    eventify_redirect_verify_otp_ui($purpose, $email, 'Incorrect OTP.');
 }
 
 $conn->begin_transaction();
@@ -143,7 +164,6 @@ try {
         }
 
         $success = "Email verified. Registration is now pending super admin approval.";
-        $redirect = BASE_URL . "/views/login.php?success=" . urlencode($success) . "&form=login";
     } else {
         $userId = (int)($otpRow['user_id'] ?? 0);
         if ($userId <= 0) {
@@ -191,10 +211,16 @@ try {
     }
 
     $conn->commit();
-    header("Location: " . $redirect);
+    if ($purpose === 'register') {
+        eventify_redirect_verify_otp_ui('register', $email, null, $success, 'login');
+    }
+    if (isset($redirect)) {
+        header('Location: ' . $redirect);
+        exit();
+    }
+    eventify_redirect_verify_otp_ui($purpose, $email, null, $success ?? '', 'login');
     exit();
 } catch (Throwable $e) {
     $conn->rollback();
-    header("Location: " . BASE_URL . "/views/verify_account_otp.php?purpose={$purpose}&email=" . urlencode($email) . "&error=" . urlencode($e->getMessage()));
-    exit();
+    eventify_redirect_verify_otp_ui($purpose, $email, $e->getMessage());
 }

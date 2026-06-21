@@ -284,11 +284,32 @@
 }
 
 /* Organizer dropdown panel */
+.top-navbar .nav-btn.eventify-notif-btn,
+.top-navbar a.nav-btn.eventify-notif-btn {
+    position: relative;
+    overflow: visible;
+}
+
+.top-navbar .eventify-nav-badge {
+    position: absolute;
+    top: 0.2rem;
+    right: 0.15rem;
+    left: auto;
+    transform: none;
+    min-width: 1.05rem;
+    padding: 0.18rem 0.38rem;
+    font-size: 0.55rem;
+    line-height: 1;
+    z-index: 1;
+    pointer-events: none;
+}
+
 .top-navbar .eventify-notif-dropdown {
     min-width: 340px !important;
     max-width: min(92vw, 380px);
     margin-top: 0.35rem;
-    z-index: 1060;
+    /* Stay below Bootstrap modals (1055+) so “Clear all” confirm is visible */
+    z-index: 1040;
 }
 
 .eventify-notif-dropdown {
@@ -449,6 +470,58 @@
     border-color: #e6c54a;
     transform: translateY(-1px);
     box-shadow: 0 6px 18px rgba(1, 50, 32, 0.28);
+}
+
+/* Notification detail modal (single item) */
+.eventify-notif-detail-modal {
+    z-index: 1065;
+}
+
+.eventify-notif-detail__head {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.85rem;
+}
+
+.eventify-notif-detail__icon {
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 1.1rem;
+    background: rgba(100, 116, 139, 0.15);
+    color: #475569;
+}
+
+.eventify-notif-detail__icon--success { background: rgba(16, 185, 129, 0.15); color: #059669; }
+.eventify-notif-detail__icon--danger { background: rgba(239, 68, 68, 0.12); color: #dc2626; }
+.eventify-notif-detail__icon--warning { background: rgba(245, 158, 11, 0.15); color: #d97706; }
+.eventify-notif-detail__icon--primary { background: rgba(14, 165, 233, 0.14); color: #0284c7; }
+.eventify-notif-detail__icon--info { background: rgba(99, 102, 241, 0.12); color: #4f46e5; }
+.eventify-notif-detail__icon--secondary { background: rgba(100, 116, 139, 0.14); color: #64748b; }
+
+.eventify-notif-detail__type {
+    display: block;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #64748b;
+    margin-bottom: 0.15rem;
+}
+
+.eventify-notif-detail__message {
+    font-size: 0.95rem;
+    line-height: 1.55;
+    color: #334155;
+    white-space: pre-wrap;
+}
+
+/* Clear-all confirm must stack above notification dropdowns and parent modals */
+.eventify-notif-clear-modal.modal {
+    z-index: 1075 !important;
 }
 
 @media (max-width: 576px) {

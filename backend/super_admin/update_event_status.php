@@ -87,124 +87,16 @@ if ($action === 'approve' || $action === 'approve_with_otp') {
 }
 
 if ($action === 'send_otp') {
-    if (!eventify_event_otp_table_ready($conn)) {
-        $conn->close();
-        eventify_redirect_event_status('error', 'OTP table missing. Run school_events_event_approval_otp.sql first.');
-    }
-
-    $evStmt = $conn->prepare("SELECT e.id, e.organizer_id, e.title, e.status, u.email, u.organizer_contact_email, u.organizer_phone, u.organizer_contact_method FROM events e JOIN users u ON e.organizer_id = u.id WHERE e.id = ?");
-    if (!$evStmt) {
-        $conn->close();
-        eventify_redirect_event_status('error', 'Failed to prepare OTP request.');
-    }
-    $evStmt->bind_param("i", $eventId);
-    $evStmt->execute();
-    $ev = $evStmt->get_result()->fetch_assoc();
-    $evStmt->close();
-    if (!$ev || ($ev['status'] ?? '') !== 'pending') {
-        $conn->close();
-        eventify_redirect_event_status('error', 'OTP can only be sent for pending events.');
-    }
-
-    $deliveryMethod = ($ev['organizer_contact_method'] ?? 'email') === 'phone' ? 'phone' : 'email';
-    $deliveryTarget = '';
-    // Always prefer account email as canonical OTP email target.
-    $fallbackEmail = trim((string) ($ev['email'] ?? ''));
-    if ($fallbackEmail === '') {
-        $fallbackEmail = trim((string) ($ev['organizer_contact_email'] ?? ''));
-    }
-    if ($deliveryMethod === 'phone') {
-        $deliveryTarget = trim((string) ($ev['organizer_phone'] ?? ''));
-        if ($deliveryTarget === '') {
-            $deliveryMethod = 'email';
-        }
-    }
-    if ($deliveryMethod === 'email') {
-        $deliveryTarget = trim((string) ($ev['email'] ?? ''));
-        if ($deliveryTarget === '') {
-            $deliveryTarget = trim((string) ($ev['organizer_contact_email'] ?? ''));
-        }
-    }
-    if ($deliveryTarget === '') {
-        $conn->close();
-        eventify_redirect_event_status('error', 'Organizer has no OTP contact set in profile.');
-    }
-
-    $otpCode = eventify_generate_otp_code(6);
-    $otpHash = password_hash($otpCode, PASSWORD_DEFAULT);
-    $expiresAt = date('Y-m-d H:i:s', time() + (10 * 60));
-    $organizerId = (int) ($ev['organizer_id'] ?? 0);
     $adminId = (int) ($_SESSION['user_id'] ?? 0);
-
-    $invalidate = $conn->prepare("UPDATE event_approval_otps SET used_at = NOW() WHERE event_id = ? AND used_at IS NULL");
-    if ($invalidate) {
-        $invalidate->bind_param("i", $eventId);
-        $invalidate->execute();
-        $invalidate->close();
+    $otpResult = eventify_send_event_approval_otp($conn, $eventId, $adminId, 10);
+    if (empty($otpResult['ok'])) {
+        $conn->close();
+        eventify_redirect_event_status('error', (string) ($otpResult['error'] ?? 'Failed to send OTP.'));
     }
-    $otpIns = $conn->prepare("INSERT INTO event_approval_otps (event_id, organizer_id, delivery_method, delivery_target, otp_hash, expires_at, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)");
-    if ($otpIns) {
-        $otpIns->bind_param("iissssi", $eventId, $organizerId, $deliveryMethod, $deliveryTarget, $otpHash, $expiresAt, $adminId);
-        $otpIns->execute();
-        $otpIns->close();
-    }
-
-    $title = 'Event approval OTP';
-    $msg = 'Your OTP for event "' . ($ev['title'] ?? 'Event') . '" is ' . $otpCode . '. It expires in 10 minutes.';
-    $ins = $conn->prepare("INSERT INTO notifications (user_id, type, title, message, event_id) VALUES (?, 'event_approval_otp', ?, ?, ?)");
-    if ($ins) {
-        $ins->bind_param("issi", $organizerId, $title, $msg, $eventId);
-        $ins->execute();
-        $ins->close();
-    }
-
-    $deliveredLabel = 'in-app notification';
-    $deliveryNote = '';
-    if ($deliveryMethod === 'email') {
-        $subject = '[EVENTIFY] Event approval OTP';
-        $body = $msg . "\n\nIf you did not request this, contact admin.";
-        $emailResult = eventify_send_email($deliveryTarget, $subject, $body);
-        if (!empty($emailResult['ok'])) {
-            $deliveredLabel = 'email + in-app notification';
-        } else {
-            $deliveryNote = ' Email failed: ' . ($emailResult['error'] ?? 'unknown error');
-        }
-    } elseif ($deliveryMethod === 'phone') {
-        $normalizedPhone = eventify_normalize_ph_phone($deliveryTarget);
-        if ($normalizedPhone !== '') {
-            $smsResult = eventify_send_sms_semaphore($normalizedPhone, $msg);
-            if (!empty($smsResult['ok'])) {
-                $deliveredLabel = 'phone SMS + in-app notification';
-            } else {
-                $deliveryNote = ' SMS failed: ' . ($smsResult['error'] ?? 'unknown error');
-                if ($fallbackEmail !== '') {
-                    $subject = '[EVENTIFY] Event approval OTP';
-                    $body = $msg . "\n\nSMS delivery failed, so this OTP was sent by email.";
-                    $fallbackEmailResult = eventify_send_email($fallbackEmail, $subject, $body);
-                    if (!empty($fallbackEmailResult['ok'])) {
-                        $deliveredLabel = 'email fallback + in-app notification';
-                    } else {
-                        $deliveryNote .= ' Email fallback failed: ' . ($fallbackEmailResult['error'] ?? 'unknown error');
-                    }
-                }
-            }
-        } else {
-            $deliveryNote = ' SMS failed: invalid phone number format.';
-            if ($fallbackEmail !== '') {
-                $subject = '[EVENTIFY] Event approval OTP';
-                $body = $msg . "\n\nSMS delivery failed, so this OTP was sent by email.";
-                $fallbackEmailResult = eventify_send_email($fallbackEmail, $subject, $body);
-                if (!empty($fallbackEmailResult['ok'])) {
-                    $deliveredLabel = 'email fallback + in-app notification';
-                } else {
-                    $deliveryNote .= ' Email fallback failed: ' . ($fallbackEmailResult['error'] ?? 'unknown error');
-                }
-            }
-        }
-    }
-
-    log_activity($conn, $adminId, $_SESSION['role'] ?? '', 'event_approval_otp_sent', 'event', $eventId, 'Sent OTP via ' . $deliveryMethod);
-    $masked = $deliveryMethod === 'email' ? eventify_mask_email($deliveryTarget) : eventify_mask_phone($deliveryTarget);
+    log_activity($conn, $adminId, $_SESSION['role'] ?? '', 'event_approval_otp_sent', 'event', $eventId, 'Sent OTP via ' . ($otpResult['delivery_method'] ?? 'unknown'));
+    $masked = (string) ($otpResult['masked_target'] ?? 'organizer');
+    $deliveredLabel = (string) ($otpResult['delivered_label'] ?? 'in-app notification');
+    $deliveryNote = (string) ($otpResult['delivery_note'] ?? '');
     $conn->close();
     eventify_redirect_event_status('success', "OTP sent to {$masked} via {$deliveredLabel}.{$deliveryNote}");
 }

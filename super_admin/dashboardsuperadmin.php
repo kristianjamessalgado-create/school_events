@@ -31,7 +31,8 @@ $error = $error ?? '';
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?= BASE_URL; ?>/assets/css/dashboardsuperadmin.css">
+    <link rel="stylesheet" href="<?= BASE_URL; ?>/assets/css/dashboardsuperadmin.css?v=2">
+    <link rel="stylesheet" href="<?= BASE_URL; ?>/assets/css/calendar_legend.css">
 </head>
 <body>
 
@@ -212,7 +213,7 @@ $error = $error ?? '';
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <div class="sa-table-wrap">
+                <div class="sa-table-wrap sa-modal-table-panel">
                     <?php if (empty($users)): ?>
                         <div class="sa-empty">
                             <i class="fas fa-users-slash"></i>
@@ -241,6 +242,7 @@ $error = $error ?? '';
                                 <option value="inactive">Inactive</option>
                             </select>
                         </div>
+                        <div class="sa-modal-table-scroll" tabindex="0" aria-label="Scroll users table horizontally">
                         <table class="sa-table" id="usersTable">
                             <thead>
                                 <tr>
@@ -248,6 +250,7 @@ $error = $error ?? '';
                                     <th>Name</th>
                                     <th>Email</th>
                                     <th>Role</th>
+                                    <th>Photo mod</th>
                                     <th>Status</th>
                                     <th>Actions</th>
                                 </tr>
@@ -260,6 +263,7 @@ $error = $error ?? '';
                                         $status = $user['status'] ?? '';
                                         $failedAttempts = (int)($user['failed_attempts'] ?? 0);
                                         $isLockedAccount = $failedAttempts > 0;
+                                        $isMmModerator = (int)($user['is_multimedia_moderator'] ?? 0) === 1;
                                     ?>
                                     <tr
                                         data-role="<?= htmlspecialchars($role) ?>"
@@ -287,6 +291,28 @@ $error = $error ?? '';
                                                     <i class="fas fa-rotate"></i>
                                                 </button>
                                             </form>
+                                        </td>
+                                        <td>
+                                            <?php if ($role === 'multimedia'): ?>
+                                                <form method="POST" action="<?= BASE_URL ?>/backend/super_admin/update_multimedia_moderator.php" class="d-flex gap-1 align-items-center">
+                                                    <?= csrf_field() ?>
+                                                    <input type="hidden" name="user_id" value="<?= $uid ?>">
+                                                    <input type="hidden" name="open_modal" value="users">
+                                                    <input type="hidden" name="is_moderator" value="<?= $isMmModerator ? '0' : '1' ?>">
+                                                    <?php if ($isMmModerator): ?>
+                                                        <span class="sa-badge sa-badge-active me-1">Moderator</span>
+                                                        <button type="submit" class="btn btn-sm btn-outline-warning" title="Remove photo moderator">
+                                                            <i class="fas fa-user-minus"></i>
+                                                        </button>
+                                                    <?php else: ?>
+                                                        <button type="submit" class="btn btn-sm btn-outline-success" title="Make photo moderator">
+                                                            <i class="fas fa-user-shield me-1"></i> Set moderator
+                                                        </button>
+                                                    <?php endif; ?>
+                                                </form>
+                                            <?php else: ?>
+                                                <span class="text-muted small">—</span>
+                                            <?php endif; ?>
                                         </td>
                                         <td>
                                             <?php if ($status === 'active'): ?>
@@ -339,6 +365,7 @@ $error = $error ?? '';
                                 <?php endforeach; ?>
                             </tbody>
                         </table>
+                        </div>
                         <div class="d-flex justify-content-between align-items-center mt-2">
                             <small class="text-muted">Page <?= (int)$usersPage ?> of <?= (int)$usersTotalPages ?></small>
                             <div class="btn-group btn-group-sm">
@@ -365,13 +392,14 @@ $error = $error ?? '';
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <div class="sa-table-wrap">
+                <div class="sa-table-wrap sa-modal-table-panel">
                     <?php if (empty($logs)): ?>
                         <div class="sa-empty">
                             <i class="fas fa-clipboard-check"></i>
                             <p class="mb-0">No recent activity recorded.</p>
                         </div>
                     <?php else: ?>
+                        <div class="sa-modal-table-scroll" tabindex="0" aria-label="Scroll activity table horizontally">
                         <table class="sa-table">
                             <thead>
                                 <tr>
@@ -422,6 +450,7 @@ $error = $error ?? '';
                                 <?php endforeach; ?>
                             </tbody>
                         </table>
+                        </div>
                     <?php endif; ?>
                 </div>
             </div>
@@ -440,13 +469,14 @@ $error = $error ?? '';
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <div class="sa-table-wrap">
+                <div class="sa-table-wrap sa-modal-table-panel">
                     <?php if (empty($pendingEvents)): ?>
                         <div class="sa-empty">
                             <i class="fas fa-calendar-times"></i>
                             <p class="mb-0">No events are currently waiting for approval.</p>
                         </div>
                     <?php else: ?>
+                        <div class="sa-modal-table-scroll" tabindex="0" aria-label="Scroll pending events table horizontally">
                         <table class="sa-table">
                             <thead>
                                 <tr>
@@ -524,6 +554,7 @@ $error = $error ?? '';
                                 <?php endforeach; ?>
                             </tbody>
                         </table>
+                        </div>
                     <?php endif; ?>
                 </div>
             </div>
@@ -568,13 +599,14 @@ $error = $error ?? '';
                         <option value="College of Hospitality Management">CHM</option>
                     </select>
                 </div>
-                <div class="sa-table-wrap">
+                <div class="sa-table-wrap sa-modal-table-panel">
                     <?php if (empty($allEvents)): ?>
                         <div class="sa-empty">
                             <i class="fas fa-calendar-times"></i>
                             <p class="mb-0">No events found.</p>
                         </div>
                     <?php else: ?>
+                        <div class="sa-modal-table-scroll" tabindex="0" aria-label="Scroll events table horizontally">
                         <table class="sa-table" id="allEventsTable">
                             <thead>
                                 <tr>
@@ -658,6 +690,7 @@ $error = $error ?? '';
                                 <?php endforeach; ?>
                             </tbody>
                         </table>
+                        </div>
                         <div class="d-flex justify-content-between align-items-center mt-2">
                             <small class="text-muted">Page <?= (int)$eventsPage ?> of <?= (int)$eventsTotalPages ?></small>
                             <div class="btn-group btn-group-sm">
@@ -785,6 +818,7 @@ $error = $error ?? '';
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script src="<?= BASE_URL ?>/assets/js/logout_confirm.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+<script src="<?= BASE_URL ?>/assets/js/eventify_calendar_colors.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
 window.BASE_URL = <?= json_encode(BASE_URL ?? '/school_events') ?>;

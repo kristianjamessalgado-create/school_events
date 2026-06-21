@@ -132,11 +132,19 @@ function eventify_create_email_otp(mysqli $conn, string $purpose, string $email,
     $expiresAt = date('Y-m-d H:i:s', time() + ($validMinutes * 60));
     $payloadJson = $payload ? json_encode($payload) : null;
 
-    $stmt = $conn->prepare("INSERT INTO account_email_otps (purpose, email, user_id, otp_hash, payload_json, expires_at) VALUES (?, ?, ?, ?, ?, ?)");
-    if (!$stmt) {
-        return ['ok' => false, 'error' => 'Failed to create OTP'];
+    if ($userId === null || $userId < 1) {
+        $stmt = $conn->prepare("INSERT INTO account_email_otps (purpose, email, user_id, otp_hash, payload_json, expires_at) VALUES (?, ?, NULL, ?, ?, ?)");
+        if (!$stmt) {
+            return ['ok' => false, 'error' => 'Failed to create OTP'];
+        }
+        $stmt->bind_param('sssss', $purpose, $email, $hash, $payloadJson, $expiresAt);
+    } else {
+        $stmt = $conn->prepare("INSERT INTO account_email_otps (purpose, email, user_id, otp_hash, payload_json, expires_at) VALUES (?, ?, ?, ?, ?, ?)");
+        if (!$stmt) {
+            return ['ok' => false, 'error' => 'Failed to create OTP'];
+        }
+        $stmt->bind_param('ssisss', $purpose, $email, $userId, $hash, $payloadJson, $expiresAt);
     }
-    $stmt->bind_param("ssisss", $purpose, $email, $userId, $hash, $payloadJson, $expiresAt);
     $ok = $stmt->execute();
     $stmt->close();
     if (!$ok) {
@@ -152,4 +160,39 @@ function eventify_send_account_otp_email(string $email, string $purpose, string 
     $subject = '[EVENTIFY] Email verification OTP';
     $body = "Your OTP for {$purposeText} is: {$code}\n\nThis code expires in 10 minutes.\nIf you did not request this, ignore this email.";
     return eventify_send_email($email, $subject, $body);
+}
+
+/** One-time flash after register/resend/verify errors — avoids stale "OTP sent" on page refresh. */
+function eventify_set_verify_otp_flash(string $purpose, string $email, ?string $success = null, ?string $error = null): void
+{
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+    $_SESSION['eventify_verify_otp_flash'] = [
+        'purpose' => $purpose === 'reactivate' ? 'reactivate' : 'register',
+        'email' => strtolower(trim($email)),
+        'success' => $success !== null && $success !== '' ? $success : null,
+        'error' => $error !== null && $error !== '' ? $error : null,
+    ];
+}
+
+function eventify_consume_verify_otp_flash(string $purpose, string $email): array
+{
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+    $purpose = $purpose === 'reactivate' ? 'reactivate' : 'register';
+    $email = strtolower(trim($email));
+    $flash = $_SESSION['eventify_verify_otp_flash'] ?? null;
+    unset($_SESSION['eventify_verify_otp_flash']);
+    if (!is_array($flash)) {
+        return ['success' => '', 'error' => ''];
+    }
+    if (($flash['purpose'] ?? '') !== $purpose || ($flash['email'] ?? '') !== $email) {
+        return ['success' => '', 'error' => ''];
+    }
+    return [
+        'success' => (string) ($flash['success'] ?? ''),
+        'error' => (string) ($flash['error'] ?? ''),
+    ];
 }

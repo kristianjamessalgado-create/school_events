@@ -48,10 +48,11 @@ $upcoming_events = $upcoming_events ?? array_values(array_filter($events ?? [], 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     
-    <link rel="stylesheet" href="<?= BASE_URL; ?>/assets/css/dashboard_student.css">
-    <link rel="stylesheet" href="<?= BASE_URL; ?>/assets/css/calendar_legend.css">
-    <link rel="stylesheet" href="<?= BASE_URL; ?>/assets/css/event_day_sessions.css">
-    <link rel="stylesheet" href="<?= BASE_URL; ?>/assets/css/notifications.css">
+    <link rel="stylesheet" href="<?= BASE_URL; ?>/assets/css/eventify_modal.css?v=2">
+    <link rel="stylesheet" href="<?= BASE_URL; ?>/assets/css/dashboard_student.css?v=7">
+    <link rel="stylesheet" href="<?= BASE_URL; ?>/assets/css/calendar_legend.css?v=7">
+    <link rel="stylesheet" href="<?= BASE_URL; ?>/assets/css/event_day_sessions.css?v=4">
+    <link rel="stylesheet" href="<?= BASE_URL; ?>/assets/css/notifications.css?v=4">
     <link rel="stylesheet" href="<?= BASE_URL; ?>/assets/css/calendar_scroll_fix.css">
     <link rel="manifest" href="<?= BASE_URL; ?>/manifest-student.php">
     <link rel="apple-touch-icon" href="<?= BASE_URL; ?>/assets/pwa/icon-192.png">
@@ -61,7 +62,7 @@ $upcoming_events = $upcoming_events ?? array_values(array_filter($events ?? [], 
     <meta name="apple-mobile-web-app-title" content="EVENTIFY">
     <link rel="stylesheet" href="<?= BASE_URL; ?>/assets/css/pwa_student.css">
 </head>
-<body class="student-dashboard student-dashboard--app">
+<body class="student-dashboard student-dashboard--app" data-eventify-keyboard-scroll data-eventify-sidebar="studentSidebar" data-eventify-calendar="student-calendar" data-eventify-layout="root" data-eventify-main=".student-dashboard .main-content">
 
 
 <nav class="top-navbar">
@@ -75,6 +76,9 @@ $upcoming_events = $upcoming_events ?? array_values(array_filter($events ?? [], 
         </div>
     </div>
     <div class="navbar-right">
+        <a class="nav-btn" href="<?= BASE_URL ?>/activities_hub.php" title="Activities hub" aria-label="Activities hub">
+            <i class="fas fa-th-large"></i>
+        </a>
         <button type="button" class="nav-btn" id="topCalendarShortcutBtn" title="Go to today">
             <i class="fas fa-calendar"></i>
         </button>
@@ -87,6 +91,7 @@ $upcoming_events = $upcoming_events ?? array_values(array_filter($events ?? [], 
                 aria-expanded="false"
                 title="Notifications"
                 id="studentNotifDropdownToggle"
+                data-eventify-notif-badge
             >
                 <i class="fas fa-bell"></i>
                 <?php if ($unread_notif_count > 0): ?>
@@ -148,6 +153,11 @@ $upcoming_events = $upcoming_events ?? array_values(array_filter($events ?? [], 
                 </li>
                 <li><hr class="dropdown-divider"></li>
                 <li>
+                    <a class="dropdown-item" href="<?= BASE_URL ?>/activities_hub.php">
+                        <i class="fas fa-th-large me-2"></i> Activities hub
+                    </a>
+                </li>
+                <li>
                     <a class="dropdown-item" href="#" onclick="openProfileModal(); return false;">
                         <i class="fas fa-user me-2"></i> Profile
                     </a>
@@ -180,7 +190,7 @@ $upcoming_events = $upcoming_events ?? array_values(array_filter($events ?? [], 
 
 <div class="sidebar-backdrop" id="sidebarBackdrop" aria-hidden="true"></div>
 <!-- Left Sidebar (drawer on mobile, fixed panel on desktop) -->
-<aside class="sidebar" id="studentSidebar">
+<aside class="sidebar eventify-kb-scroll-zone" id="studentSidebar" tabindex="0" aria-label="Student sidebar — use arrow keys to scroll">
     <button type="button" class="sidebar-close-mobile" id="sidebarCloseMobile" aria-label="Close menu"><i class="fas fa-times"></i></button>
     <!-- User Info Card -->
     <div class="user-info-card">
@@ -274,7 +284,7 @@ $upcoming_events = $upcoming_events ?? array_values(array_filter($events ?? [], 
 <!-- Main Layout -->
 <div class="dashboard-layout">
     <!-- Main Content Area -->
-    <main class="main-content">
+    <main class="main-content eventify-kb-scroll-zone" tabindex="0" aria-label="Student calendar — use arrow keys to scroll">
         <!-- Success/Error Message -->
         <?php if ($msg): ?>
             <div class="alert alert-success alert-dismissible fade show" role="alert">
@@ -309,9 +319,14 @@ $upcoming_events = $upcoming_events ?? array_values(array_filter($events ?? [], 
         <section class="student-my-events-hub mb-4" id="studentMyEventsHub">
             <div class="student-my-events-hub__header">
                 <h3 class="section-heading mb-0"><i class="fas fa-id-card-alt me-2 text-success"></i>My Events</h3>
-                <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#scanQRModal">
-                    <i class="fas fa-qrcode me-1"></i>Scan QR
-                </button>
+                <div class="d-flex gap-2 flex-wrap">
+                    <a class="btn btn-outline-success btn-sm" href="<?= BASE_URL ?>/activities_hub.php">
+                        <i class="fas fa-th-large me-1"></i>Activities hub
+                    </a>
+                    <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#scanQRModal">
+                        <i class="fas fa-qrcode me-1"></i>Scan QR
+                    </button>
+                </div>
             </div>
             <?php if (!empty($my_registered_events)): ?>
             <div class="student-my-events-hub__list">
@@ -345,6 +360,7 @@ $upcoming_events = $upcoming_events ?? array_values(array_filter($events ?? [], 
         <div class="today-activities-section mb-4">
             <div class="today-activities-header">
                 <h3 class="section-heading mb-0"><i class="fas fa-bolt me-2 text-success"></i>Today's Activities</h3>
+                <a class="btn btn-outline-success btn-sm" href="<?= BASE_URL ?>/activities_hub.php">View hub</a>
             </div>
             <div class="today-activities-scroll" role="list">
                 <?php foreach ($today_activities as $idx => $act): ?>
@@ -466,9 +482,15 @@ $upcoming_events = $upcoming_events ?? array_values(array_filter($events ?? [], 
 
 <!-- Profile Modal -->
 <div id="profileModal" class="profile-modal">
-    <div class="profile-modal-content">
-        <span class="profile-close" onclick="closeProfileModal()">&times;</span>
-        <h2>My Information</h2>
+    <div class="profile-modal-content efy-modal">
+        <div class="profile-modal-header efy-modal__header">
+            <div>
+                <span class="efy-modal__eyebrow">Student</span>
+                <h2 class="efy-modal__title mb-0"><i class="fas fa-user" aria-hidden="true"></i> My information</h2>
+            </div>
+            <button type="button" class="profile-close btn-close btn-close-white" onclick="closeProfileModal()" aria-label="Close">&times;</button>
+        </div>
+        <div class="profile-modal-body efy-modal__body">
         <form id="profileForm" action="<?= BASE_URL ?>/backend/auth/update_student_profile.php" method="POST" enctype="multipart/form-data" onsubmit="event.preventDefault(); confirmProfileChanges(this);">
             <?= csrf_field() ?>
             <div class="form-group">
@@ -567,8 +589,9 @@ $upcoming_events = $upcoming_events ?? array_values(array_filter($events ?? [], 
                 <small class="text-muted">Academic year (e.g. 2025-2026).</small>
             </div>
 
-            <button type="submit" class="btn btn-primary w-100">Save Info</button>
+            <button type="submit" class="btn efy-btn-primary w-100">Save info</button>
         </form>
+        </div>
     </div>
 </div>
 
@@ -610,6 +633,7 @@ window.__studentSettings = <?= json_encode($studentSettings ?? []) ?>;
 window.__studentOpenModal = <?= json_encode($openModal) ?>;
 window.__studentCourseDepartmentMap = <?= json_encode(function_exists('eventify_student_course_program_department_map') ? eventify_student_course_program_department_map() : [], JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP) ?>;
 window.__studentPendingUrgentFeedback = <?= json_encode($pending_urgent_feedback_events, JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP) ?>;
+window.__eventEvaluationSections = <?= json_encode(array_values($event_evaluation_sections ?? []), JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP) ?>;
 </script>
 
 <!-- FullCalendar JS -->
@@ -620,35 +644,25 @@ window.__studentPendingUrgentFeedback = <?= json_encode($pending_urgent_feedback
 <script src="<?= BASE_URL ?>/assets/js/logout_confirm.js"></script>
 
 <!-- Logout Modal -->
-<?php include __DIR__ . '/partials/activities_hub_pick_modal.php'; ?>
-
-<div class="modal fade" id="logoutModal" tabindex="-1" aria-labelledby="logoutModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="logoutModalLabel">Confirm Logout</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">Are you sure you want to logout?</div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <a href="<?= BASE_URL ?>/backend/auth/logout.php" class="btn btn-danger">Logout</a>
-      </div>
-    </div>
-  </div>
-</div>
+<?php include __DIR__ . '/partials/logout_confirm_modal.php'; ?>
 
 <!-- Settings Modal -->
 <div class="modal fade" id="settingsModal" tabindex="-1" aria-labelledby="settingsModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
-    <div class="modal-content">
+    <div class="modal-content efy-modal">
       <form id="studentSettingsForm" method="POST" action="<?= BASE_URL ?>/backend/auth/update_student_settings.php">
         <?= csrf_field() ?>
-        <div class="modal-header">
-          <h5 class="modal-title" id="settingsModalLabel"><i class="fas fa-cog me-2"></i>Student Settings</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <div class="modal-header efy-modal__header">
+          <div>
+            <span class="efy-modal__eyebrow">Student</span>
+            <h5 class="modal-title efy-modal__title" id="settingsModalLabel">
+              <i class="fas fa-cog" aria-hidden="true"></i>
+              Settings
+            </h5>
+          </div>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
-        <div class="modal-body">
+        <div class="modal-body efy-modal__body">
           <div class="student-settings-section">
             <h6>Security</h6>
             <p class="small text-muted mb-2">Manage account security options.</p>
@@ -735,9 +749,9 @@ window.__studentPendingUrgentFeedback = <?= json_encode($pending_urgent_feedback
             </div>
           </div>
         </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="button" class="btn btn-primary" id="studentSettingsUpdateBtn"><i class="fas fa-save me-1"></i>Update Settings</button>
+        <div class="modal-footer efy-modal__footer">
+          <button type="button" class="btn efy-btn-muted" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn efy-btn-primary" id="studentSettingsUpdateBtn"><i class="fas fa-save me-1"></i>Update settings</button>
         </div>
       </form>
     </div>
@@ -747,15 +761,20 @@ window.__studentPendingUrgentFeedback = <?= json_encode($pending_urgent_feedback
 <!-- Change Password Modal (Student) -->
 <div class="modal fade" id="studentChangePasswordModal" tabindex="-1" aria-labelledby="studentChangePasswordModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
+    <div class="modal-content efy-modal efy-modal--compact">
       <form method="POST" action="<?= BASE_URL ?>/backend/auth/change_password.php">
         <?= csrf_field() ?>
         <input type="hidden" name="return_to" value="student_dashboard">
-        <div class="modal-header">
-          <h5 class="modal-title" id="studentChangePasswordModalLabel"><i class="fas fa-key me-2"></i>Change Password</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <div class="modal-header efy-modal__header">
+          <div>
+            <h5 class="modal-title efy-modal__title efy-modal__title--sm" id="studentChangePasswordModalLabel">
+              <i class="fas fa-key" aria-hidden="true"></i>
+              Change password
+            </h5>
+          </div>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
-        <div class="modal-body">
+        <div class="modal-body efy-modal__body efy-modal__body--compact">
           <div class="mb-2">
             <label class="form-label small" for="studentCurrentPassword">Current Password</label>
             <div class="password-input-wrap">
@@ -785,9 +804,9 @@ window.__studentPendingUrgentFeedback = <?= json_encode($pending_urgent_feedback
             </div>
           </div>
         </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-primary"><i class="fas fa-save me-1"></i>Update Password</button>
+        <div class="modal-footer efy-modal__footer">
+          <button type="button" class="btn efy-btn-muted" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn efy-btn-primary"><i class="fas fa-save me-1"></i>Update password</button>
         </div>
       </form>
     </div>
@@ -797,15 +816,22 @@ window.__studentPendingUrgentFeedback = <?= json_encode($pending_urgent_feedback
 <!-- Confirm student settings update -->
 <div class="modal fade" id="confirmStudentSettingsModal" tabindex="-1" aria-labelledby="confirmStudentSettingsModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="confirmStudentSettingsModalLabel"><i class="fas fa-question-circle me-2 text-primary"></i>Confirm Update</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+    <div class="modal-content efy-modal efy-modal--compact">
+      <div class="modal-header efy-modal__header">
+        <div>
+          <h5 class="modal-title efy-modal__title efy-modal__title--sm" id="confirmStudentSettingsModalLabel">
+            <i class="fas fa-save" aria-hidden="true"></i>
+            Confirm update
+          </h5>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
-      <div class="modal-body">Are you sure you want to update your settings?</div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No</button>
-        <button type="button" class="btn btn-primary" id="confirmStudentSettingsYesBtn">Yes, Update</button>
+      <div class="modal-body efy-modal__body efy-modal__body--compact">
+        <p class="efy-confirm-message mb-0">Are you sure you want to update your settings?</p>
+      </div>
+      <div class="modal-footer efy-modal__footer">
+        <button type="button" class="btn efy-btn-primary" id="confirmStudentSettingsYesBtn">Yes, update</button>
+        <button type="button" class="btn efy-btn-muted" data-bs-dismiss="modal">No</button>
       </div>
     </div>
   </div>
@@ -814,20 +840,26 @@ window.__studentPendingUrgentFeedback = <?= json_encode($pending_urgent_feedback
 <!-- Help Modal -->
 <div class="modal fade" id="helpModal" tabindex="-1" aria-labelledby="helpModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="helpModalLabel">Help</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+    <div class="modal-content efy-modal efy-modal--compact">
+      <div class="modal-header efy-modal__header">
+        <div>
+          <span class="efy-modal__eyebrow">Student</span>
+          <h5 class="modal-title efy-modal__title" id="helpModalLabel">
+            <i class="fas fa-circle-question" aria-hidden="true"></i>
+            Help
+          </h5>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
-      <div class="modal-body">
-        <ul class="mb-0">
+      <div class="modal-body efy-modal__body efy-modal__body--compact">
+        <ul class="help-list mb-0">
           <li>Use the mini calendar to jump to a date.</li>
           <li>Events shown are filtered by your department.</li>
-          <li>Click Profile to update your info, course, year level, and school year (shown on event attendance sheets).</li>
+          <li>Click Profile to update your info, course, year level, and school year.</li>
         </ul>
       </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      <div class="modal-footer efy-modal__footer">
+        <button type="button" class="btn efy-btn-muted" data-bs-dismiss="modal">Close</button>
       </div>
     </div>
   </div>
@@ -907,14 +939,18 @@ window.__studentPendingUrgentFeedback = <?= json_encode($pending_urgent_feedback
 <!-- Scan QR for attendance -->
 <div class="modal fade" id="scanQRModal" tabindex="-1" aria-labelledby="scanQRModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="scanQRModalLabel">
-          <i class="fas fa-qrcode me-2"></i>Scan event QR for attendance
-        </h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" id="scanQRModalClose"></button>
+    <div class="modal-content efy-modal">
+      <div class="modal-header efy-modal__header">
+        <div>
+          <span class="efy-modal__eyebrow">Student</span>
+          <h5 class="modal-title efy-modal__title" id="scanQRModalLabel">
+            <i class="fas fa-qrcode" aria-hidden="true"></i>
+            Scan QR for attendance
+          </h5>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close" id="scanQRModalClose"></button>
       </div>
-      <div class="modal-body">
+      <div class="modal-body efy-modal__body">
         <div id="scanQRVideoContainer" class="position-relative bg-dark rounded overflow-hidden" style="min-height: 260px;">
           <video id="scanQRVideo" playsinline muted style="width:100%; height:auto; display:block;"></video>
           <canvas id="scanQRCanvas" style="display:none;"></canvas>
@@ -923,9 +959,21 @@ window.__studentPendingUrgentFeedback = <?= json_encode($pending_urgent_feedback
           </div>
         </div>
         <p id="scanQRStatus" class="small text-muted mt-2 mb-0">Scan an <strong>event</strong> or <strong>activity</strong> QR code. Location may be required at the venue.</p>
+        <div id="scanQRFallback" class="mt-3 pt-3 border-top" style="display:none;">
+          <p class="small fw-semibold mb-2">Camera blocked? Use one of these:</p>
+          <label class="btn btn-outline-primary btn-sm w-100 mb-2" for="scanQRFileInput">
+            <i class="fas fa-image me-1"></i>Upload QR photo
+          </label>
+          <input type="file" id="scanQRFileInput" accept="image/*" capture="environment" class="d-none">
+          <div class="input-group input-group-sm">
+            <input type="url" class="form-control" id="scanQRLinkInput" placeholder="Paste check-in link from QR" autocomplete="off" inputmode="url">
+            <button type="button" class="btn btn-primary" id="scanQRLinkGo">Open</button>
+          </div>
+          <p class="small text-muted mt-2 mb-0">Or open your phone <strong>Camera</strong> app, scan the event QR poster, then tap the link.</p>
+        </div>
       </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+      <div class="modal-footer efy-modal__footer">
+        <button type="button" class="btn efy-btn-muted btn-sm" data-bs-dismiss="modal">Close</button>
       </div>
     </div>
   </div>
@@ -934,19 +982,24 @@ window.__studentPendingUrgentFeedback = <?= json_encode($pending_urgent_feedback
 <?php
     $notif_clear_modal_id = 'studentClearNotifsModal';
     include __DIR__ . '/partials/notification_clear_confirm_modal.php';
+    include __DIR__ . '/partials/notification_detail_modal.php';
 ?>
 
 <!-- Attendance record (proof of check-in) -->
 <div class="modal fade" id="studentAttendanceModal" tabindex="-1" aria-labelledby="studentAttendanceModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="studentAttendanceModalLabel">
-          <i class="fas fa-clipboard-check me-2"></i>My attendance
-        </h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    <div class="modal-content efy-modal">
+      <div class="modal-header efy-modal__header">
+        <div>
+          <span class="efy-modal__eyebrow">Student</span>
+          <h5 class="modal-title efy-modal__title" id="studentAttendanceModalLabel">
+            <i class="fas fa-clipboard-check" aria-hidden="true"></i>
+            My attendance
+          </h5>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
-      <div class="modal-body">
+      <div class="modal-body efy-modal__body">
         <p class="small text-muted mb-2">Events you have checked into (QR scan). This is your record of attendance.</p>
         <?php if (!empty($attendance_records)): ?>
           <?php
@@ -1027,8 +1080,11 @@ window.__studentPendingUrgentFeedback = <?= json_encode($pending_urgent_feedback
           </div>
         <?php endif; ?>
       </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+      <div class="modal-footer efy-modal__footer">
+        <a href="<?= BASE_URL ?>/attendance_history.php" class="btn btn-outline-success btn-sm me-auto">
+          <i class="fas fa-history me-1"></i> Full history in hub
+        </a>
+        <button type="button" class="btn efy-btn-muted btn-sm" data-bs-dismiss="modal">Close</button>
       </div>
     </div>
   </div>
@@ -1052,17 +1108,22 @@ window.__studentPendingUrgentFeedback = <?= json_encode($pending_urgent_feedback
 <!-- Urgent post-event feedback prompt -->
 <div class="modal fade" id="studentUrgentFeedbackModal" tabindex="-1" aria-labelledby="studentUrgentFeedbackModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content border-warning" style="border-width: 2px;">
-      <div class="modal-header text-bg-warning">
-        <h5 class="modal-title" id="studentUrgentFeedbackModalLabel"><i class="fas fa-bullhorn me-2"></i>Feedback needed</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    <div class="modal-content efy-modal efy-modal--compact">
+      <div class="modal-header efy-modal__header">
+        <div>
+          <h5 class="modal-title efy-modal__title efy-modal__title--sm" id="studentUrgentFeedbackModalLabel">
+            <i class="fas fa-bullhorn" aria-hidden="true"></i>
+            Evaluation needed
+          </h5>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
-      <div class="modal-body" id="studentUrgentFeedbackModalBody">
-        <p class="mb-0 text-muted">Loading…</p>
+      <div class="modal-body efy-modal__body efy-modal__body--compact" id="studentUrgentFeedbackModalBody">
+        <p class="mb-0 efy-form-help">Loading…</p>
       </div>
-      <div class="modal-footer flex-wrap gap-2">
-        <button type="button" class="btn btn-outline-secondary" id="studentUrgentFeedbackSnoozeBtn">Remind me in 4 hours</button>
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      <div class="modal-footer efy-modal__footer flex-wrap gap-2">
+        <button type="button" class="btn btn-outline-secondary rounded-pill" id="studentUrgentFeedbackSnoozeBtn">Remind me in 4 hours</button>
+        <button type="button" class="btn efy-btn-muted" data-bs-dismiss="modal">Close</button>
       </div>
     </div>
   </div>
@@ -1070,18 +1131,24 @@ window.__studentPendingUrgentFeedback = <?= json_encode($pending_urgent_feedback
 
 <!-- Event Details Modal -->
 <div class="modal fade" id="eventDetailsModal" tabindex="-1" aria-labelledby="eventDetailsModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="eventDetailsModalLabel"><i class="fas fa-calendar-alt me-2"></i>Event Details</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content efy-modal">
+      <div class="modal-header efy-modal__header">
+        <div>
+          <span class="efy-modal__eyebrow">Student</span>
+          <h5 class="modal-title efy-modal__title" id="eventDetailsModalLabel">
+            <i class="fas fa-calendar-alt" aria-hidden="true"></i>
+            Event details
+          </h5>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
-      <div class="modal-body" id="eventDetailsModalBody">
-        <p class="mb-0 text-muted">Loading...</p>
+      <div class="modal-body efy-modal__body" id="eventDetailsModalBody">
+        <p class="mb-0 efy-form-help">Loading…</p>
       </div>
-      <div class="modal-footer flex-wrap gap-2" id="studentEventDetailsModalFooter">
+      <div class="modal-footer efy-modal__footer flex-wrap gap-2" id="studentEventDetailsModalFooter">
         <div id="studentEventDetailsRsvpActions" class="d-flex flex-wrap gap-2 me-auto"></div>
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn efy-btn-muted" data-bs-dismiss="modal">Close</button>
       </div>
     </div>
   </div>
@@ -1090,17 +1157,22 @@ window.__studentPendingUrgentFeedback = <?= json_encode($pending_urgent_feedback
 <!-- Cancel RSVP Confirmation Modal -->
 <div class="modal fade" id="cancelRsvpConfirmModal" tabindex="-1" aria-labelledby="cancelRsvpConfirmModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="cancelRsvpConfirmModalLabel"><i class="fas fa-user-minus me-2 text-danger"></i>Cancel RSVP</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    <div class="modal-content efy-modal efy-modal--compact">
+      <div class="modal-header efy-modal__header">
+        <div>
+          <h5 class="modal-title efy-modal__title efy-modal__title--sm" id="cancelRsvpConfirmModalLabel">
+            <i class="fas fa-user-minus" aria-hidden="true"></i>
+            Cancel RSVP
+          </h5>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
-      <div class="modal-body">
-        Are you sure you want to cancel your RSVP for this event?
+      <div class="modal-body efy-modal__body efy-modal__body--compact">
+        <p class="efy-confirm-message mb-0">Are you sure you want to cancel your RSVP for this event?</p>
       </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No</button>
-        <button type="button" class="btn btn-danger" id="cancelRsvpConfirmYesBtn">Yes, cancel RSVP</button>
+      <div class="modal-footer efy-modal__footer">
+        <button type="button" class="btn efy-btn-danger" id="cancelRsvpConfirmYesBtn">Yes, cancel RSVP</button>
+        <button type="button" class="btn efy-btn-muted" data-bs-dismiss="modal">No</button>
       </div>
     </div>
   </div>
@@ -1109,22 +1181,23 @@ window.__studentPendingUrgentFeedback = <?= json_encode($pending_urgent_feedback
 <!-- Profile Changes Confirmation Modal -->
 <div class="modal fade" id="confirmProfileChangesModal" tabindex="-1" aria-labelledby="confirmProfileChangesModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="confirmProfileChangesModalLabel">
-                    <i class="fas fa-exclamation-circle me-2"></i>Confirm Changes
+        <div class="modal-content efy-modal efy-modal--compact">
+            <div class="modal-header efy-modal__header">
+                <h5 class="modal-title efy-modal__title efy-modal__title--sm" id="confirmProfileChangesModalLabel">
+                    <i class="fas fa-save" aria-hidden="true"></i>
+                    Confirm changes
                 </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body">
-                <p id="confirmProfileChangesMessage" class="mb-0"></p>
+            <div class="modal-body efy-modal__body efy-modal__body--compact">
+                <p id="confirmProfileChangesMessage" class="efy-confirm-message mb-0"></p>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                    <i class="fas fa-times me-1"></i> Cancel
+            <div class="modal-footer efy-modal__footer">
+                <button type="button" class="btn efy-btn-primary" id="confirmProfileChangesBtn">
+                    <i class="fas fa-check me-1"></i> Yes, proceed
                 </button>
-                <button type="button" class="btn btn-primary" id="confirmProfileChangesBtn">
-                    <i class="fas fa-check me-1"></i> Yes, Proceed
+                <button type="button" class="btn efy-btn-muted" data-bs-dismiss="modal">
+                    Cancel
                 </button>
             </div>
         </div>
@@ -1145,10 +1218,12 @@ window.__studentPendingUrgentFeedback = <?= json_encode($pending_urgent_feedback
 <!-- jsQR for QR code decoding -->
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <!-- Dashboard Scripts -->
-<script src="<?= BASE_URL ?>/assets/js/eventify_calendar_colors.js"></script>
-<script src="<?= BASE_URL ?>/assets/js/event_day_sessions.js"></script>
-<script src="<?= BASE_URL ?>/assets/js/eventify_notifications.js?v=1"></script>
-<script src="<?= BASE_URL ?>/assets/js/dashboard_student.js"></script>
+<script src="<?= BASE_URL ?>/assets/js/eventify_calendar_colors.js?v=10"></script>
+<script src="<?= BASE_URL ?>/assets/js/event_day_sessions.js?v=10"></script>
+<script src="<?= BASE_URL ?>/assets/js/eventify_notifications.js?v=6"></script>
+<script src="<?= BASE_URL ?>/assets/js/eventify_dashboard_keyboard_scroll.js"></script>
+<script src="<?= BASE_URL ?>/assets/js/eventify_schedule_display.js?v=1"></script>
+<script src="<?= BASE_URL ?>/assets/js/dashboard_student.js?v=9"></script>
 
 <script>
 // Profile picture preview function
