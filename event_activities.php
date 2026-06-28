@@ -737,7 +737,7 @@ $upcomingSessionsSorted = eah_sort_sessions_by_time(array_values(array_filter(
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <?php if ($isStudent): ?>
-    <meta name="theme-color" content="#153313">
+    <meta name="theme-color" content="#0A3C26">
     <link rel="manifest" href="<?= BASE_URL ?>/manifest-student.php">
     <?php endif; ?>
 
@@ -747,7 +747,7 @@ $upcomingSessionsSorted = eah_sort_sessions_by_time(array_values(array_filter(
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-    <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/event_activities_hub.css?v=36">
+    <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/event_activities_hub.css?v=33">
     <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/eventify_modal.css?v=2">
     <?php if ($isOrganizer): ?>
     <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/event_day_sessions.css?v=4">

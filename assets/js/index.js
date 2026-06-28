@@ -678,6 +678,26 @@ document.addEventListener('DOMContentLoaded', function () {
             });
             calendar.render();
             syncMonth(calendar);
+
+            var syncLandingVideoToCalendar = function () {
+                var card = document.querySelector('#public-calendar .public-calendar-card');
+                var wrap = document.querySelector('.landing-calendar-video-wrap');
+                var video = wrap && wrap.querySelector('.landing-calendar-video');
+                if (!card || !wrap || !video) return;
+                wrap.style.width = card.offsetWidth + 'px';
+                wrap.style.height = card.offsetHeight + 'px';
+            };
+
+            syncLandingVideoToCalendar();
+            calendar.on('datesSet', syncLandingVideoToCalendar);
+            window.addEventListener('resize', syncLandingVideoToCalendar);
+            if (typeof ResizeObserver !== 'undefined') {
+                var cardEl = document.querySelector('#public-calendar .public-calendar-card');
+                if (cardEl) {
+                    var ro = new ResizeObserver(syncLandingVideoToCalendar);
+                    ro.observe(cardEl);
+                }
+            }
         }
     } catch (err) {
         // ignore calendar init failures on landing

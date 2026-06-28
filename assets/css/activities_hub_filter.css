@@ -1,7 +1,7 @@
 .eah-hub-toolbar {
     padding: 0.75rem 1rem;
     margin-bottom: 0.65rem;
-    background: rgba(255, 255, 255, 0.5);
+    background: var(--org-card, #ffffff);
     border-bottom: 1px solid var(--eah-border);
 }
 
@@ -21,7 +21,7 @@
 
 .eah-hub-filter__label {
     font-size: 0.68rem;
-    font-weight: 700;
+    font-weight: 600;
     color: var(--eah-muted);
     text-transform: uppercase;
     letter-spacing: 0.06em;
@@ -62,7 +62,7 @@
 }
 
 .eah-hub-filter__chip--active {
-    background-color: #16a34a;
+    background-color: #0A3C26;
 }
 
 .eah-hub-filter__chip--pending {
@@ -78,7 +78,7 @@
 }
 
 .eah-hub-filter__chip.is-selected.eah-hub-filter__chip--active {
-    box-shadow: 0 0 0 2px #fff, 0 0 0 4px #16a34a;
+    box-shadow: 0 0 0 2px #fff, 0 0 0 4px #0A3C26;
 }
 
 .eah-hub-filter__chip.is-selected.eah-hub-filter__chip--pending {
@@ -106,14 +106,14 @@
     padding: 0;
     font: inherit;
     font-weight: 600;
-    color: #1b4a1b;
+    color: var(--efy-brand-gold-dim, #C99A26);
     text-decoration: underline;
     text-underline-offset: 2px;
     cursor: pointer;
 }
 
 .eah-hub-filter__quick-btn:hover {
-    color: #3d8a35;
+    color: var(--efy-brand-gold, #E5B22D);
 }
 
 .eah-hub-filter__quick-sep {
@@ -131,12 +131,12 @@
 
 .eah-hub-filter-empty .eah-empty-icon {
     font-size: 1.35rem;
-    color: #3d8a35;
+    color: var(--efy-brand-gold, #E5B22D);
     margin-bottom: 0.35rem;
 }
 
 .eah-hub-filter-empty .eah-empty-title {
     font-weight: 700;
-    color: #1b4a1b;
+    color: var(--eah-text, #1a1a2e);
     margin-bottom: 0.25rem;
 }

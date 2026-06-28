@@ -115,14 +115,14 @@ foreach ($items as $item) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#153313">
+    <meta name="theme-color" content="#0A3C26">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="EVENTIFY">
     <link rel="manifest" href="<?= BASE_URL ?>/manifest-student.php">
     <title>Attendance history | EVENTIFY</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/event_activities_hub.css?v=31">
+    <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/event_activities_hub.css?v=33">
 </head>
 <body class="event-activities-hub event-activities-hub--index event-activities-hub--student">
 <div class="eah-wrap">

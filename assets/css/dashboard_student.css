@@ -2010,3 +2010,396 @@ body, html {
         padding-bottom: 1.5rem;
     }
 }
+
+/* ===============================
+   EMERALD THEME OVERRIDE
+   Modern · Dark sidebar · Emerald accents
+================================ */
+:root,
+body.student-dashboard {
+    --org-sidebar: #121212;
+    --org-sidebar-elevated: #1e1e1e;
+    --org-sidebar-border: rgba(255, 255, 255, 0.06);
+    --org-emerald: #2ecc71;
+    --org-emerald-dim: #27ae60;
+    --org-emerald-glow: rgba(46, 204, 113, 0.18);
+    --org-emerald-muted: rgba(46, 204, 113, 0.12);
+    --org-surface: #f8f9fa;
+    --org-card: #ffffff;
+    --org-text: #1a1a2e;
+    --org-muted: #64748b;
+    --org-border: #e2e8f0;
+    --org-radius-lg: 18px;
+    --org-radius-md: 12px;
+    --org-shadow: 0 4px 24px rgba(15, 23, 42, 0.06);
+    --org-shadow-lg: 0 8px 32px rgba(15, 23, 42, 0.08);
+    --org-white: var(--org-card);
+    --school-white: var(--org-card);
+    --school-cream: var(--org-surface);
+    --school-olive-top: var(--org-sidebar-elevated);
+    --school-forest-mid: var(--org-emerald-dim);
+    --school-forest-deep: var(--org-sidebar);
+    --school-forest-card: var(--org-sidebar);
+    --school-gold: var(--org-emerald);
+    --school-gold-dim: var(--org-emerald-dim);
+    --school-green-bright: var(--org-emerald);
+    --school-border: var(--org-sidebar-border);
+    --school-soft-bg: var(--org-emerald-muted);
+    --school-text-on-dark: #ffffff;
+    --school-text-muted: #94a3b8;
+    --eventify-kb-focus: var(--org-emerald);
+}
+
+html:has(body.student-dashboard),
+body.student-dashboard {
+    background: var(--org-surface) !important;
+    background-attachment: fixed;
+    min-height: 100%;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+body.student-dashboard .top-navbar {
+    background: var(--org-sidebar);
+    border-bottom: 1px solid var(--org-sidebar-border);
+    box-shadow: var(--org-shadow);
+}
+
+body.student-dashboard .brand-logo {
+    color: var(--school-text-on-dark);
+    font-weight: 700;
+    text-shadow: none;
+}
+
+body.student-dashboard .brand-logo i {
+    color: var(--org-emerald);
+}
+
+body.student-dashboard .nav-btn {
+    color: var(--school-text-muted);
+    border-radius: var(--org-radius-md);
+}
+
+body.student-dashboard .nav-btn:hover {
+    background: var(--org-emerald-muted);
+    color: var(--org-emerald);
+}
+
+body.student-dashboard .profile-avatar {
+    background: linear-gradient(135deg, var(--org-emerald) 0%, var(--org-emerald-dim) 100%);
+    border: 2px solid rgba(46, 204, 113, 0.35);
+}
+
+body.student-dashboard .sidebar {
+    background:
+        radial-gradient(ellipse 80% 50% at 0% 0%, var(--org-emerald-glow), transparent 55%),
+        var(--org-sidebar);
+    border-right: 1px solid var(--org-sidebar-border);
+    box-shadow: none;
+}
+
+body.student-dashboard .sidebar .section-title {
+    color: var(--org-muted);
+    letter-spacing: 0.1em;
+    text-shadow: none;
+    font-weight: 600;
+}
+
+body.student-dashboard .sidebar .mini-cal-month,
+body.student-dashboard .sidebar .calendar-name {
+    color: var(--school-text-on-dark);
+    font-weight: 500;
+}
+
+body.student-dashboard .sidebar .mini-cal-day {
+    color: var(--school-text-muted);
+    border-radius: 8px;
+}
+
+body.student-dashboard .sidebar .mini-cal-day-header {
+    color: var(--org-muted);
+    font-weight: 600;
+}
+
+body.student-dashboard .sidebar .mini-cal-day:hover {
+    background: var(--org-emerald-muted);
+}
+
+body.student-dashboard .sidebar .mini-cal-day.today {
+    background: var(--org-emerald);
+    color: #ffffff;
+    font-weight: 700;
+}
+
+body.student-dashboard .mini-cal-day.selected {
+    background: var(--org-emerald-muted);
+    color: var(--org-emerald);
+    font-weight: 700;
+    outline: 1px solid rgba(46, 204, 113, 0.45);
+}
+
+body.student-dashboard .mini-calendar-widget {
+    background: var(--org-sidebar-elevated);
+    border: 1px solid var(--org-sidebar-border);
+    border-radius: var(--org-radius-lg);
+    box-shadow: var(--org-shadow);
+}
+
+body.student-dashboard .user-info-card {
+    background: var(--org-sidebar-elevated);
+    border: 1px solid var(--org-sidebar-border);
+    border-radius: var(--org-radius-lg);
+    box-shadow: var(--org-shadow);
+}
+
+body.student-dashboard .user-avatar-large {
+    background: linear-gradient(135deg, var(--org-emerald) 0%, var(--org-emerald-dim) 100%);
+    border: 2px solid rgba(255, 255, 255, 0.15);
+    color: #ffffff;
+}
+
+body.student-dashboard .action-btn {
+    background: var(--org-sidebar-elevated);
+    border-color: var(--org-sidebar-border);
+    color: var(--school-text-on-dark);
+    border-radius: var(--org-radius-md);
+    box-shadow: none;
+}
+
+body.student-dashboard .action-btn:hover {
+    background: var(--org-emerald-muted);
+    border-color: rgba(46, 204, 113, 0.35);
+    color: var(--org-emerald);
+    transform: translateY(-1px);
+}
+
+body.student-dashboard .action-btn i {
+    color: var(--org-emerald);
+}
+
+body.student-dashboard .action-btn.logout-btn {
+    color: #fca5a5;
+    border-color: rgba(248, 113, 113, 0.25);
+}
+
+body.student-dashboard .action-btn.logout-btn:hover {
+    background: rgba(127, 29, 29, 0.25);
+    border-color: #f87171;
+    color: #fecaca;
+}
+
+body.student-dashboard .main-content {
+    background: var(--org-surface) !important;
+    border-left: none;
+    box-shadow: none;
+}
+
+body.student-dashboard .calendar-container,
+body.student-dashboard .student-calendar-legend,
+body.student-dashboard .event-item,
+body.student-dashboard .modal-content {
+    background: var(--org-card);
+}
+
+body.student-dashboard .calendar-controls {
+    background: var(--org-card) !important;
+    border: 1px solid var(--org-border) !important;
+    border-radius: var(--org-radius-lg) !important;
+    margin: 16px 16px 0;
+    box-shadow: var(--org-shadow);
+}
+
+body.student-dashboard .calendar-title {
+    color: var(--org-text) !important;
+    font-weight: 700;
+}
+
+body.student-dashboard .control-nav,
+body.student-dashboard .view-btn {
+    background: var(--org-card);
+    border-color: var(--org-border) !important;
+    color: var(--org-text);
+    border-radius: var(--org-radius-md);
+}
+
+body.student-dashboard .control-nav:hover,
+body.student-dashboard .view-btn:hover {
+    border-color: var(--org-emerald) !important;
+    color: var(--org-emerald-dim);
+    background: var(--org-emerald-muted);
+}
+
+body.student-dashboard .view-btn.active {
+    background: var(--org-emerald) !important;
+    border-color: var(--org-emerald) !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 14px rgba(46, 204, 113, 0.35) !important;
+}
+
+body.student-dashboard .student-calendar-legend {
+    background: var(--org-card) !important;
+    border: 1px solid var(--org-border) !important;
+    color: var(--org-text) !important;
+    border-radius: var(--org-radius-md);
+    margin-inline: 16px;
+}
+
+body.student-dashboard #student-calendar {
+    border: 1px solid var(--org-border);
+    border-radius: var(--org-radius-lg);
+    background: var(--org-card) !important;
+    box-shadow: var(--org-shadow);
+}
+
+body.student-dashboard .fc-col-header-cell {
+    background: var(--org-emerald-muted) !important;
+    border-bottom-color: var(--org-border) !important;
+}
+
+body.student-dashboard .fc-col-header-cell-cushion {
+    color: var(--org-text) !important;
+    font-weight: 600;
+}
+
+body.student-dashboard .fc-day-today {
+    background-color: var(--org-emerald-muted) !important;
+}
+
+body.student-dashboard .fc-day-today .fc-daygrid-day-number {
+    background: var(--org-emerald);
+    color: #ffffff !important;
+    border-radius: 8px;
+    font-weight: 700;
+}
+
+body.student-dashboard .fc-event[data-event-state="active"] {
+    background-color: var(--org-emerald) !important;
+    border-color: var(--org-emerald-dim) !important;
+    color: #ffffff !important;
+}
+
+body.student-dashboard .fc-event[data-event-state="upcoming"] {
+    background-color: #38bdf8 !important;
+    border-color: #0ea5e9 !important;
+    color: #ffffff !important;
+}
+
+body.student-dashboard .fc-more-link {
+    color: var(--org-emerald-dim) !important;
+}
+
+body.student-dashboard .fc-more-link:hover {
+    background: var(--org-emerald-muted) !important;
+}
+
+body.student-dashboard .section-heading {
+    color: var(--org-text);
+    border-left-color: var(--org-emerald);
+}
+
+body.student-dashboard .event-title {
+    color: var(--org-text);
+    font-weight: 700;
+}
+
+body.student-dashboard .event-date-badge {
+    background: linear-gradient(135deg, var(--org-emerald) 0%, var(--org-emerald-dim) 100%);
+    color: #ffffff;
+    border-color: transparent;
+    border-radius: var(--org-radius-md);
+}
+
+body.student-dashboard .btn-primary {
+    background: var(--org-emerald);
+    border: none;
+    color: #ffffff;
+    border-radius: var(--org-radius-md);
+    font-weight: 600;
+}
+
+body.student-dashboard .btn-primary:hover {
+    background: var(--org-emerald-dim);
+    color: #ffffff;
+    border-color: transparent;
+}
+
+body.student-dashboard .upcoming-events-section {
+    background: var(--org-surface) !important;
+    border-top-color: var(--org-border);
+}
+
+body.student-dashboard .profile-menu {
+    border-color: var(--org-border);
+    background: var(--org-card);
+    border-radius: var(--org-radius-lg);
+    box-shadow: var(--org-shadow-lg);
+}
+
+body.student-dashboard .profile-menu .dropdown-item:hover,
+body.student-dashboard .profile-menu .dropdown-item:active {
+    background: var(--org-emerald-muted);
+    color: var(--org-emerald-dim);
+}
+
+body.student-dashboard .eventify-notif-dropdown__header {
+    background: var(--org-sidebar);
+    color: var(--org-white);
+    border-bottom: 1px solid var(--org-sidebar-border);
+}
+
+body.student-dashboard .eventify-notif-card--unread {
+    border-left-color: var(--org-emerald);
+    background: linear-gradient(90deg, var(--org-emerald-muted) 0%, var(--org-card) 28%);
+}
+
+body.student-dashboard .eventify-notif-footer-btn--done {
+    background: var(--org-emerald);
+    color: #ffffff;
+    border-color: var(--org-emerald);
+    border-radius: var(--org-radius-md);
+}
+
+body.student-dashboard .efy-modal {
+    --efy-cream: var(--org-card);
+    --efy-cream-2: var(--org-surface);
+    --efy-forest: var(--org-sidebar);
+    --efy-forest-deep: #0a0a0a;
+    --efy-gold: var(--org-emerald);
+    --efy-gold-dim: var(--org-emerald-dim);
+    --efy-green: var(--org-emerald);
+    --efy-border: var(--org-border);
+    --efy-border-gold: rgba(46, 204, 113, 0.35);
+    --efy-text: var(--org-text);
+    --efy-muted: var(--org-muted);
+}
+
+body.student-dashboard .student-my-events-hub {
+    background: linear-gradient(135deg, var(--org-emerald-muted) 0%, var(--org-card) 55%);
+    border: 1px solid var(--org-border);
+    border-radius: var(--org-radius-lg);
+}
+
+body.student-dashboard .student-my-event-card__title {
+    color: var(--org-text);
+}
+
+body.student-dashboard .student-my-event-card__link {
+    color: var(--org-emerald-dim);
+}
+
+body.student-dashboard .student-app-tabbar {
+    border-top-color: var(--org-border);
+}
+
+body.student-dashboard .student-app-tabbar__btn i {
+    color: var(--org-emerald);
+}
+
+body.student-dashboard .student-app-tabbar__btn:active {
+    background: var(--org-emerald-muted);
+}
+
+body.student-dashboard .main-content.eventify-kb-scroll-zone:focus,
+body.student-dashboard .main-content.eventify-kb-scroll-zone:focus-visible {
+    outline: none !important;
+    box-shadow: none !important;
+}

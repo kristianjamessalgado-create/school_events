@@ -1,42 +1,76 @@
-/* EVENTIFY — Activities hub (aligned with student dashboard) */
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+/* EVENTIFY — Activities hub (forest green + school gold) */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 :root {
-    --school-white: #ffffff;
-    --school-cream: #f7f4e7;
-    --school-olive-top: #b7be77;
-    --school-forest-mid: #3f6a2a;
-    --school-forest-deep: #153313;
-    --school-forest-card: #1b4a1b;
-    --school-gold: #e6c54a;
-    --school-gold-dim: #b88f2a;
-    --school-green-bright: #3d8a35;
-    --school-border: rgba(230, 197, 74, 0.42);
-    --school-text-on-dark: #ffffff;
-    --school-text-muted: rgba(247, 244, 231, 0.84);
-    --eah-bg: var(--school-forest-deep);
-    --eah-surface: var(--school-cream);
-    --eah-surface-2: #fffdf8;
-    --eah-surface-3: #efe9d6;
-    --eah-text: #1b4a1b;
-    --eah-muted: #4b5f4b;
-    --eah-border: rgba(27, 74, 27, 0.14);
-    --eah-accent: var(--school-green-bright);
-    --eah-accent-hover: #2f6f28;
-    --eah-accent-cyan: var(--school-gold);
+    --efy-brand-nav:        #0A3C26;
+    --efy-brand-sidebar:    #062618;
+    --efy-brand-sidebar-up:   #0A3C26;
+    --efy-brand-gold:       #E5B22D;
+    --efy-brand-gold-dim:   #C99A26;
+    --efy-brand-gold-light: #F0C85A;
+    --efy-brand-forest:     #0A3C26;
+    --efy-brand-forest-dim: #083220;
+    --efy-brand-text:       #F8F9FA;
+    --efy-brand-text-muted: rgba(248, 249, 250, 0.72);
+    --efy-brand-text-on-gold: #0A3C26;
+    --efy-brand-gold-muted: rgba(229, 178, 45, 0.14);
+    --efy-brand-gold-glow:  rgba(229, 178, 45, 0.18);
+    --efy-brand-gold-border: rgba(229, 178, 45, 0.32);
+    --efy-brand-forest-muted: rgba(10, 60, 38, 0.10);
+
+    --org-navbar:           var(--efy-brand-nav);
+    --org-sidebar:          var(--efy-brand-sidebar);
+    --org-sidebar-elevated: var(--efy-brand-sidebar-up);
+    --org-sidebar-border:   rgba(255, 255, 255, 0.08);
+    --org-emerald:          var(--efy-brand-gold);
+    --org-emerald-dim:      var(--efy-brand-gold-dim);
+    --org-emerald-glow:     var(--efy-brand-gold-glow);
+    --org-emerald-muted:    var(--efy-brand-gold-muted);
+    --org-surface:          #f8f9fa;
+    --org-card:             #ffffff;
+    --org-text:             #1a1a2e;
+    --org-muted:            #64748b;
+    --org-border:           #e2e8f0;
+    --org-radius-lg:        18px;
+    --org-shadow:           0 4px 24px rgba(15, 23, 42, 0.06);
+    --org-shadow-lg:        0 8px 32px rgba(15, 23, 42, 0.08);
+
+    --school-white: var(--org-card);
+    --school-cream: var(--org-surface);
+    --school-olive-top: var(--org-surface);
+    --school-forest-mid: var(--efy-brand-forest);
+    --school-forest-deep: var(--efy-brand-sidebar);
+    --school-forest-card: var(--efy-brand-sidebar);
+    --school-gold: var(--efy-brand-gold);
+    --school-gold-dim: var(--efy-brand-gold-dim);
+    --school-green-bright: var(--efy-brand-forest);
+    --school-border: var(--efy-brand-gold-border);
+    --school-text-on-dark: var(--efy-brand-text);
+    --school-text-muted: var(--efy-brand-text-muted);
+
+    --eah-bg: var(--org-surface);
+    --eah-surface: var(--org-card);
+    --eah-surface-2: var(--org-surface);
+    --eah-surface-3: var(--org-border);
+    --eah-text: var(--org-text);
+    --eah-muted: var(--org-muted);
+    --eah-border: var(--org-border);
+    --eah-accent: var(--efy-brand-gold);
+    --eah-accent-hover: var(--efy-brand-gold-dim);
+    --eah-accent-cyan: var(--efy-brand-gold-light);
     --eah-live: #dc2626;
     --eah-hot: #ea580c;
-    --eah-radius: 16px;
+    --eah-radius: var(--org-radius-lg);
     --eah-radius-sm: 12px;
-    --eah-green: var(--school-green-bright);
+    --eah-green: var(--efy-brand-forest);
     --eah-navbar-height: 64px;
 }
 
 * { box-sizing: border-box; }
 
 body.event-activities-hub {
-    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-    background: linear-gradient(180deg, var(--school-olive-top) 0%, var(--school-forest-mid) 42%, var(--school-forest-deep) 100%);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background: var(--org-surface);
     background-attachment: fixed;
     color: var(--eah-text);
     min-height: 100vh;
@@ -52,10 +86,10 @@ body.event-activities-hub {
 }
 
 .eah-hub-panel {
-    background: var(--school-cream);
-    border: 2px solid var(--school-border);
+    background: var(--org-card);
+    border: 1px solid var(--org-border);
     border-radius: 22px;
-    box-shadow: 0 14px 36px rgba(0, 0, 0, 0.28);
+    box-shadow: var(--org-shadow-lg);
     padding: 0;
     color: var(--eah-text);
     overflow: hidden;
@@ -74,9 +108,9 @@ body.event-activities-hub {
     height: var(--eah-navbar-height);
     padding: 0 1.25rem;
     gap: 0.5rem;
-    background: linear-gradient(180deg, var(--school-forest-card) 0%, #021a08 100%);
-    border-bottom: 3px solid var(--school-gold);
-    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+    background: var(--org-navbar);
+    border-bottom: 1px solid var(--efy-brand-gold-border);
+    box-shadow: 0 2px 12px rgba(4, 25, 16, 0.35);
 }
 
 .eah-topbar__menu,
@@ -103,8 +137,8 @@ body.event-activities-hub {
 }
 
 .eah-topbar__menu:hover {
-    background: rgba(249, 237, 0, 0.18);
-    color: var(--school-gold);
+    background: var(--org-emerald-muted);
+    color: var(--org-emerald);
 }
 
 .eah-topbar__actions {
@@ -119,29 +153,30 @@ body.event-activities-hub {
 }
 
 .eah-topbar__action {
-    color: var(--school-gold);
+    color: var(--school-text-muted);
     display: inline-flex;
     align-items: center;
 }
 
-.eah-topbar__action:hover { color: #f5de7a; }
+.eah-topbar__action:hover { color: var(--org-emerald); }
 
 .eah-topbar__action.is-active {
-    color: var(--school-gold);
-    background: rgba(249, 237, 0, 0.12);
-    border-radius: 8px;
+    color: var(--org-emerald);
+    background: var(--org-emerald-muted);
+    border-radius: var(--eah-radius-sm);
     text-decoration: none;
 }
 
 .eah-topbar__action--create {
-    background: rgba(249, 237, 0, 0.16);
+    background: var(--org-emerald);
+    color: var(--efy-brand-text-on-gold);
     border-radius: 999px;
     padding: 0.35rem 0.7rem;
 }
 
 .eah-topbar__action--create:hover {
-    background: rgba(249, 237, 0, 0.26);
-    color: #fff6a8;
+    background: var(--org-emerald-dim);
+    color: var(--efy-brand-text-on-gold);
 }
 
 .eah-topbar__logo {
@@ -157,7 +192,7 @@ body.event-activities-hub {
 }
 
 .eah-topbar__logo i {
-    color: var(--school-gold);
+    color: var(--org-emerald);
 }
 
 /* —— Nav drawer —— */
@@ -2672,7 +2707,7 @@ body.event-activities-hub #eahUploadPhotosModal .btn-close {
 .eah-hub-filter__btn {
     border: 1px solid var(--eah-border);
     background: #fff;
-    color: #1b4a1b;
+    color: var(--efy-brand-forest);
     border-radius: 999px;
     padding: 0.35rem 0.85rem;
     font-size: 0.78rem;
@@ -2683,14 +2718,14 @@ body.event-activities-hub #eahUploadPhotosModal .btn-close {
 }
 
 .eah-hub-filter__btn:hover {
-    border-color: rgba(27, 74, 27, 0.35);
-    background: #f7f4e7;
+    border-color: var(--efy-brand-gold-border);
+    background: var(--efy-brand-gold-muted);
 }
 
 .eah-hub-filter__btn.is-active {
-    background: #1b4a1b;
-    border-color: #1b4a1b;
-    color: #fff;
+    background: var(--efy-brand-forest);
+    border-color: var(--efy-brand-forest);
+    color: var(--efy-brand-gold);
 }
 
 .eah-hub-filter-empty {
@@ -2704,13 +2739,13 @@ body.event-activities-hub #eahUploadPhotosModal .btn-close {
 
 .eah-hub-filter-empty .eah-empty-icon {
     font-size: 1.35rem;
-    color: #3d8a35;
+    color: var(--efy-brand-gold);
     margin-bottom: 0.35rem;
 }
 
 .eah-hub-filter-empty .eah-empty-title {
     font-weight: 700;
-    color: #1b4a1b;
+    color: var(--efy-brand-forest);
     margin-bottom: 0.25rem;
 }
 
@@ -3188,5 +3223,304 @@ body.event-activities-hub #eahUploadPhotosModal .btn-close {
 .eah-attendance-row .eah-row-chevron {
     color: var(--eah-muted);
     font-size: 0.75rem;
+}
+
+/* ===============================
+   BRAND THEME OVERRIDES
+   (forest nav · deep sidebar · gold accents)
+================================ */
+body.event-activities-hub .eah-nav-drawer__panel {
+    background:
+        radial-gradient(ellipse 80% 50% at 0% 0%, var(--org-emerald-glow), transparent 55%),
+        var(--org-sidebar);
+    border-right: 1px solid var(--org-sidebar-border);
+    color: var(--school-text-on-dark);
+    box-shadow: var(--org-shadow-lg);
+}
+
+body.event-activities-hub .eah-nav-drawer__link:hover {
+    background: var(--org-emerald-muted);
+}
+
+body.event-activities-hub .eah-nav-drawer__link.is-active {
+    background: var(--org-emerald-muted);
+    color: var(--org-emerald);
+    box-shadow: inset 3px 0 0 var(--org-emerald);
+}
+
+body.event-activities-hub .eah-nav-drawer__link.is-active i {
+    color: var(--org-emerald);
+}
+
+body.event-activities-hub .eah-nav-drawer__close {
+    background: var(--org-sidebar-elevated);
+    color: var(--school-text-muted);
+}
+
+body.event-activities-hub .eah-event-hero {
+    background: var(--org-sidebar);
+    border-bottom: 1px solid var(--org-sidebar-border);
+    color: var(--school-text-on-dark);
+}
+
+body.event-activities-hub .eah-event-hero__eyebrow {
+    color: var(--org-muted);
+    font-weight: 600;
+}
+
+body.event-activities-hub .eah-hub-breadcrumb__link {
+    color: var(--org-emerald);
+}
+
+body.event-activities-hub .eah-hub-breadcrumb__link:hover {
+    color: var(--efy-brand-gold-light);
+}
+
+body.event-activities-hub .eah-hub-breadcrumb__sep {
+    color: rgba(148, 163, 184, 0.55);
+}
+
+body.event-activities-hub .eah-hero-create-btn {
+    border-color: rgba(229, 178, 45, 0.35);
+    background: var(--org-emerald-muted);
+    color: var(--org-emerald);
+}
+
+body.event-activities-hub .eah-hero-create-btn:hover {
+    background: rgba(229, 178, 45, 0.22);
+    color: var(--efy-brand-gold-light);
+}
+
+body.event-activities-hub .eah-rsvp-strip--hero {
+    background: var(--org-sidebar-elevated);
+    border-color: var(--org-sidebar-border);
+}
+
+body.event-activities-hub .eah-rsvp-strip--hero .eah-rsvp-strip__ok {
+    color: var(--org-emerald);
+}
+
+body.event-activities-hub .eah-rsvp-strip__btn--primary {
+    background: var(--org-emerald);
+    color: var(--efy-brand-text-on-gold);
+    border-color: var(--org-emerald-dim);
+    font-weight: 700;
+}
+
+body.event-activities-hub .eah-featured-banner {
+    background: linear-gradient(135deg, var(--efy-brand-forest) 0%, var(--efy-brand-forest-dim) 100%);
+    border: 1px solid var(--efy-brand-gold-border);
+    box-shadow: 0 8px 24px rgba(10, 60, 38, 0.22);
+}
+
+body.event-activities-hub .eah-section__title {
+    color: var(--org-muted);
+}
+
+body.event-activities-hub .eah-section__title i {
+    color: var(--org-emerald);
+}
+
+body.event-activities-hub .eah-quick-tile__icon {
+    background: var(--org-emerald-muted);
+    color: var(--org-emerald-dim);
+}
+
+body.event-activities-hub .eah-quick-tile--mine .eah-quick-tile__icon {
+    background: var(--org-emerald-muted);
+    color: var(--org-emerald);
+}
+
+body.event-activities-hub .eah-quick-tile--tickets .eah-quick-tile__icon {
+    background: rgba(229, 178, 45, 0.15);
+    color: var(--org-emerald-dim);
+}
+
+body.event-activities-hub .eah-quick-scroll::-webkit-scrollbar-thumb {
+    background: rgba(229, 178, 45, 0.3);
+}
+
+body.event-activities-hub .eah-activity-list__title {
+    color: var(--org-text);
+}
+
+body.event-activities-hub .eah-activity-list__item:hover {
+    background: var(--org-card);
+    border-color: rgba(229, 178, 45, 0.35);
+}
+
+body.event-activities-hub .eah-activity-list__chev {
+    color: var(--org-emerald);
+}
+
+body.event-activities-hub .eah-day-chip__date,
+body.event-activities-hub .eah-day-chip__count {
+    color: var(--org-text);
+}
+
+body.event-activities-hub .eah-day-chip__count {
+    background: var(--org-emerald-muted);
+}
+
+body.event-activities-hub .eah-day-chip:hover {
+    border-color: rgba(229, 178, 45, 0.45);
+}
+
+body.event-activities-hub .eah-pill--gold {
+    background: var(--org-emerald);
+    color: var(--efy-brand-text-on-gold);
+}
+
+body.event-activities-hub .eah-tb-btn.is-active,
+body.event-activities-hub .eah-tb-btn--toggle.is-active {
+    background: var(--org-emerald);
+    border-color: var(--org-emerald-dim);
+    color: var(--efy-brand-text-on-gold);
+    box-shadow: 0 4px 14px rgba(229, 178, 45, 0.32);
+}
+
+body.event-activities-hub .eah-tb-btn--toggle.is-active .eah-tb-btn__label {
+    color: var(--efy-brand-text-on-gold);
+}
+
+body.event-activities-hub .eah-filter-banner {
+    background: var(--org-emerald-muted);
+    border: 1px solid rgba(229, 178, 45, 0.35);
+    color: var(--org-text);
+}
+
+body.event-activities-hub .eah-filter-banner__text i {
+    color: var(--org-emerald);
+}
+
+body.event-activities-hub .eah-filter-banner__clear {
+    border-color: var(--org-border);
+    color: var(--org-text);
+}
+
+body.event-activities-hub .eah-filter-banner__clear:hover {
+    background: var(--org-emerald);
+    border-color: var(--org-emerald-dim);
+    color: var(--efy-brand-text-on-gold);
+}
+
+body.event-activities-hub .eah-hub-filter__btn.is-active {
+    background: var(--efy-brand-forest);
+    border-color: var(--efy-brand-forest);
+    color: var(--efy-brand-gold);
+}
+
+body.event-activities-hub .eah-hub-filter__btn {
+    color: var(--org-text);
+}
+
+body.event-activities-hub .eah-hub-filter__btn:hover {
+    border-color: rgba(229, 178, 45, 0.45);
+    background: var(--org-emerald-muted);
+}
+
+body.event-activities-hub .eah-hub-filter-empty .eah-empty-icon {
+    color: var(--org-emerald);
+}
+
+body.event-activities-hub .eah-hub-filter-empty .eah-empty-title {
+    color: var(--org-text);
+}
+
+body.event-activities-hub .eah-picker-card:hover {
+    border-color: rgba(229, 178, 45, 0.35);
+}
+
+body.event-activities-hub .eah-picker-card__title-icon {
+    color: var(--org-emerald);
+}
+
+body.event-activities-hub .eah-picker-card__chev-wrap {
+    background: var(--org-emerald-muted);
+}
+
+body.event-activities-hub .eah-picker-card:hover .eah-picker-card__chev-wrap {
+    background: rgba(229, 178, 45, 0.22);
+    color: var(--org-emerald-dim);
+}
+
+body.event-activities-hub .eah-landing-section__title i {
+    color: var(--org-emerald);
+}
+
+body.event-activities-hub .eah-landing-chip:hover,
+body.event-activities-hub .eah-landing-my-card:hover,
+body.event-activities-hub .eah-landing-attendance-card:hover {
+    border-color: rgba(229, 178, 45, 0.45);
+}
+
+body.event-activities-hub .eah-landing-attendance-card {
+    border-color: rgba(229, 178, 45, 0.28);
+    background: linear-gradient(135deg, rgba(229, 178, 45, 0.08) 0%, var(--org-card) 100%);
+}
+
+body.event-activities-hub .eah-landing-attendance-card__icon {
+    background: var(--org-emerald-muted);
+    color: var(--org-emerald-dim);
+}
+
+body.event-activities-hub .eah-sp-card--featured {
+    background: linear-gradient(135deg, var(--efy-brand-forest) 0%, var(--efy-brand-forest-dim) 100%);
+    border-color: var(--efy-brand-gold-border);
+}
+
+body.event-activities-hub .eah-nav-drawer__link i {
+    color: var(--org-emerald);
+}
+
+body.event-activities-hub .eah-breadcrumb a {
+    color: var(--org-emerald-dim);
+}
+
+body.event-activities-hub .eah-attendance-status--checked-in .eah-attendance-status__icon {
+    background: var(--efy-brand-forest);
+}
+
+body.event-activities-hub .eah-organizer-bar__btn--primary {
+    background: var(--org-emerald);
+    border-color: var(--org-emerald-dim);
+    color: var(--efy-brand-text-on-gold);
+}
+
+body.event-activities-hub .eah-organizer-bar__btn--secondary {
+    color: var(--org-emerald-dim);
+    border-color: rgba(229, 178, 45, 0.35);
+}
+
+body.event-activities-hub .eah-cat-card:hover,
+body.event-activities-hub .eah-sp-extra-chip:hover {
+    border-color: rgba(229, 178, 45, 0.35);
+    background: var(--org-card);
+}
+
+body.event-activities-hub .eah-hub-toolbar,
+body.event-activities-hub .eah-toolbar {
+    background: var(--org-card);
+    border-color: var(--org-border);
+    border-radius: var(--eah-radius-sm);
+}
+
+body.event-activities-hub .eah-status-pill--active {
+    background: var(--efy-brand-forest);
+    color: var(--efy-brand-text);
+}
+
+body.event-activities-hub .eah-picker-card--status-active {
+    border-left-color: var(--efy-brand-gold);
+}
+
+body.event-activities-hub .eah-picker-card--status-active:hover {
+    border-left-color: var(--org-emerald);
+    border-color: rgba(229, 178, 45, 0.28);
+}
+
+body.event-activities-hub.event-activities-hub--index .eah-empty {
+    background: var(--org-surface);
+    border-color: var(--org-border);
 }
 

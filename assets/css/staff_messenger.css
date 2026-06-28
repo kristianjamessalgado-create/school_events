@@ -1,21 +1,51 @@
-/* EVENTIFY Staff Messenger — school theme (forest green + gold + cream) */
+/* EVENTIFY Staff Messenger — forest green + school gold */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 :root {
-    --msgr-cream: #f7f4e7;
-    --msgr-cream-2: #fffdf8;
-    --msgr-forest: #1b4a1b;
-    --msgr-forest-deep: #153313;
-    --msgr-forest-mid: #3f6a2a;
-    --msgr-green: #3d8a35;
-    --msgr-gold: #e6c54a;
-    --msgr-gold-dim: #b88f2a;
-    --msgr-text: #1b4a1b;
-    --msgr-muted: #4b5f4b;
-    --msgr-border: rgba(27, 74, 27, 0.14);
-    --msgr-border-gold: rgba(230, 197, 74, 0.45);
-    --msgr-surface: #ffffff;
-    --msgr-shadow: 0 8px 28px rgba(21, 51, 19, 0.12);
+    --efy-brand-nav:        #0A3C26;
+    --efy-brand-sidebar:    #062618;
+    --efy-brand-sidebar-up: #0A3C26;
+    --efy-brand-gold:       #E5B22D;
+    --efy-brand-gold-dim:   #C99A26;
+    --efy-brand-gold-light: #F0C85A;
+    --efy-brand-forest:     #0A3C26;
+    --efy-brand-forest-dim: #083220;
+    --efy-brand-text:       #F8F9FA;
+    --efy-brand-text-muted: rgba(248, 249, 250, 0.72);
+    --efy-brand-text-on-gold: #0A3C26;
+    --efy-brand-gold-muted: rgba(229, 178, 45, 0.14);
+    --efy-brand-gold-glow:  rgba(229, 178, 45, 0.18);
+    --efy-brand-gold-border: rgba(229, 178, 45, 0.32);
+    --efy-brand-forest-muted: rgba(10, 60, 38, 0.10);
+
+    --msgr-nav:             var(--efy-brand-nav);
+    --msgr-sidebar:         var(--efy-brand-sidebar);
+    --msgr-sidebar-elevated: var(--efy-brand-sidebar-up);
+    --msgr-sidebar-border:  rgba(255, 255, 255, 0.08);
+    --msgr-emerald:         var(--efy-brand-gold);
+    --msgr-emerald-dim:     var(--efy-brand-gold-dim);
+    --msgr-emerald-glow:    var(--efy-brand-gold-glow);
+    --msgr-emerald-muted:   var(--efy-brand-gold-muted);
+    --msgr-forest:          var(--efy-brand-forest);
+    --msgr-forest-dim:      var(--efy-brand-forest-dim);
+    --msgr-surface:         #f8f9fa;
+    --msgr-card:            #ffffff;
+    --msgr-text:            #1a1a2e;
+    --msgr-muted:           #64748b;
+    --msgr-border:          #e2e8f0;
+    --msgr-radius-lg:       18px;
+    --msgr-radius-md:       12px;
+    --msgr-shadow:          0 4px 24px rgba(15, 23, 42, 0.06);
+    --msgr-shadow-lg:       0 8px 32px rgba(15, 23, 42, 0.08);
+
+    --msgr-cream:           var(--msgr-surface);
+    --msgr-cream-2:         var(--msgr-card);
+    --msgr-forest-deep:     var(--efy-brand-sidebar);
+    --msgr-forest-mid:      var(--efy-brand-forest);
+    --msgr-green:           var(--efy-brand-forest);
+    --msgr-gold:            var(--efy-brand-gold);
+    --msgr-gold-dim:        var(--efy-brand-gold-dim);
+    --msgr-border-gold:     var(--efy-brand-gold-border);
 }
 
 .msgr-body {
@@ -23,7 +53,7 @@
     min-height: 100vh;
     min-height: 100dvh;
     overflow: hidden;
-    background: var(--msgr-cream);
+    background: var(--msgr-surface);
     color: var(--msgr-text);
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
     -webkit-text-size-adjust: 100%;
@@ -35,7 +65,7 @@
     position: fixed;
     inset: 0;
     z-index: 1040;
-    background: rgba(21, 51, 19, 0.45);
+    background: rgba(15, 23, 42, 0.45);
     -webkit-tap-highlight-color: transparent;
 }
 
@@ -59,8 +89,10 @@
 .msgr-rail {
     width: 72px;
     flex-shrink: 0;
-    background: linear-gradient(180deg, var(--msgr-forest) 0%, var(--msgr-forest-deep) 100%);
-    border-right: 2px solid var(--msgr-gold-dim);
+    background:
+        radial-gradient(ellipse 80% 50% at 0% 0%, var(--msgr-emerald-glow), transparent 55%),
+        var(--msgr-sidebar);
+    border-right: 1px solid var(--msgr-sidebar-border);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -76,42 +108,42 @@
     font-weight: 800;
     font-size: 0.58rem;
     letter-spacing: 0.07em;
-    color: var(--msgr-gold);
+    color: #ffffff;
     text-align: center;
     line-height: 1.2;
     padding: 0 0.35rem 0.55rem;
-    border-bottom: 1px solid rgba(230, 197, 74, 0.25);
+    border-bottom: 1px solid var(--msgr-sidebar-border);
     margin-bottom: 0.25rem;
     width: 100%;
 }
 
 .msgr-rail-logo {
     font-size: 1.15rem;
-    color: var(--msgr-gold);
+    color: var(--msgr-emerald);
 }
 
 .msgr-rail-btn {
     width: 46px;
     height: 46px;
-    border-radius: 12px;
+    border-radius: var(--msgr-radius-md);
     display: flex;
     align-items: center;
     justify-content: center;
-    color: rgba(255, 255, 255, 0.78);
+    color: #94a3b8;
     text-decoration: none;
     transition: background 0.15s, color 0.15s, transform 0.15s;
 }
 
 .msgr-rail-btn:hover {
-    background: rgba(230, 197, 74, 0.15);
-    color: var(--msgr-gold);
+    background: var(--msgr-emerald-muted);
+    color: var(--msgr-emerald);
     transform: translateY(-1px);
 }
 
 .msgr-rail-btn-active {
-    background: rgba(230, 197, 74, 0.22);
-    color: var(--msgr-gold);
-    box-shadow: inset 0 0 0 1px rgba(230, 197, 74, 0.45);
+    background: var(--msgr-emerald-muted);
+    color: var(--msgr-emerald);
+    box-shadow: inset 3px 0 0 var(--msgr-emerald);
 }
 
 /* Inbox column */
@@ -119,7 +151,7 @@
     width: 360px;
     max-width: 100%;
     flex-shrink: 0;
-    background: var(--msgr-cream-2);
+    background: var(--msgr-card);
     border-right: 1px solid var(--msgr-border);
     display: flex;
     flex-direction: column;
@@ -129,18 +161,18 @@
 
 .msgr-inbox-head {
     padding: 1rem 1rem 0.85rem;
-    background: linear-gradient(135deg, #0a3d1f 0%, var(--msgr-forest) 55%, #021a08 100%);
-    color: #fff;
-    border-bottom: 3px solid var(--msgr-gold);
+    background: var(--msgr-nav);
+    color: var(--efy-brand-text);
+    border-bottom: 1px solid var(--efy-brand-gold-border);
 }
 
 .msgr-inbox-eyebrow {
     display: block;
     font-size: 0.62rem;
-    font-weight: 700;
+    font-weight: 600;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: rgba(247, 244, 231, 0.72);
+    color: var(--efy-brand-gold-light);
     margin-bottom: 0.15rem;
 }
 
@@ -156,7 +188,7 @@
 
 .msgr-inbox-sub {
     font-size: 0.75rem;
-    color: rgba(247, 244, 231, 0.82);
+    color: var(--efy-brand-text-muted);
     margin-top: 0.2rem;
 }
 
@@ -170,9 +202,9 @@
     min-width: 38px;
     min-height: 38px;
     border: none;
-    border-radius: 10px;
-    background: rgba(255, 255, 255, 0.12);
-    color: rgba(255, 255, 255, 0.92);
+    border-radius: var(--msgr-radius-md);
+    background: var(--msgr-sidebar-elevated);
+    color: #94a3b8;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -184,20 +216,20 @@
 }
 
 .msgr-icon-btn:hover {
-    background: rgba(230, 197, 74, 0.22);
-    color: var(--msgr-gold);
+    background: var(--msgr-emerald-muted);
+    color: var(--msgr-emerald);
 }
 
 .msgr-conv-head .msgr-icon-btn {
-    background: var(--msgr-cream);
+    background: var(--msgr-card);
     color: var(--msgr-muted);
     border: 1px solid var(--msgr-border);
 }
 
 .msgr-conv-head .msgr-icon-btn:hover {
-    background: rgba(61, 138, 53, 0.1);
-    color: var(--msgr-forest);
-    border-color: rgba(61, 138, 53, 0.35);
+    background: var(--msgr-emerald-muted);
+    color: var(--msgr-emerald-dim);
+    border-color: rgba(229, 178, 45, 0.35);
 }
 
 .msgr-search-wrap {
@@ -210,16 +242,16 @@
     left: 12px;
     top: 50%;
     transform: translateY(-50%);
-    color: rgba(247, 244, 231, 0.65);
+    color: var(--msgr-muted);
     font-size: 0.85rem;
     pointer-events: none;
 }
 
 .msgr-search {
     width: 100%;
-    border: 1px solid rgba(230, 197, 74, 0.3);
+    border: 1px solid var(--msgr-sidebar-border);
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--msgr-sidebar-elevated);
     color: #fff;
     padding: 0.55rem 0.85rem 0.55rem 2.25rem;
     font-size: 0.875rem;
@@ -227,14 +259,14 @@
 }
 
 .msgr-search::placeholder {
-    color: rgba(247, 244, 231, 0.55);
+    color: #64748b;
 }
 
 .msgr-search:focus {
     outline: none;
-    background: rgba(255, 255, 255, 0.16);
-    border-color: var(--msgr-gold);
-    box-shadow: 0 0 0 3px rgba(230, 197, 74, 0.2);
+    background: var(--msgr-sidebar-elevated);
+    border-color: var(--msgr-emerald);
+    box-shadow: 0 0 0 3px var(--msgr-emerald-muted);
 }
 
 .msgr-tabs {
@@ -244,28 +276,29 @@
 }
 
 .msgr-tab {
-    border: 1px solid rgba(230, 197, 74, 0.35);
+    border: 1px solid var(--msgr-sidebar-border);
     border-radius: 999px;
     padding: 0.35rem 0.95rem;
     font-size: 0.76rem;
-    font-weight: 700;
+    font-weight: 600;
     background: transparent;
-    color: rgba(247, 244, 231, 0.85);
+    color: #94a3b8;
     cursor: pointer;
     font-family: inherit;
     transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 
 .msgr-tab:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--msgr-emerald-muted);
     color: #fff;
 }
 
 .msgr-tab.active {
-    background: linear-gradient(180deg, var(--msgr-gold) 0%, var(--msgr-gold-dim) 100%);
-    color: var(--msgr-forest-deep);
-    border-color: var(--msgr-gold);
-    box-shadow: 0 2px 8px rgba(184, 143, 42, 0.35);
+    background: var(--msgr-emerald);
+    color: var(--efy-brand-text-on-gold);
+    border-color: var(--msgr-emerald-dim);
+    box-shadow: 0 2px 8px rgba(229, 178, 45, 0.32);
+    font-weight: 700;
 }
 
 .msgr-chat-list {
@@ -273,7 +306,7 @@
     overflow-y: auto;
     overflow-x: hidden;
     padding: 0.65rem 0.7rem 0.85rem;
-    background: var(--msgr-cream);
+    background: var(--msgr-surface);
     -webkit-overflow-scrolling: touch;
 }
 
@@ -282,7 +315,7 @@
 }
 
 .msgr-chat-list::-webkit-scrollbar-thumb {
-    background: rgba(27, 74, 27, 0.2);
+    background: rgba(229, 178, 45, 0.3);
     border-radius: 999px;
 }
 
@@ -295,33 +328,34 @@
     text-align: left;
     border: 1px solid var(--msgr-border);
     border-left: 3px solid transparent;
-    border-radius: 14px;
+    border-radius: var(--msgr-radius-lg);
     padding: 0.65rem 0.65rem 0.65rem 0.6rem;
-    background: var(--msgr-surface);
+    background: var(--msgr-card);
     color: inherit;
     cursor: pointer;
     transition: background 0.12s, border-color 0.12s, box-shadow 0.12s, transform 0.12s;
     touch-action: manipulation;
     margin-bottom: 0.4rem;
-    box-shadow: 0 2px 6px rgba(21, 51, 19, 0.04);
+    box-shadow: var(--msgr-shadow);
 }
 
 .msgr-chat-row:hover {
-    background: var(--msgr-cream-2);
-    border-color: rgba(61, 138, 53, 0.25);
+    background: var(--msgr-card);
+    border-color: rgba(229, 178, 45, 0.25);
     transform: translateY(-1px);
+    box-shadow: var(--msgr-shadow-lg);
 }
 
 .msgr-chat-row.active {
-    background: linear-gradient(90deg, rgba(230, 197, 74, 0.14) 0%, var(--msgr-surface) 60%);
+    background: linear-gradient(90deg, var(--msgr-emerald-muted) 0%, var(--msgr-card) 60%);
     border-color: var(--msgr-border-gold);
-    border-left-color: var(--msgr-gold);
-    box-shadow: 0 4px 14px rgba(21, 51, 19, 0.1);
+    border-left-color: var(--msgr-emerald);
+    box-shadow: var(--msgr-shadow-lg);
 }
 
 .msgr-chat-row.unread .msgr-chat-name {
     font-weight: 800;
-    color: var(--msgr-forest);
+    color: var(--msgr-text);
 }
 
 .msgr-avatar {
@@ -329,15 +363,15 @@
     width: 52px;
     height: 52px;
     border-radius: 50%;
-    background: linear-gradient(145deg, var(--msgr-forest) 0%, var(--msgr-green) 100%);
+    background: linear-gradient(145deg, var(--msgr-forest) 0%, var(--msgr-forest-dim) 100%);
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: 800;
     font-size: 0.95rem;
-    color: var(--msgr-gold);
-    box-shadow: 0 2px 8px rgba(21, 51, 19, 0.18);
-    border: 2px solid rgba(230, 197, 74, 0.35);
+    color: var(--efy-brand-text);
+    box-shadow: 0 2px 8px rgba(10, 60, 38, 0.22);
+    border: 2px solid var(--efy-brand-gold-border);
 }
 
 .msgr-avatar-sm {
@@ -357,8 +391,8 @@
     height: 92px;
     font-size: 1.75rem;
     margin: 0 auto;
-    border: 3px solid var(--msgr-gold);
-    box-shadow: 0 6px 20px rgba(21, 51, 19, 0.15);
+    border: 3px solid var(--efy-brand-gold);
+    box-shadow: 0 6px 20px rgba(10, 60, 38, 0.18);
 }
 
 .msgr-chat-body {
@@ -402,9 +436,9 @@
     width: 10px;
     height: 10px;
     border-radius: 50%;
-    background: var(--msgr-gold);
+    background: var(--msgr-emerald);
     flex-shrink: 0;
-    box-shadow: 0 0 0 2px var(--msgr-surface);
+    box-shadow: 0 0 0 2px var(--msgr-card);
 }
 
 /* Conversation panel */
@@ -414,7 +448,7 @@
     min-height: 0;
     display: flex;
     flex-direction: column;
-    background: var(--msgr-cream);
+    background: var(--msgr-surface);
 }
 
 .msgr-conv-head {
@@ -425,8 +459,8 @@
     justify-content: space-between;
     padding: max(0.45rem, env(safe-area-inset-top)) max(0.85rem, env(safe-area-inset-right)) 0.45rem max(0.45rem, env(safe-area-inset-left));
     border-bottom: 1px solid var(--msgr-border);
-    background: var(--msgr-cream-2);
-    box-shadow: 0 2px 10px rgba(21, 51, 19, 0.05);
+    background: var(--msgr-card);
+    box-shadow: var(--msgr-shadow);
 }
 
 .msgr-conv-head-main {
@@ -442,7 +476,7 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    color: var(--msgr-forest);
+    color: var(--msgr-text);
 }
 
 .msgr-conv-sub {
@@ -461,9 +495,9 @@
     gap: 0.45rem;
     -webkit-overflow-scrolling: touch;
     background:
-        radial-gradient(520px 220px at 100% 0%, rgba(230, 197, 74, 0.07), transparent 60%),
-        radial-gradient(480px 200px at 0% 100%, rgba(61, 138, 53, 0.06), transparent 60%),
-        var(--msgr-cream);
+        radial-gradient(520px 220px at 100% 0%, var(--msgr-emerald-muted), transparent 60%),
+        radial-gradient(480px 200px at 0% 100%, rgba(229, 178, 45, 0.06), transparent 60%),
+        var(--msgr-surface);
 }
 
 .msgr-empty-thread {
@@ -471,10 +505,10 @@
     text-align: center;
     max-width: 320px;
     padding: 2rem 1.35rem;
-    background: var(--msgr-surface);
-    border-radius: 18px;
-    border: 2px solid var(--msgr-border-gold);
-    box-shadow: var(--msgr-shadow);
+    background: var(--msgr-card);
+    border-radius: var(--msgr-radius-lg);
+    border: 1px solid var(--msgr-border);
+    box-shadow: var(--msgr-shadow-lg);
 }
 
 .msgr-empty-icon-wrap {
@@ -482,33 +516,33 @@
     height: 60px;
     margin: 0 auto 0.85rem;
     border-radius: 50%;
-    background: linear-gradient(145deg, var(--msgr-forest) 0%, var(--msgr-green) 100%);
-    color: var(--msgr-gold);
+    background: linear-gradient(145deg, var(--msgr-forest) 0%, var(--msgr-forest-dim) 100%);
+    color: var(--efy-brand-text);
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 1.35rem;
-    border: 2px solid rgba(230, 197, 74, 0.45);
+    border: 2px solid var(--efy-brand-gold-border);
 }
 
 .msgr-empty-title {
     font-weight: 800;
     font-size: 0.95rem;
-    color: var(--msgr-forest);
+    color: var(--msgr-text);
     margin-bottom: 0.35rem;
 }
 
 .msgr-day-sep {
     text-align: center;
     font-size: 0.68rem;
-    font-weight: 700;
+    font-weight: 600;
     letter-spacing: 0.04em;
     text-transform: uppercase;
     color: var(--msgr-muted);
     margin: 0.85rem 0;
     padding: 0.25rem 0.75rem;
     align-self: center;
-    background: var(--msgr-cream-2);
+    background: var(--msgr-card);
     border-radius: 999px;
     border: 1px solid var(--msgr-border);
 }
@@ -533,18 +567,18 @@
     font-size: 0.9rem;
     line-height: 1.45;
     word-break: break-word;
-    box-shadow: 0 2px 8px rgba(21, 51, 19, 0.06);
+    box-shadow: var(--msgr-shadow);
 }
 
 .msgr-bubble.mine {
-    background: linear-gradient(135deg, var(--msgr-forest) 0%, var(--msgr-green) 100%);
-    color: #fff;
+    background: linear-gradient(135deg, var(--msgr-forest) 0%, var(--msgr-forest-dim) 100%);
+    color: var(--efy-brand-text);
     border-bottom-right-radius: 6px;
-    border: 1px solid rgba(21, 51, 19, 0.2);
+    border: none;
 }
 
 .msgr-bubble.theirs {
-    background: var(--msgr-surface);
+    background: var(--msgr-card);
     color: var(--msgr-text);
     border: 1px solid var(--msgr-border);
     border-bottom-left-radius: 6px;
@@ -560,20 +594,20 @@
 }
 
 .msgr-bubble.mine .msgr-bubble-meta {
-    color: rgba(230, 197, 74, 0.92);
+    color: rgba(255, 255, 255, 0.85);
 }
 
 .msgr-bubble.theirs .msgr-bubble-meta {
-    color: var(--msgr-green);
+    color: var(--msgr-forest);
 }
 
 /* Composer */
 .msgr-composer-wrap {
     flex-shrink: 0;
     padding: 0.65rem max(0.85rem, env(safe-area-inset-left)) max(0.85rem, env(safe-area-inset-bottom)) max(0.85rem, env(safe-area-inset-right));
-    background: var(--msgr-cream-2);
+    background: var(--msgr-card);
     border-top: 1px solid var(--msgr-border);
-    box-shadow: 0 -4px 16px rgba(21, 51, 19, 0.05);
+    box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.04);
 }
 
 .msgr-composer {
@@ -584,12 +618,12 @@
     border: 1px solid var(--msgr-border);
     border-radius: 999px;
     padding: 0.35rem 0.4rem 0.35rem 0.55rem;
-    box-shadow: inset 0 1px 2px rgba(21, 51, 19, 0.03);
+    box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.03);
 }
 
 .msgr-composer:focus-within {
-    border-color: rgba(61, 138, 53, 0.45);
-    box-shadow: 0 0 0 3px rgba(61, 138, 53, 0.12);
+    border-color: rgba(229, 178, 45, 0.45);
+    box-shadow: 0 0 0 3px var(--msgr-emerald-muted);
 }
 
 .msgr-composer-icon {
@@ -604,8 +638,8 @@
 }
 
 .msgr-composer-icon:hover:not(:disabled) {
-    color: var(--msgr-green);
-    background: rgba(61, 138, 53, 0.1);
+    color: var(--msgr-emerald);
+    background: var(--msgr-emerald-muted);
 }
 
 .msgr-composer-icon:disabled {
@@ -622,7 +656,7 @@
 
 .msgr-attach-preview img {
     width: 100%;
-    border-radius: 10px;
+    border-radius: var(--msgr-radius-md);
     border: 1px solid var(--msgr-border-gold);
     display: block;
 }
@@ -635,7 +669,7 @@
     height: 22px;
     border: none;
     border-radius: 50%;
-    background: var(--msgr-forest);
+    background: var(--msgr-sidebar);
     color: #fff;
     font-size: 0.65rem;
     cursor: pointer;
@@ -645,7 +679,7 @@
     display: block;
     max-width: min(240px, 100%);
     margin-top: 0.45rem;
-    border-radius: 10px;
+    border-radius: var(--msgr-radius-md);
     border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
@@ -671,7 +705,8 @@
 }
 
 .msgr-input::placeholder {
-    color: rgba(75, 95, 75, 0.55);
+    color: var(--msgr-muted);
+    opacity: 0.7;
 }
 
 .msgr-send {
@@ -679,37 +714,35 @@
     height: 42px;
     border: none;
     border-radius: 50%;
-    background: linear-gradient(180deg, var(--msgr-green) 0%, #2f6f28 100%);
-    color: #fff;
+    background: var(--msgr-emerald);
+    color: var(--efy-brand-text-on-gold);
     flex-shrink: 0;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
-    box-shadow: 0 4px 12px rgba(61, 138, 53, 0.35);
-    border: 1px solid var(--msgr-forest);
+    box-shadow: 0 4px 12px rgba(229, 178, 45, 0.32);
 }
 
 .msgr-send:hover:not(:disabled) {
     transform: translateY(-1px);
-    box-shadow: 0 6px 16px rgba(61, 138, 53, 0.45);
-    background: linear-gradient(180deg, #469a3d 0%, var(--msgr-green) 100%);
+    box-shadow: 0 6px 16px rgba(229, 178, 45, 0.4);
+    background: var(--msgr-emerald-dim);
 }
 
 .msgr-send:disabled {
     opacity: 0.38;
     cursor: not-allowed;
     box-shadow: none;
-    background: rgba(75, 95, 75, 0.35);
-    border-color: transparent;
+    background: rgba(100, 116, 139, 0.35);
 }
 
 /* Detail panel */
 .msgr-detail {
     width: 300px;
     flex-shrink: 0;
-    background: var(--msgr-cream-2);
+    background: var(--msgr-card);
     border-left: 1px solid var(--msgr-border);
     overflow-y: auto;
 }
@@ -723,8 +756,8 @@
     align-items: center;
     justify-content: space-between;
     padding: max(0.75rem, env(safe-area-inset-top)) 0.85rem 0.65rem;
-    border-bottom: 1px solid var(--msgr-border);
-    background: linear-gradient(135deg, #0a3d1f 0%, var(--msgr-forest) 55%, #021a08 100%);
+    border-bottom: 1px solid var(--efy-brand-gold-border);
+    background: var(--msgr-nav);
 }
 
 .msgr-detail-topbar-label {
@@ -732,31 +765,31 @@
     font-weight: 800;
     letter-spacing: 0.06em;
     text-transform: uppercase;
-    color: rgba(247, 244, 231, 0.85);
+    color: #94a3b8;
 }
 
 .msgr-detail-close {
-    background: rgba(255, 255, 255, 0.12) !important;
-    color: #fff !important;
+    background: var(--msgr-sidebar-elevated) !important;
+    color: #94a3b8 !important;
 }
 
 .msgr-detail-close:hover {
-    background: rgba(230, 197, 74, 0.22) !important;
-    color: var(--msgr-gold) !important;
+    background: var(--msgr-emerald-muted) !important;
+    color: var(--msgr-emerald) !important;
 }
 
 .msgr-detail-hero {
     text-align: center;
     padding: 1.35rem 1.15rem 1rem;
     border-bottom: 1px solid var(--msgr-border);
-    background: var(--msgr-surface);
+    background: var(--msgr-card);
 }
 
 .msgr-detail-name {
     font-size: 1.1rem;
     font-weight: 800;
     margin: 0.85rem 0 0.3rem;
-    color: var(--msgr-forest);
+    color: var(--msgr-text);
 }
 
 .msgr-detail-email {
@@ -772,9 +805,9 @@
     text-transform: uppercase;
     padding: 0.25rem 0.65rem;
     border-radius: 999px;
-    background: linear-gradient(180deg, var(--msgr-gold) 0%, var(--msgr-gold-dim) 100%);
-    color: var(--msgr-forest-deep);
-    border: 1px solid rgba(184, 143, 42, 0.35);
+    background: var(--msgr-emerald);
+    color: var(--efy-brand-text-on-gold);
+    border: none;
 }
 
 .msgr-detail-actions {
@@ -787,9 +820,9 @@
 .msgr-pill-btn {
     width: 100%;
     border: 1px solid var(--msgr-border);
-    border-radius: 12px;
+    border-radius: var(--msgr-radius-md);
     padding: 0.62rem 1rem;
-    background: var(--msgr-surface);
+    background: var(--msgr-card);
     color: var(--msgr-muted);
     font-weight: 600;
     font-size: 0.82rem;
@@ -803,7 +836,7 @@
 
 .msgr-pill-btn i {
     width: 1.1rem;
-    color: var(--msgr-green);
+    color: var(--msgr-emerald);
     opacity: 0.65;
 }
 
@@ -811,9 +844,9 @@
     margin: 0 1.15rem;
     padding: 0.9rem;
     background: var(--msgr-surface);
-    border-radius: 14px;
+    border-radius: var(--msgr-radius-lg);
     border: 1px solid var(--msgr-border);
-    box-shadow: 0 2px 8px rgba(21, 51, 19, 0.04);
+    box-shadow: var(--msgr-shadow);
 }
 
 .msgr-detail-section-title {
@@ -821,7 +854,7 @@
     font-size: 0.68rem;
     letter-spacing: 0.06em;
     text-transform: uppercase;
-    color: var(--msgr-green);
+    color: var(--msgr-muted);
     margin-bottom: 0.45rem;
     display: flex;
     align-items: center;
@@ -829,7 +862,7 @@
 }
 
 .msgr-detail-section-title i {
-    color: var(--msgr-gold-dim);
+    color: var(--msgr-emerald);
 }
 
 .msgr-detail.msgr-detail-collapsed {
@@ -845,8 +878,8 @@
     text-align: center;
     color: var(--msgr-muted);
     font-size: 0.85rem;
-    background: var(--msgr-surface);
-    border-radius: 14px;
+    background: var(--msgr-card);
+    border-radius: var(--msgr-radius-lg);
     border: 1px dashed var(--msgr-border);
     margin: 0.25rem;
 }
@@ -865,8 +898,8 @@
         width: min(300px, 92vw);
         max-width: 100%;
         z-index: 1050;
-        box-shadow: -8px 0 32px rgba(21, 51, 19, 0.22);
-        border-left: 2px solid var(--msgr-border-gold);
+        box-shadow: var(--msgr-shadow-lg);
+        border-left: 1px solid var(--msgr-border);
     }
 
     .msgr-detail-topbar {
@@ -955,7 +988,7 @@
 
 @media (max-width: 359.98px) {
     .msgr-composer {
-        border-radius: 18px;
+        border-radius: var(--msgr-radius-lg);
     }
 
     .msgr-chat-time {

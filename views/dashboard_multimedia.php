@@ -23,10 +23,13 @@ if (is_array($events)) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#121212">
     <title>Multimedia Dashboard - EVENTIFY</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/dashboard_multimedia.css?v=6">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/dashboard_multimedia.css?v=8">
+    <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/eventify_dashboard_brand.css?v=1">
     <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/notifications.css?v=4">
 </head>
 <body class="multimedia-dashboard" data-eventify-keyboard-scroll data-eventify-sidebar="mmSidebar" data-eventify-main=".multimedia-dashboard .main-content">
@@ -117,30 +120,49 @@ if (is_array($events)) {
     </div>
 </nav>
 
+<!-- Main Layout -->
 <div class="dashboard-layout">
     <div class="sidebar-backdrop" id="mmSidebarBackdrop" aria-hidden="true"></div>
+
+    <!-- Left Sidebar -->
     <aside class="sidebar eventify-kb-scroll-zone" id="mmSidebar" tabindex="0" aria-label="Multimedia sidebar — use arrow keys to scroll">
-        <div class="sidebar-section">
-            <div class="mm-user-card">
-                <div class="mm-user-avatar">
-                    <?php if (!empty($user['profile_picture'])): ?>
-                        <img src="<?= BASE_URL ?>/<?= htmlspecialchars($user['profile_picture']) ?>" alt="<?= htmlspecialchars($user_name) ?>">
-                    <?php else: ?>
-                        <span><?= strtoupper(substr($user_name, 0, 1)) ?></span>
-                    <?php endif; ?>
-                </div>
-                <h3 class="mm-user-name"><?= htmlspecialchars($user_name) ?></h3>
-                <p class="mm-user-id">ID: <?= htmlspecialchars($user['user_id'] ?? 'N/A') ?></p>
-                <?php if ($department): ?>
-                    <span class="mm-user-dept"><?= htmlspecialchars($department) ?> Multimedia</span>
+        <button type="button" class="sidebar-close-mobile" id="mmSidebarClose" aria-label="Close menu"><i class="fas fa-times"></i></button>
+
+        <!-- Multimedia Profile Card -->
+        <div class="mm-user-card">
+            <div class="mm-user-avatar">
+                <?php if (!empty($user['profile_picture'])): ?>
+                    <img src="<?= BASE_URL ?>/<?= htmlspecialchars($user['profile_picture']) ?>" alt="<?= htmlspecialchars($user_name) ?>">
                 <?php else: ?>
-                    <span class="mm-user-dept muted">Department not set</span>
+                    <span><?= strtoupper(substr($user_name, 0, 1)) ?></span>
                 <?php endif; ?>
             </div>
+            <h3 class="mm-user-name"><?= htmlspecialchars($user_name) ?></h3>
+            <p class="mm-user-id">ID: <?= htmlspecialchars($user['user_id'] ?? 'N/A') ?></p>
+            <?php if ($department): ?>
+                <span class="mm-user-dept"><?= htmlspecialchars($department) ?> Multimedia</span>
+            <?php else: ?>
+                <span class="mm-user-dept muted">Department not set</span>
+            <?php endif; ?>
         </div>
-        <div class="sidebar-section">
-            <h3 class="sidebar-title">QUICK ACTIONS</h3>
-            <button class="action-btn" onclick="openMmProfileModal()">
+
+        <!-- Your Role -->
+        <div class="sidebar-role">
+            <h3 class="section-title">YOUR ROLE</h3>
+            <p class="role-desc">
+                <?php if ($is_multimedia_moderator): ?>
+                    You are the photo moderator for your multimedia team. Upload photos like other members, and approve or reject pending uploads before students can see them.
+                <?php else: ?>
+                    You are part of the multimedia team.
+                    Upload photos for events and activities; your moderator will review them before they go live for students.
+                <?php endif; ?>
+            </p>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="quick-actions">
+            <h3 class="section-title">QUICK ACTIONS</h3>
+            <button type="button" class="action-btn" onclick="openMmProfileModal()">
                 <i class="fas fa-user-edit"></i>
                 <span>Edit profile</span>
             </button>
@@ -165,24 +187,14 @@ if (is_array($events)) {
                 <span>Photo activity log</span>
             </button>
             <?php endif; ?>
-            <a href="#" class="action-btn" data-bs-toggle="modal" data-bs-target="#logoutModal">
+            <a href="#" class="action-btn logout-btn" data-bs-toggle="modal" data-bs-target="#logoutModal">
                 <i class="fas fa-sign-out-alt"></i>
                 <span>Logout</span>
             </a>
         </div>
-        <div class="sidebar-section">
-            <h3 class="sidebar-title">YOUR ROLE</h3>
-            <p class="role-desc">
-                <?php if ($is_multimedia_moderator): ?>
-                    You are the photo moderator for your multimedia team. Upload photos like other members, and approve or reject pending uploads before students can see them.
-                <?php else: ?>
-                    You are part of the multimedia team.
-                    Upload photos for events and activities; your moderator will review them before they go live for students.
-                <?php endif; ?>
-            </p>
-        </div>
     </aside>
 
+    <!-- Main Content Area -->
     <main class="main-content eventify-kb-scroll-zone" tabindex="0" aria-label="Multimedia events — use arrow keys to scroll">
         <div class="content-header">
             <div class="content-header-top">
@@ -867,6 +879,7 @@ window.currentMultimediaUserId = <?= (int)($uid ?? 0) ?>;
 document.addEventListener('DOMContentLoaded', function() {
     // Sidebar collapse toggle (desktop + tablet)
     var mmSidebarToggle = document.getElementById('mmSidebarToggle');
+    var mmSidebarClose = document.getElementById('mmSidebarClose');
     var mmSidebarBackdrop = document.getElementById('mmSidebarBackdrop');
     var isMobileView = function() { return window.matchMedia('(max-width: 768px)').matches; };
     var closeMmMobileSidebar = function() { document.body.classList.remove('mm-sidebar-open'); };
@@ -879,8 +892,16 @@ document.addEventListener('DOMContentLoaded', function() {
             document.body.classList.toggle('mm-sidebar-collapsed');
         });
     }
+    if (mmSidebarClose) mmSidebarClose.addEventListener('click', closeMmMobileSidebar);
     if (mmSidebarBackdrop) {
         mmSidebarBackdrop.addEventListener('click', closeMmMobileSidebar);
+    }
+    var mmSidebar = document.getElementById('mmSidebar');
+    if (mmSidebar) {
+        mmSidebar.addEventListener('click', function(e) {
+            var target = e.target.closest('.action-btn, [data-bs-toggle="modal"]');
+            if (target && isMobileView()) closeMmMobileSidebar();
+        });
     }
     window.addEventListener('resize', function() {
         if (!isMobileView()) closeMmMobileSidebar();

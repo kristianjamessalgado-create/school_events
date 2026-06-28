@@ -153,7 +153,7 @@ function ah_event_status_display(string $status): array
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <?php if ($isStudent): ?>
-    <meta name="theme-color" content="#153313">
+    <meta name="theme-color" content="#0A3C26">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="EVENTIFY">
@@ -162,9 +162,10 @@ function ah_event_status_display(string $status): array
     <title>Activities hub | EVENTIFY</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/event_activities_hub.css?v=31">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/event_activities_hub.css?v=33">
     <?php if ($showHubStatusFilter): ?>
-    <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/activities_hub_filter.css?v=2">
+    <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/activities_hub_filter.css?v=4">
     <?php endif; ?>
 </head>
 <body class="event-activities-hub event-activities-hub--index<?= $isStudent ? ' event-activities-hub--student' : '' ?>">

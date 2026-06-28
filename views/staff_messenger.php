@@ -26,7 +26,7 @@ $peerLabel = ($role === 'admin') ? 'Organizers' : 'Admins';
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="<?= htmlspecialchars(BASE_URL) ?>/assets/css/eventify_modal.css?v=1">
-    <link rel="stylesheet" href="<?= htmlspecialchars(BASE_URL) ?>/assets/css/staff_messenger.css?v=4">
+    <link rel="stylesheet" href="<?= htmlspecialchars(BASE_URL) ?>/assets/css/staff_messenger.css?v=6">
 </head>
 <body class="msgr-body">
 <div class="msgr-detail-backdrop" id="msgrDetailBackdrop" hidden aria-hidden="true"></div>

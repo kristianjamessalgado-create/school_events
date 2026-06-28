@@ -44,16 +44,20 @@ $daySessionsHaveGeo = !empty($daySessionsHaveGeo);
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
+    <!-- Inter font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="<?= BASE_URL; ?>/assets/css/dashboardorganizer.css?v=3">
     <link rel="stylesheet" href="<?= BASE_URL; ?>/assets/css/eventify_modal.css?v=2">
     <link rel="stylesheet" href="<?= BASE_URL; ?>/assets/css/create_event_modal.css?v=2">
-    <link rel="stylesheet" href="<?= BASE_URL; ?>/assets/css/organizer_profile_modal.css?v=1">
+    <link rel="stylesheet" href="<?= BASE_URL; ?>/assets/css/organizer_profile_modal.css?v=5">
     <link rel="stylesheet" href="<?= BASE_URL; ?>/assets/css/calendar_legend.css?v=7">
     <link rel="stylesheet" href="<?= BASE_URL; ?>/assets/css/dashboard_calendar_shell.css?v=9">
     <link rel="stylesheet" href="<?= BASE_URL; ?>/assets/css/event_day_sessions.css?v=3">
     <link rel="stylesheet" href="<?= BASE_URL; ?>/assets/css/notifications.css?v=4">
     <link rel="stylesheet" href="<?= BASE_URL; ?>/assets/css/calendar_scroll_fix.css?v=9">
+    <link rel="stylesheet" href="<?= BASE_URL; ?>/assets/css/dashboardorganizer.css?v=6">
+    <link rel="stylesheet" href="<?= BASE_URL; ?>/assets/css/eventify_dashboard_brand.css?v=1">
 
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
 </head>
@@ -213,36 +217,36 @@ $daySessionsHaveGeo = !empty($daySessionsHaveGeo);
             <div class="calendars-list" id="calendarsList">
                 <?php $orgDept = (string)($organizer_settings['default_department_filter'] ?? 'ALL'); ?>
                 <div class="calendar-item<?= $orgDept === 'ALL' ? ' active' : '' ?>" data-dept="ALL">
-                    <div class="calendar-avatar" style="background: #7c3aed;">A</div>
+                    <div class="calendar-avatar" style="background: #1b4a1b;">A</div>
                     <span class="calendar-name">All Departments</span>
                     <i class="fas fa-check"></i>
                 </div>
                 <div class="calendar-item<?= $orgDept === 'High school department' ? ' active' : '' ?>" data-dept="High school department">
-                    <div class="calendar-avatar" style="background: #3b82f6;">H</div>
+                    <div class="calendar-avatar" style="background: #3d8a35;">H</div>
                     <span class="calendar-name">High School Department</span>
                 </div>
                 <div class="calendar-item<?= $orgDept === 'College of Communication, Information and Technology' ? ' active' : '' ?>" data-dept="College of Communication, Information and Technology">
-                    <div class="calendar-avatar" style="background: #10b981;">C</div>
+                    <div class="calendar-avatar" style="background: #2f6626;">C</div>
                     <span class="calendar-name">College of Communication, Information and Technology</span>
                 </div>
                 <div class="calendar-item<?= $orgDept === 'College of Accountancy and Business' ? ' active' : '' ?>" data-dept="College of Accountancy and Business">
-                    <div class="calendar-avatar" style="background: #f59e0b;">A</div>
+                    <div class="calendar-avatar" style="background: #e6c54a; color: #1b4a1b;">A</div>
                     <span class="calendar-name">College of Accountancy and Business</span>
                 </div>
                 <div class="calendar-item<?= $orgDept === 'School of Law and Political Science' ? ' active' : '' ?>" data-dept="School of Law and Political Science">
-                    <div class="calendar-avatar" style="background: #ef4444;">L</div>
+                    <div class="calendar-avatar" style="background: #153313;">L</div>
                     <span class="calendar-name">School of Law and Political Science</span>
                 </div>
                 <div class="calendar-item<?= $orgDept === 'College of Education' ? ' active' : '' ?>" data-dept="College of Education">
-                    <div class="calendar-avatar" style="background: #6366f1;">E</div>
+                    <div class="calendar-avatar" style="background: #3f6a2a;">E</div>
                     <span class="calendar-name">College of Education</span>
                 </div>
                 <div class="calendar-item<?= $orgDept === 'College of Nursing and Allied health sciences' ? ' active' : '' ?>" data-dept="College of Nursing and Allied health sciences">
-                    <div class="calendar-avatar" style="background: #14b8a6;">N</div>
+                    <div class="calendar-avatar" style="background: #b7be77; color: #153313;">N</div>
                     <span class="calendar-name">College of Nursing and Allied health sciences</span>
                 </div>
                 <div class="calendar-item<?= $orgDept === 'College of Hospitality Management' ? ' active' : '' ?>" data-dept="College of Hospitality Management">
-                    <div class="calendar-avatar" style="background: #f97316;">H</div>
+                    <div class="calendar-avatar" style="background: #b88f2a;">H</div>
                     <span class="calendar-name">College of Hospitality Management</span>
                 </div>
             </div>

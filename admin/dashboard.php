@@ -68,13 +68,15 @@ $messengerHref = BASE_URL . '/backend/messaging/staff_messenger.php';
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="<?= BASE_URL; ?>/assets/css/eventify_modal.css?v=2">
-    <link rel="stylesheet" href="<?= BASE_URL; ?>/assets/css/dashboard_student.css">
-    <link rel="stylesheet" href="<?= BASE_URL; ?>/assets/css/dashboard_admin.css?v=13">
+    <link rel="stylesheet" href="<?= BASE_URL; ?>/assets/css/dashboard_student.css?v=8">
     <link rel="stylesheet" href="<?= BASE_URL; ?>/assets/css/calendar_legend.css?v=7">
-    <link rel="stylesheet" href="<?= BASE_URL; ?>/assets/css/dashboard_calendar_shell.css?v=6">
+    <link rel="stylesheet" href="<?= BASE_URL; ?>/assets/css/dashboard_calendar_shell.css?v=9">
     <link rel="stylesheet" href="<?= BASE_URL; ?>/assets/css/notifications.css?v=4">
-    <link rel="stylesheet" href="<?= BASE_URL; ?>/assets/css/calendar_scroll_fix.css?v=7">
+    <link rel="stylesheet" href="<?= BASE_URL; ?>/assets/css/calendar_scroll_fix.css?v=9">
+    <link rel="stylesheet" href="<?= BASE_URL; ?>/assets/css/dashboard_admin.css?v=16">
+    <link rel="stylesheet" href="<?= BASE_URL; ?>/assets/css/eventify_dashboard_brand.css?v=2">
 </head>
 <body class="admin-dashboard" data-eventify-keyboard-scroll data-eventify-sidebar="adminSidebar" data-eventify-calendar="calendar" data-eventify-main=".admin-dashboard .main-content">
 
@@ -132,32 +134,34 @@ $messengerHref = BASE_URL . '/backend/messaging/staff_messenger.php';
 
 <div class="dashboard-layout">
     <div class="sidebar-backdrop" id="adminSidebarBackdrop" aria-hidden="true"></div>
+
+    <!-- Left Sidebar -->
     <aside class="sidebar eventify-kb-scroll-zone" id="adminSidebar" tabindex="0" aria-label="Admin sidebar — use arrow keys to scroll">
         <button type="button" class="sidebar-close-mobile" id="adminSidebarClose" aria-label="Close menu"><i class="fas fa-times"></i></button>
-        <div class="sidebar-drawer-scroll">
-        <div class="user-info-card">
-            <div class="user-avatar-large"><?= strtoupper(substr($admin_name, 0, 1)) ?></div>
-            <h3 class="user-name"><?= htmlspecialchars($admin_name) ?></h3>
-            <p class="user-id">Role: Admin</p>
-            <span class="user-dept-badge">System-wide</span>
+
+        <!-- Admin Profile Card -->
+        <div class="organizer-user-card">
+            <div class="organizer-user-avatar"><?= strtoupper(substr($admin_name, 0, 1)) ?></div>
+            <div class="organizer-user-name"><?= htmlspecialchars($admin_name) ?></div>
+            <div class="organizer-user-role">Admin</div>
         </div>
+
+        <!-- Mini Calendar -->
         <div class="mini-calendar-widget">
             <div class="mini-calendar-header">
-                <button class="mini-cal-nav" id="miniCalPrev"><i class="fas fa-chevron-left"></i></button>
+                <button class="mini-cal-nav" id="miniCalPrev" type="button" aria-label="Previous month"><i class="fas fa-chevron-left"></i></button>
                 <span class="mini-cal-month" id="miniCalMonth"><?= date('F Y') ?></span>
-                <button class="mini-cal-nav" id="miniCalNext"><i class="fas fa-chevron-right"></i></button>
+                <button class="mini-cal-nav" id="miniCalNext" type="button" aria-label="Next month"><i class="fas fa-chevron-right"></i></button>
             </div>
             <div class="mini-calendar-grid" id="miniCalendar"></div>
         </div>
+
+        <!-- Quick Actions -->
         <div class="quick-actions">
             <h3 class="section-title">QUICK ACTIONS</h3>
-            <button type="button" class="action-btn w-100 text-start border-0 bg-transparent" data-bs-toggle="modal" data-bs-target="#pendingEventsModal">
+            <button type="button" class="action-btn" data-bs-toggle="modal" data-bs-target="#pendingEventsModal">
                 <i class="fas fa-inbox"></i>
-                <span>Pending Events</span>
-                <?php if ($pendingCount > 0): ?>
-                    <span class="admin-action-badge admin-action-badge--red" aria-label="<?= (int) $pendingCount ?> pending events"><?= $pendingCount > 99 ? '99+' : (int) $pendingCount ?></span>
-                <?php endif; ?>
-                <i class="fas fa-chevron-right ms-auto"></i>
+                <span>Pending Events<?= $pendingCount > 0 ? ' (' . ($pendingCount > 99 ? '99+' : (int) $pendingCount) . ')' : '' ?></span>
             </button>
             <?php if ($showPendingReminder): ?>
             <div class="adm-pending-reminder adm-pending-reminder--sidebar" role="status">
@@ -165,70 +169,46 @@ $messengerHref = BASE_URL . '/backend/messaging/staff_messenger.php';
                 <span><?= (int) $stalePendingCount ?> pending &gt;24h</span>
             </div>
             <?php endif; ?>
-            <button type="button" class="action-btn w-100 text-start border-0 bg-transparent" data-bs-toggle="modal" data-bs-target="#adminPendingAccountsModal">
+            <button type="button" class="action-btn" data-bs-toggle="modal" data-bs-target="#adminPendingAccountsModal">
                 <i class="fas fa-user-clock"></i>
-                <span>Pending Accounts</span>
-                <?php if ($pendingAccountCount > 0): ?>
-                    <span class="admin-action-badge admin-action-badge--gold" aria-label="<?= (int) $pendingAccountCount ?> accounts awaiting activation"><?= $pendingAccountCount > 99 ? '99+' : (int) $pendingAccountCount ?></span>
-                <?php endif; ?>
-                <i class="fas fa-chevron-right ms-auto"></i>
+                <span>Pending Accounts<?= $pendingAccountCount > 0 ? ' (' . ($pendingAccountCount > 99 ? '99+' : (int) $pendingAccountCount) . ')' : '' ?></span>
             </button>
-            <button type="button" class="action-btn w-100 text-start border-0 bg-transparent" data-bs-toggle="modal" data-bs-target="#adminAnalyticsModal">
+            <button type="button" class="action-btn" data-bs-toggle="modal" data-bs-target="#adminAnalyticsModal">
                 <i class="fas fa-chart-pie"></i>
                 <span>Analytics</span>
-                <?php if ((int)($eventStats['pending'] ?? 0) > 0): ?>
-                    <span class="admin-action-badge admin-action-badge--red" aria-label="<?= (int) $eventStats['pending'] ?> pending approvals"><?= (int) $eventStats['pending'] ?></span>
-                <?php endif; ?>
-                <i class="fas fa-chevron-right ms-auto"></i>
             </button>
             <?php
-                $activities_hub_show_chevron = true;
+                $activities_hub_btn_class = '';
                 include __DIR__ . '/../views/partials/activities_hub_quick_action.php';
             ?>
-            <button type="button" class="action-btn w-100 text-start border-0 bg-transparent" data-bs-toggle="modal" data-bs-target="#adminUpcomingEventsModal">
+            <button type="button" class="action-btn" data-bs-toggle="modal" data-bs-target="#adminUpcomingEventsModal">
                 <i class="fas fa-calendar-check"></i>
-                <span>Upcoming Events</span>
-                <?php if ($upcomingAdminCount > 0): ?>
-                    <span class="admin-action-badge admin-action-badge--gold" aria-label="<?= (int) $upcomingAdminCount ?> upcoming events"><?= $upcomingAdminCount > 99 ? '99+' : (int) $upcomingAdminCount ?></span>
-                <?php endif; ?>
-                <i class="fas fa-chevron-right ms-auto"></i>
+                <span>Upcoming Events<?= $upcomingAdminCount > 0 ? ' (' . ($upcomingAdminCount > 99 ? '99+' : (int) $upcomingAdminCount) . ')' : '' ?></span>
             </button>
-            <a class="action-btn w-100 text-start border-0 bg-transparent text-decoration-none text-reset" href="<?= htmlspecialchars($messengerHref) ?>" target="_blank" rel="noopener noreferrer">
+            <a class="action-btn text-decoration-none text-reset" href="<?= htmlspecialchars($messengerHref) ?>" target="_blank" rel="noopener noreferrer">
                 <i class="fas fa-comments"></i>
-                <span>Messages</span>
-                <?php if ($staff_messaging_unread > 0): ?>
-                    <span class="admin-action-badge admin-action-badge--gold" aria-label="<?= (int) $staff_messaging_unread ?> unread messages"><?= $staff_messaging_unread > 99 ? '99+' : (int) $staff_messaging_unread ?></span>
-                <?php endif; ?>
-                <i class="fas fa-chevron-right ms-auto"></i>
+                <span>Messages<?= $staff_messaging_unread > 0 ? ' (' . ($staff_messaging_unread > 99 ? '99+' : (int) $staff_messaging_unread) . ')' : '' ?></span>
             </a>
-            <button type="button" class="action-btn w-100 text-start border-0 bg-transparent" data-bs-toggle="modal" data-bs-target="#adminStudentFeedbackModal">
+            <button type="button" class="action-btn" data-bs-toggle="modal" data-bs-target="#adminStudentFeedbackModal">
                 <i class="fas fa-star-half-stroke"></i>
-                <span>Student feedback</span>
-                <?php if (!empty($admin_feedback_list)): ?>
-                    <span class="admin-action-badge admin-action-badge--green" aria-label="<?= count($admin_feedback_list) ?> feedback items"><?= count($admin_feedback_list) > 99 ? '99+' : count($admin_feedback_list) ?></span>
-                <?php endif; ?>
-                <i class="fas fa-chevron-right ms-auto"></i>
+                <span>Student feedback<?= !empty($admin_feedback_list) ? ' (' . (count($admin_feedback_list) > 99 ? '99+' : count($admin_feedback_list)) . ')' : '' ?></span>
             </button>
-            <button type="button" class="action-btn w-100 text-start border-0 bg-transparent" data-bs-toggle="modal" data-bs-target="#auditLogModal">
+            <button type="button" class="action-btn" data-bs-toggle="modal" data-bs-target="#auditLogModal">
                 <i class="fas fa-clipboard-list"></i>
                 <span>Audit log</span>
-                <i class="fas fa-chevron-right ms-auto"></i>
             </button>
-            <button type="button" class="action-btn w-100 text-start border-0 bg-transparent" data-bs-toggle="modal" data-bs-target="#adminSettingsModal">
+            <button type="button" class="action-btn" data-bs-toggle="modal" data-bs-target="#adminSettingsModal">
                 <i class="fas fa-cog"></i>
                 <span>Settings</span>
-                <i class="fas fa-chevron-right ms-auto"></i>
             </button>
-        </div>
-        </div>
-        <div class="sidebar-drawer-footer">
-            <a href="#" class="action-btn logout-btn w-100 text-start border-0 bg-transparent text-decoration-none" data-bs-toggle="modal" data-bs-target="#logoutModal">
+            <a href="#" class="action-btn" data-bs-toggle="modal" data-bs-target="#logoutModal">
                 <i class="fas fa-sign-out-alt"></i>
                 <span>Logout</span>
             </a>
         </div>
     </aside>
 
+    <!-- Main Content Area -->
     <main class="main-content eventify-kb-scroll-zone" tabindex="0" aria-label="Admin dashboard — use arrow keys to scroll">
         <?php if ($success): ?>
             <div class="alert alert-success alert-dismissible fade show m-3" role="alert">
